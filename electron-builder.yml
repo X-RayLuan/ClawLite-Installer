@@ -26,6 +26,13 @@ mac:
   notarize: false
 dmg:
   artifactName: ${name}-${version}.${ext}
+  contents:
+    - x: 130
+      y: 220
+    - x: 410
+      y: 220
+      type: link
+      path: /Applications
 publish:
   provider: github
 npmRebuild: false
