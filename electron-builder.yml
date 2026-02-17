@@ -26,4 +26,6 @@ mac:
   notarize: false
 dmg:
   artifactName: ${name}-${version}.${ext}
+publish:
+  provider: github
 npmRebuild: false
