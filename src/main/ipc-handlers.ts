@@ -1,6 +1,7 @@
 import { ipcMain, BrowserWindow } from 'electron'
+import { platform } from 'os'
 import { checkEnvironment } from './services/env-checker'
-import { installNodeMac, installWsl, installOpenClaw } from './services/installer'
+import { installNodeMac, installNodeWin, installWsl, installOpenClaw } from './services/installer'
 import { runOnboard } from './services/onboarder'
 import { startGateway, stopGateway, getGatewayStatus } from './services/gateway'
 
@@ -9,7 +10,7 @@ export const registerIpcHandlers = (win: BrowserWindow): void => {
 
   ipcMain.handle('install:node', async () => {
     try {
-      await installNodeMac(win)
+      await (platform() === 'win32' ? installNodeWin(win) : installNodeMac(win))
       return { success: true }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)

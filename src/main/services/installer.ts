@@ -64,6 +64,18 @@ export const installNodeMac = async (win: BrowserWindow): Promise<void> => {
   log('Node.js 설치 완료!')
 }
 
+export const installNodeWin = async (win: BrowserWindow): Promise<void> => {
+  const log = (msg: string): void => sendProgress(win, msg)
+
+  log('WSL 내 Node.js 22 설치 중...')
+  const installScript = [
+    'curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -',
+    '&& sudo apt-get install -y nodejs'
+  ].join(' ')
+  await runWithLog('wsl', ['--', 'bash', '-c', installScript], log, { shell: true })
+  log('Node.js 설치 완료!')
+}
+
 export const installWsl = async (win: BrowserWindow): Promise<void> => {
   const log = (msg: string): void => sendProgress(win, msg)
   log('WSL2 설치 시작... (관리자 권한 필요)')
