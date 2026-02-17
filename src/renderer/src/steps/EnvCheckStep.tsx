@@ -9,6 +9,7 @@ interface EnvResult {
   nodeVersionOk: boolean
   openclawInstalled: boolean
   openclawVersion: string | null
+  openclawLatestVersion: string | null
   wslInstalled: boolean | null
 }
 
@@ -33,13 +34,29 @@ export default function EnvCheckStep({
 }): React.JSX.Element {
   const [checking, setChecking] = useState(true)
   const [env, setEnv] = useState<EnvResult | null>(null)
+  const [updating, setUpdating] = useState(false)
 
-  useEffect(() => {
+  const runCheck = (): void => {
+    setChecking(true)
     window.electronAPI.env.check().then((result) => {
       setEnv(result as EnvResult)
       setChecking(false)
     })
-  }, [])
+  }
+
+  useEffect(() => { runCheck() }, [])
+
+  const hasUpdate = env?.openclawInstalled
+    && env.openclawVersion
+    && env.openclawLatestVersion
+    && env.openclawVersion !== env.openclawLatestVersion
+
+  const handleUpdate = async (): Promise<void> => {
+    setUpdating(true)
+    await window.electronAPI.install.openclaw()
+    setUpdating(false)
+    runCheck()
+  }
 
   const allReady = env
     ? env.nodeInstalled && env.nodeVersionOk && env.openclawInstalled &&
@@ -79,6 +96,15 @@ export default function EnvCheckStep({
             ok={env.openclawInstalled}
             detail={env.openclawInstalled ? `v${env.openclawVersion}` : '미설치'}
           />
+          {hasUpdate && (
+            <button
+              onClick={handleUpdate}
+              disabled={updating}
+              className="w-full text-xs text-center py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-accent transition-colors disabled:opacity-50"
+            >
+              {updating ? '업데이트 중...' : `v${env.openclawLatestVersion} 업데이트 가능`}
+            </button>
+          )}
         </div>
       ) : null}
 

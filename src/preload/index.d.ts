@@ -7,6 +7,7 @@ interface ElectronAPI {
       nodeVersionOk: boolean
       openclawInstalled: boolean
       openclawVersion: string | null
+      openclawLatestVersion: string | null
       wslInstalled: boolean | null
     }>
   }

@@ -1,5 +1,6 @@
 import { spawn } from 'child_process'
 import { platform } from 'os'
+import https from 'https'
 
 export interface EnvCheckResult {
   os: 'macos' | 'windows' | 'linux'
@@ -8,6 +9,7 @@ export interface EnvCheckResult {
   nodeVersionOk: boolean
   openclawInstalled: boolean
   openclawVersion: string | null
+  openclawLatestVersion: string | null
   wslInstalled: boolean | null
 }
 
@@ -72,6 +74,21 @@ const checkWsl = async (): Promise<boolean> => {
   }
 }
 
+const fetchLatestVersion = (pkg: string): Promise<string> =>
+  new Promise((resolve, reject) => {
+    https.get(`https://registry.npmjs.org/${pkg}/latest`, (res) => {
+      let data = ''
+      res.on('data', (chunk) => (data += chunk))
+      res.on('end', () => {
+        try {
+          resolve(JSON.parse(data).version)
+        } catch {
+          reject(new Error('parse error'))
+        }
+      })
+    }).on('error', reject)
+  })
+
 export const checkEnvironment = async (): Promise<EnvCheckResult> => {
   const os = platform() === 'darwin' ? 'macos'
     : platform() === 'win32' ? 'windows'
@@ -105,7 +122,15 @@ export const checkEnvironment = async (): Promise<EnvCheckResult> => {
     /* not installed */
   }
 
+  let openclawLatestVersion: string | null = null
+
+  try {
+    openclawLatestVersion = await fetchLatestVersion('openclaw')
+  } catch {
+    /* network error — skip */
+  }
+
   const wslInstalled = os === 'windows' ? await checkWsl() : null
 
-  return { os, nodeInstalled, nodeVersion, nodeVersionOk, openclawInstalled, openclawVersion, wslInstalled }
+  return { os, nodeInstalled, nodeVersion, nodeVersionOk, openclawInstalled, openclawVersion, openclawLatestVersion, wslInstalled }
 }
