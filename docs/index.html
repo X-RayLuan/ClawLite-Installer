@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EasyClaw — OpenClaw 원클릭 설치 프로그램</title>
+<meta name="description" content="EasyClaw로 OpenClaw AI 비서를 원클릭 설치하세요. Windows & macOS 지원.">
+<meta property="og:title" content="EasyClaw — OpenClaw 원클릭 설치">
+<meta property="og:description" content="복잡한 설정 없이 AI 비서를 바로 사용하세요.">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --primary:#f97316;--primary-hover:#fb923c;--primary-light:#fdba74;
+  --primary-glow:rgba(249,115,22,0.35);
+  --bg:#080c18;--bg-card:rgba(255,255,255,0.05);--bg-card-hover:rgba(255,255,255,0.08);
+  --glass-border:rgba(255,255,255,0.1);
+  --text:#f0eef6;--text-muted:#8b8a9e;
+  --success:#34d399;--error:#fb7185;--warning:#fbbf24;
+}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:'Nunito',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  line-height:1.6;overflow-x:hidden;
+}
+a{color:inherit;text-decoration:none}
+
+/* ── Aurora Background ── */
+.aurora{
+  position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse at 15% 85%,rgba(249,115,22,0.14) 0%,transparent 50%),
+    radial-gradient(ellipse at 85% 15%,rgba(139,92,246,0.1) 0%,transparent 50%),
+    radial-gradient(ellipse at 50% 50%,rgba(14,165,233,0.07) 0%,transparent 60%),
+    var(--bg);
+  animation:aurora-shift 14s ease-in-out infinite alternate;
+}
+@keyframes aurora-shift{
+  0%{filter:hue-rotate(0deg) brightness(1)}
+  100%{filter:hue-rotate(18deg) brightness(1.06)}
+}
+
+/* ── Grain ── */
+.grain{
+  position:fixed;inset:0;z-index:1;pointer-events:none;opacity:0.025;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat:repeat;background-size:180px;
+}
+
+/* ── Bubbles ── */
+.bubbles{position:fixed;inset:0;z-index:1;pointer-events:none;overflow:hidden}
+.bubble{
+  position:absolute;border-radius:50%;
+  background:radial-gradient(circle at 30% 30%,rgba(249,115,22,0.15),rgba(249,115,22,0.03));
+  animation:bubble-float linear infinite;
+}
+@keyframes bubble-float{
+  0%{transform:translateY(100vh) scale(0);opacity:0}
+  10%{opacity:1}
+  90%{opacity:0.6}
+  100%{transform:translateY(-10vh) scale(1);opacity:0}
+}
+
+/* ── Layout ── */
+.content{position:relative;z-index:2}
+section{padding:5rem 1.5rem}
+.container{max-width:1080px;margin:0 auto}
+
+/* ── Glass Card ── */
+.glass{
+  background:var(--bg-card);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border:1px solid var(--glass-border);border-radius:16px;
+  transition:all 0.35s cubic-bezier(0.4,0,0.2,1);
+}
+.glass:hover{
+  background:var(--bg-card-hover);border-color:rgba(255,255,255,0.18);
+  transform:translateY(-2px);
+  box-shadow:0 8px 32px rgba(249,115,22,0.08);
+}
+
+/* ── Hero ── */
+.hero{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  text-align:center;padding-top:2rem;padding-bottom:4rem;
+}
+.hero-inner{max-width:640px}
+.hero .lobster-wrap{
+  display:inline-block;
+  filter:drop-shadow(0 0 40px rgba(249,115,22,0.25));
+  animation:hero-float 4s ease-in-out infinite;
+}
+@keyframes hero-float{
+  0%,100%{transform:translateY(0)}
+  50%{transform:translateY(-10px)}
+}
+.logo{
+  font-size:3rem;font-weight:900;letter-spacing:-0.02em;
+  margin:1.5rem 0 0.5rem;
+}
+.logo .easy{color:var(--text)}
+.logo .claw{
+  background:linear-gradient(135deg,var(--primary),var(--primary-light));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;
+}
+.tagline{
+  font-size:1.2rem;color:var(--text-muted);
+  margin-bottom:2.5rem;line-height:1.7;
+}
+.tagline strong{color:var(--text);font-weight:700}
+
+/* ── Buttons ── */
+.btn{
+  display:inline-flex;align-items:center;gap:0.6rem;
+  padding:0.9rem 2rem;border-radius:12px;
+  font-family:inherit;font-size:1rem;font-weight:700;
+  cursor:pointer;border:none;
+  transition:all 0.25s cubic-bezier(0.4,0,0.2,1);
+}
+.btn-primary{
+  background:linear-gradient(135deg,var(--primary),#ea580c);color:#fff;
+  box-shadow:0 0 24px var(--primary-glow),0 4px 16px rgba(0,0,0,0.3);
+}
+.btn-primary:hover{
+  background:linear-gradient(135deg,var(--primary-hover),var(--primary));
+  transform:translateY(-2px);
+  box-shadow:0 0 36px var(--primary-glow),0 8px 24px rgba(0,0,0,0.35);
+}
+.btn-primary:active{transform:translateY(0)}
+.btn-ghost{
+  background:var(--bg-card);color:var(--text);
+  border:1px solid var(--glass-border);
+}
+.btn-ghost:hover{
+  background:var(--bg-card-hover);border-color:rgba(255,255,255,0.2);
+  transform:translateY(-1px);
+}
+.btn svg{width:20px;height:20px;flex-shrink:0}
+.btn-group{display:flex;gap:0.75rem;justify-content:center;flex-wrap:wrap}
+
+.os-badge{
+  display:inline-flex;align-items:center;gap:0.4rem;
+  font-size:0.75rem;color:var(--text-muted);margin-top:0.75rem;
+}
+
+/* ── Section Headers ── */
+.section-label{
+  display:inline-block;
+  font-size:0.75rem;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;
+  color:var(--primary);margin-bottom:0.75rem;
+}
+.section-title{
+  font-size:2rem;font-weight:900;line-height:1.3;
+  margin-bottom:1rem;
+}
+.section-sub{color:var(--text-muted);max-width:520px;margin:0 auto 3rem}
+
+/* ── Features ── */
+.features-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem;
+}
+.feature-card{padding:2rem 1.5rem;text-align:center}
+.feature-icon{
+  width:56px;height:56px;border-radius:14px;
+  display:flex;align-items:center;justify-content:center;
+  margin:0 auto 1.25rem;
+  background:linear-gradient(135deg,rgba(249,115,22,0.15),rgba(249,115,22,0.05));
+  border:1px solid rgba(249,115,22,0.2);
+}
+.feature-icon svg{width:28px;height:28px;color:var(--primary)}
+.feature-card h3{font-size:1.1rem;font-weight:800;margin-bottom:0.5rem}
+.feature-card p{font-size:0.9rem;color:var(--text-muted);line-height:1.6}
+
+/* ── Steps ── */
+.steps-track{
+  display:flex;gap:1.5rem;align-items:stretch;position:relative;
+}
+.steps-track::before{
+  content:'';position:absolute;top:50%;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,rgba(249,115,22,0.3),transparent);
+  z-index:0;
+}
+.step-card{
+  flex:1;padding:2rem 1.5rem;text-align:center;position:relative;z-index:1;
+}
+.step-num{
+  width:40px;height:40px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  margin:0 auto 1rem;
+  font-size:1rem;font-weight:900;color:#fff;
+  background:linear-gradient(135deg,var(--primary),#ea580c);
+  box-shadow:0 0 20px var(--primary-glow);
+}
+.step-card h3{font-size:1rem;font-weight:800;margin-bottom:0.4rem}
+.step-card p{font-size:0.85rem;color:var(--text-muted)}
+
+/* ── CTA ── */
+.cta{text-align:center;padding:4rem 1.5rem 6rem}
+.cta-card{
+  padding:3.5rem 2rem;
+  background:
+    linear-gradient(135deg,rgba(249,115,22,0.08),rgba(139,92,246,0.04)),
+    var(--bg-card);
+  border:1px solid rgba(249,115,22,0.15);
+  border-radius:24px;
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+}
+.cta-card h2{font-size:1.8rem;font-weight:900;margin-bottom:0.5rem}
+.cta-card p{color:var(--text-muted);margin-bottom:2rem}
+
+/* ── Footer ── */
+footer{
+  text-align:center;padding:2rem 1.5rem;
+  border-top:1px solid rgba(255,255,255,0.05);
+  font-size:0.8rem;color:var(--text-muted);
+}
+footer a{color:var(--primary);transition:color 0.2s}
+footer a:hover{color:var(--primary-hover)}
+
+/* ── Scroll Reveal ── */
+.reveal{opacity:0;transform:translateY(24px);transition:opacity 0.7s cubic-bezier(0.16,1,0.3,1),transform 0.7s cubic-bezier(0.16,1,0.3,1)}
+.reveal.visible{opacity:1;transform:translateY(0)}
+.reveal-d1{transition-delay:0.1s}
+.reveal-d2{transition-delay:0.2s}
+.reveal-d3{transition-delay:0.3s}
+
+/* ── Responsive ── */
+@media(max-width:768px){
+  section{padding:3.5rem 1.25rem}
+  .logo{font-size:2.2rem}
+  .tagline{font-size:1.05rem}
+  .section-title{font-size:1.6rem}
+  .features-grid{grid-template-columns:1fr;gap:1rem}
+  .steps-track{flex-direction:column;gap:1rem}
+  .steps-track::before{display:none}
+  .btn{padding:0.8rem 1.5rem;font-size:0.9rem}
+  .cta-card{padding:2.5rem 1.5rem}
+}
+@media(max-width:480px){
+  .hero{min-height:auto;padding-top:4rem;padding-bottom:3rem}
+  .logo{font-size:1.8rem}
+  .btn-group{flex-direction:column;align-items:center}
+}
+</style>
+</head>
+<body>
+
+<div class="aurora"></div>
+<div class="grain"></div>
+<div class="bubbles" id="bubbles"></div>
+
+<div class="content">
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-inner">
+      <div class="lobster-wrap">
+        <svg width="140" height="140" viewBox="0 0 160 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <style>
+            @keyframes claw-wave{0%,100%{transform:rotate(0deg)}30%{transform:rotate(-15deg)}70%{transform:rotate(10deg)}}
+            @keyframes eye-blink{0%,42%,44%,100%{transform:scaleY(1)}43%{transform:scaleY(0.1)}}
+            .claw-l{animation:claw-wave 2.5s ease-in-out infinite;transform-origin:58px 68px}
+            .claw-r{animation:claw-wave 2.5s ease-in-out infinite 0.4s;transform-origin:102px 68px}
+            .eyes{animation:eye-blink 4s ease-in-out infinite;transform-origin:80px 52px}
+          </style>
+          <ellipse cx="80" cy="92" rx="40" ry="42" fill="url(#bGlow)" opacity=".3"/>
+          <ellipse cx="80" cy="92" rx="30" ry="36" fill="url(#bGrad)"/>
+          <ellipse cx="80" cy="98" rx="15" ry="19" fill="#fde1c5" opacity=".7"/>
+          <ellipse cx="80" cy="102" rx="10" ry="12" fill="#feecd2" opacity=".5"/>
+          <circle cx="80" cy="56" r="22" fill="url(#bGrad)"/>
+          <circle cx="65" cy="60" r="5" fill="#fda4af" opacity=".45"/>
+          <circle cx="95" cy="60" r="5" fill="#fda4af" opacity=".45"/>
+          <g class="eyes">
+            <ellipse cx="72" cy="50" rx="6" ry="6.5" fill="white"/>
+            <ellipse cx="88" cy="50" rx="6" ry="6.5" fill="white"/>
+            <circle cx="73.5" cy="49" r="3.5" fill="#1e1b3a"/>
+            <circle cx="89.5" cy="49" r="3.5" fill="#1e1b3a"/>
+            <circle cx="75" cy="47.5" r="1.8" fill="white"/>
+            <circle cx="91" cy="47.5" r="1.8" fill="white"/>
+            <circle cx="72" cy="51" r=".8" fill="white" opacity=".7"/>
+            <circle cx="88" cy="51" r=".8" fill="white" opacity=".7"/>
+          </g>
+          <path d="M74 60Q80 67 86 60" stroke="#c2410c" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+          <path d="M76 61Q80 64 84 61" fill="#c2410c" opacity=".3"/>
+          <path d="M71 38Q63 22 56 16" stroke="url(#bGrad)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+          <circle cx="55" cy="15" r="4" fill="#fb923c"/><circle cx="55" cy="15" r="2" fill="#fdba74" opacity=".6"/>
+          <path d="M89 38Q97 22 104 16" stroke="url(#bGrad)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+          <circle cx="105" cy="15" r="4" fill="#fb923c"/><circle cx="105" cy="15" r="2" fill="#fdba74" opacity=".6"/>
+          <g class="claw-l">
+            <path d="M52 75Q36 62 24 56" stroke="url(#bGrad)" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+            <ellipse cx="20" cy="50" rx="12" ry="8" fill="url(#cGrad)" transform="rotate(-25 20 50)"/>
+            <path d="M12 47Q20 39 27 47" stroke="#fdba74" stroke-width="2" fill="none" stroke-linecap="round"/>
+          </g>
+          <g class="claw-r">
+            <path d="M108 75Q124 62 136 56" stroke="url(#bGrad)" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+            <ellipse cx="140" cy="50" rx="12" ry="8" fill="url(#cGrad)" transform="rotate(25 140 50)"/>
+            <path d="M133 47Q140 39 148 47" stroke="#fdba74" stroke-width="2" fill="none" stroke-linecap="round"/>
+          </g>
+          <path d="M56 100Q44 112 36 118" stroke="#f97316" stroke-width="2.5" stroke-linecap="round"/>
+          <path d="M53 110Q41 120 34 126" stroke="#f97316" stroke-width="2.5" stroke-linecap="round"/>
+          <path d="M104 100Q116 112 124 118" stroke="#f97316" stroke-width="2.5" stroke-linecap="round"/>
+          <path d="M107 110Q119 120 126 126" stroke="#f97316" stroke-width="2.5" stroke-linecap="round"/>
+          <path d="M72 128Q80 142 88 128" fill="#f97316" opacity=".8"/>
+          <path d="M75 129Q80 138 85 129" fill="#fb923c" opacity=".5"/>
+          <defs>
+            <radialGradient id="bGlow" cx="50%" cy="40%"><stop offset="0%" stop-color="#f97316" stop-opacity=".5"/><stop offset="100%" stop-color="#f97316" stop-opacity="0"/></radialGradient>
+            <linearGradient id="bGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fb923c"/><stop offset="100%" stop-color="#ea580c"/></linearGradient>
+            <linearGradient id="cGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fb923c"/><stop offset="100%" stop-color="#f97316"/></linearGradient>
+          </defs>
+        </svg>
+      </div>
+
+      <h1 class="logo"><span class="easy">Easy</span><span class="claw">Claw</span></h1>
+      <p class="tagline">
+        복잡한 설정은 잊으세요.<br>
+        <strong>OpenClaw AI 비서</strong>를 원클릭으로 설치하고 바로 대화하세요.
+      </p>
+
+      <div class="btn-group">
+        <a id="dl-primary" href="https://github.com/easy-claw/easy-claw/releases/latest" class="btn btn-primary">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span id="dl-label">다운로드</span>
+        </a>
+        <a href="https://github.com/easy-claw/easy-claw" target="_blank" rel="noopener" class="btn btn-ghost">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+          GitHub
+        </a>
+      </div>
+      <p class="os-badge" id="os-badge"></p>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section id="features">
+    <div class="container" style="text-align:center">
+      <span class="section-label reveal">Features</span>
+      <h2 class="section-title reveal">왜 EasyClaw인가요?</h2>
+      <p class="section-sub reveal">설치부터 실행까지, 모든 과정을 간단하게.</p>
+
+      <div class="features-grid">
+        <div class="glass feature-card reveal reveal-d1">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <h3>원클릭 설치</h3>
+          <p>WSL, Node.js, OpenClaw까지 필요한 모든 환경을 자동으로 감지하고 설치합니다.</p>
+        </div>
+        <div class="glass feature-card reveal reveal-d2">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a4 4 0 014 4v2a4 4 0 01-8 0V6a4 4 0 014-4z"/><path d="M16 12a4 4 0 01-8 0"/><path d="M12 16v4"/><path d="M8 22h8"/></svg>
+          </div>
+          <h3>AI 비서</h3>
+          <p>OpenClaw 기반의 강력한 AI 비서가 자연어로 대화하며 다양한 작업을 수행합니다.</p>
+        </div>
+        <div class="glass feature-card reveal reveal-d3">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>
+          </div>
+          <h3>텔레그램 연동</h3>
+          <p>텔레그램 봇을 통해 언제 어디서든 AI 비서와 대화할 수 있습니다.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Steps -->
+  <section id="steps">
+    <div class="container" style="text-align:center">
+      <span class="section-label reveal">How it works</span>
+      <h2 class="section-title reveal">3단계면 끝</h2>
+      <p class="section-sub reveal">설치 파일을 받고, 실행하고, 대화하세요.</p>
+
+      <div class="steps-track">
+        <div class="glass step-card reveal reveal-d1">
+          <div class="step-num">1</div>
+          <h3>다운로드</h3>
+          <p>OS에 맞는 설치 파일을<br>한 번에 다운로드</p>
+        </div>
+        <div class="glass step-card reveal reveal-d2">
+          <div class="step-num">2</div>
+          <h3>설치 & 설정</h3>
+          <p>EasyClaw이 환경을 감지하고<br>필요한 것만 자동 설치</p>
+        </div>
+        <div class="glass step-card reveal reveal-d3">
+          <div class="step-num">3</div>
+          <h3>대화 시작</h3>
+          <p>API 키를 입력하면<br>바로 AI 비서 사용 가능</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta">
+    <div class="container">
+      <div class="cta-card reveal">
+        <h2>지금 시작하세요</h2>
+        <p>복잡한 터미널 작업 없이, 클릭 한 번으로 AI 비서를 만나보세요.</p>
+        <div class="btn-group">
+          <a href="https://github.com/easy-claw/easy-claw/releases/latest" class="btn btn-primary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            무료 다운로드
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <p>
+      &copy; 2025 EasyClaw &middot;
+      <a href="https://github.com/easy-claw/easy-claw" target="_blank" rel="noopener">GitHub</a>
+    </p>
+  </footer>
+</div>
+
+<script>
+// Bubbles
+(function(){
+  var c=document.getElementById('bubbles');
+  for(var i=0;i<10;i++){
+    var b=document.createElement('div');
+    b.className='bubble';
+    var s=6+Math.random()*20;
+    b.style.width=s+'px';b.style.height=s+'px';
+    b.style.left=Math.random()*100+'%';
+    b.style.animationDelay=Math.random()*12+'s';
+    b.style.animationDuration=(14+Math.random()*14)+'s';
+    c.appendChild(b);
+  }
+})();
+
+// OS detection & download label
+(function(){
+  var ua=navigator.userAgent,os='';
+  if(/Win/.test(ua))os='Windows';
+  else if(/Mac/.test(ua))os='macOS';
+  var label=document.getElementById('dl-label');
+  var badge=document.getElementById('os-badge');
+  if(os){
+    label.textContent=os+' 다운로드';
+    badge.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg> '+os+' 감지됨 &middot; .'+( os==='Windows'?'exe':'dmg')+' 파일이 다운로드됩니다';
+  }
+})();
+
+// Scroll reveal
+(function(){
+  var els=document.querySelectorAll('.reveal');
+  var io=new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting){e.target.classList.add('visible');io.unobserve(e.target)}
+    });
+  },{threshold:0.15});
+  els.forEach(function(el){io.observe(el)});
+})();
+</script>
+
+</body>
+</html>
