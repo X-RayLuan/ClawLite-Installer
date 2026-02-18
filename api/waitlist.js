@@ -46,6 +46,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ success: true })
   } catch (e) {
     console.error('Blob error:', e)
-    return res.status(500).json({ error: '서버 오류. 잠시 후 다시 시도해주세요.' })
+    return res.status(500).json({ error: '서버 오류. 잠시 후 다시 시도해주세요.', debug: e.message })
   }
 }
