@@ -68,7 +68,7 @@ const semverGte = (version: string, min: string): boolean => {
 const checkWsl = async (): Promise<boolean> => {
   try {
     const output = await runCommand('wsl', ['--list', '--verbose'])
-    return output.includes('Running')
+    return output.toLowerCase().includes('ubuntu')
   } catch {
     return false
   }
