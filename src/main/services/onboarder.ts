@@ -124,6 +124,25 @@ export const runOnboard = async (
   await runCmd(npm, onboardArgs, log)
   log('기본 설정 완료!')
 
+  // Node.js 22 autoSelectFamily(IPv6 우선 시도)로 인한 네트워크 오류 방지
+  if (platform() === 'darwin') {
+    const ocDir = join(homedir(), '.openclaw')
+    const fixPath = join(ocDir, 'ipv4-fix.js')
+    writeFileSync(fixPath, "require('net').setDefaultAutoSelectFamily(false)\n")
+
+    const plistAfter = join(homedir(), 'Library', 'LaunchAgents', 'ai.openclaw.gateway.plist')
+    if (existsSync(plistAfter)) {
+      let xml = readFileSync(plistAfter, 'utf-8')
+      if (!xml.includes('NODE_OPTIONS')) {
+        xml = xml.replace(
+          '</dict>\n  </dict>',
+          `<key>NODE_OPTIONS</key>\n    <string>--require=${fixPath}</string>\n    </dict>\n  </dict>`
+        )
+        writeFileSync(plistAfter, xml)
+      }
+    }
+  }
+
   let botUsername: string | undefined
 
   if (config.telegramBotToken) {
