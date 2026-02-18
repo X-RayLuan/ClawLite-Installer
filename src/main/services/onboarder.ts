@@ -127,7 +127,7 @@ export const runOnboard = async (
         telegram: {
           enabled: true,
           botToken: config.telegramBotToken,
-          dmPolicy: 'pairing',
+          dmPolicy: 'open',
           groups: { '*': { requireMention: true } }
         }
       }
@@ -136,6 +136,12 @@ export const runOnboard = async (
     } else {
       log('OpenClaw 설정 파일을 찾을 수 없습니다')
     }
+
+    // 텔레그램 설정 반영을 위해 데몬 재시작
+    log('Gateway 재시작 중...')
+    try {
+      await runCmd(npm, ['exec', '--', 'openclaw', 'gateway', 'stop'], log)
+    } catch { /* ignore */ }
 
     botUsername = await fetchBotUsername(config.telegramBotToken)
   }
