@@ -57,12 +57,14 @@ export default function DoneStep({ botUsername }: { botUsername?: string }): Rea
       </div>
 
       <div className="flex gap-3">
-        <Button variant="primary" size="lg" onClick={() => {
-          const url = botUsername ? `https://t.me/${botUsername}` : 'tg://'
-          window.open(url, '_blank')
-        }}>
-          텔레그램 열기
-        </Button>
+        {status === 'running' && (
+          <Button variant="primary" size="lg" onClick={() => {
+            const url = botUsername ? `tg://resolve?domain=${botUsername}` : 'tg://'
+            window.open(url, '_blank')
+          }}>
+            텔레그램 열기
+          </Button>
+        )}
         {status === 'running' ? (
           <Button variant="secondary" size="sm" onClick={handleStop}>중지</Button>
         ) : status === 'stopped' ? (
