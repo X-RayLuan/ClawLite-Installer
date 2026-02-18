@@ -1,4 +1,4 @@
-import { ipcMain, BrowserWindow } from 'electron'
+import { ipcMain, BrowserWindow, app } from 'electron'
 import { spawn } from 'child_process'
 import { platform } from 'os'
 import { checkEnvironment } from './services/env-checker'
@@ -7,6 +7,8 @@ import { runOnboard } from './services/onboarder'
 import { startGateway, stopGateway, getGatewayStatus } from './services/gateway'
 
 export const registerIpcHandlers = (win: BrowserWindow): void => {
+  ipcMain.handle('app:version', () => app.getVersion())
+
   ipcMain.handle('env:check', () => checkEnvironment())
 
   ipcMain.handle('install:node', async () => {

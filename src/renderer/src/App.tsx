@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import StepIndicator from './components/StepIndicator'
 import { useWizard } from './hooks/useWizard'
 import WelcomeStep from './steps/WelcomeStep'
@@ -55,6 +55,11 @@ function App(): React.JSX.Element {
     needOpenclaw: false
   })
   const [botUsername, setBotUsername] = useState<string | undefined>()
+  const [version, setVersion] = useState('')
+
+  useEffect(() => {
+    window.electronAPI.version().then(setVersion)
+  }, [])
 
   const handleEnvCheckDone = (env: {
     os: string
@@ -95,6 +100,12 @@ function App(): React.JSX.Element {
           {currentStep === 'config' && <ConfigStep onDone={(username) => { setBotUsername(username); goTo('done') }} />}
           {currentStep === 'done' && <DoneStep botUsername={botUsername} />}
         </div>
+
+        {version && (
+          <span className="absolute bottom-3 right-4 text-[10px] text-text-muted/30 font-medium select-none">
+            v{version}
+          </span>
+        )}
 
         {canGoBack && currentStep !== 'apiKeyGuide' && currentStep !== 'telegramGuide' && (
           <button

@@ -39,7 +39,7 @@ export default function DoneStep({ botUsername }: { botUsername?: string }): Rea
           {status === 'running' ? '모든 준비 완료!' : status === 'starting' ? '시작하는 중...' : '게이트웨이 중지됨'}
         </h2>
         <p className="text-text-muted text-sm font-medium">
-          {status === 'running' ? '텔레그램에서 AI 에이전트와 대화하세요' : status === 'starting' ? '잠시만요...' : '다시 시작할 수 있습니다'}
+          {status === 'running' ? '텔레그램에서 AI 에이전트와 대화하세요' : status === 'starting' ? '' : '다시 시작할 수 있습니다'}
         </p>
       </div>
 

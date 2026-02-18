@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
 const electronAPI = {
+  version: (): Promise<string> => ipcRenderer.invoke('app:version'),
   env: {
     check: (): Promise<unknown> => ipcRenderer.invoke('env:check')
   },
