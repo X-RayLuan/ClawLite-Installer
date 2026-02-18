@@ -26,10 +26,6 @@ export default function WelcomeStep({ onNext }: { onNext: () => void }): React.J
       <Button variant="primary" size="lg" onClick={onNext}>
         시작하기
       </Button>
-
-      <span className="text-text-muted/30 text-[10px] tracking-widest uppercase font-semibold">
-        v0.1.0
-      </span>
     </div>
   )
 }
