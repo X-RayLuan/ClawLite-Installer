@@ -179,13 +179,32 @@ export const runOnboard = async (
       log('OpenClaw 설정 파일을 찾을 수 없습니다')
     }
 
-    // 텔레그램 설정 반영을 위해 데몬 재시작
-    log('Gateway 재시작 중...')
-    try {
-      await runCmd(npm, ['exec', '--', 'openclaw', 'gateway', 'stop'], log)
-    } catch { /* ignore */ }
-
     botUsername = await fetchBotUsername(config.telegramBotToken)
+  }
+
+  // 패치된 plist로 데몬을 완전 재시작 (ipv4-fix + 텔레그램 설정 반영)
+  if (platform() === 'darwin') {
+    log('Gateway 재시작 중...')
+    const plistPath = join(homedir(), 'Library', 'LaunchAgents', 'ai.openclaw.gateway.plist')
+    const uid = process.getuid?.() ?? ''
+    await new Promise<void>((resolve) => {
+      const child = spawn('launchctl', ['bootout', `gui/${uid}/ai.openclaw.gateway`])
+      child.on('close', () => resolve())
+      child.on('error', () => resolve())
+    })
+    await new Promise<void>((resolve) => {
+      const child = spawn('pkill', ['-f', 'openclaw'])
+      child.on('close', () => resolve())
+      child.on('error', () => resolve())
+    })
+    await new Promise((resolve) => setTimeout(resolve, 2000))
+    if (existsSync(plistPath)) {
+      await new Promise<void>((resolve) => {
+        const child = spawn('launchctl', ['bootstrap', `gui/${uid}`, plistPath])
+        child.on('close', () => resolve())
+        child.on('error', () => resolve())
+      })
+    }
   }
 
   return { botUsername }
