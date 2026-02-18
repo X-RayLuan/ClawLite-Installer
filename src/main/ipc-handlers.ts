@@ -44,8 +44,8 @@ export const registerIpcHandlers = (win: BrowserWindow): void => {
 
   ipcMain.handle('onboard:run', async (_e, config: { anthropicApiKey: string; telegramBotToken?: string }) => {
     try {
-      await runOnboard(win, config)
-      return { success: true }
+      const result = await runOnboard(win, config)
+      return { success: true, botUsername: result.botUsername }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
       win.webContents.send('install:error', msg)

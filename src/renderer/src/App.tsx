@@ -54,6 +54,7 @@ function App(): React.JSX.Element {
     needNode: false,
     needOpenclaw: false
   })
+  const [botUsername, setBotUsername] = useState<string | undefined>()
 
   const handleEnvCheckDone = (env: {
     os: string
@@ -91,8 +92,8 @@ function App(): React.JSX.Element {
           )}
           {currentStep === 'apiKeyGuide' && <ApiKeyGuideStep onNext={next} onPrev={prev} />}
           {currentStep === 'telegramGuide' && <TelegramGuideStep onNext={next} onPrev={prev} />}
-          {currentStep === 'config' && <ConfigStep onDone={() => goTo('done')} />}
-          {currentStep === 'done' && <DoneStep />}
+          {currentStep === 'config' && <ConfigStep onDone={(username) => { setBotUsername(username); goTo('done') }} />}
+          {currentStep === 'done' && <DoneStep botUsername={botUsername} />}
         </div>
 
         {canGoBack && currentStep !== 'apiKeyGuide' && currentStep !== 'telegramGuide' && (

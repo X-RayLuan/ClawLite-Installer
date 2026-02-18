@@ -7,7 +7,7 @@ import { useInstallLogs } from '../hooks/useIpc'
 const API_KEY_PATTERN = /^sk-ant-/
 const BOT_TOKEN_PATTERN = /^\d+:[A-Za-z0-9_-]+$/
 
-export default function ConfigStep({ onDone }: { onDone: () => void }): React.JSX.Element {
+export default function ConfigStep({ onDone }: { onDone: (botUsername?: string) => void }): React.JSX.Element {
   const [apiKey, setApiKey] = useState('')
   const [botToken, setBotToken] = useState('')
   const [saving, setSaving] = useState(false)
@@ -27,7 +27,7 @@ export default function ConfigStep({ onDone }: { onDone: () => void }): React.JS
       telegramBotToken: botToken || undefined
     })
     if (result.success) {
-      onDone()
+      onDone(result.botUsername)
     } else {
       setError(result.error ?? '설정 중 오류가 발생했습니다')
       setSaving(false)

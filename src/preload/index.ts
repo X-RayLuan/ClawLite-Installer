@@ -23,7 +23,7 @@ const electronAPI = {
     }
   },
   onboard: {
-    run: (config: { anthropicApiKey: string; telegramBotToken?: string }): Promise<{ success: boolean; error?: string }> =>
+    run: (config: { anthropicApiKey: string; telegramBotToken?: string }): Promise<{ success: boolean; error?: string; botUsername?: string }> =>
       ipcRenderer.invoke('onboard:run', config)
   },
   reboot: (): void => ipcRenderer.send('system:reboot'),

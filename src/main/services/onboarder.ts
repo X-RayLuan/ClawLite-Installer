@@ -2,12 +2,33 @@ import { spawn } from 'child_process'
 import { existsSync, readFileSync, writeFileSync } from 'fs'
 import { platform, homedir } from 'os'
 import { join } from 'path'
+import https from 'https'
 import { BrowserWindow } from 'electron'
 
 interface OnboardConfig {
   anthropicApiKey: string
   telegramBotToken?: string
 }
+
+interface OnboardResult {
+  botUsername?: string
+}
+
+const fetchBotUsername = (token: string): Promise<string | undefined> =>
+  new Promise((resolve) => {
+    https.get(`https://api.telegram.org/bot${token}/getMe`, (res) => {
+      let data = ''
+      res.on('data', (chunk) => (data += chunk))
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(data)
+          resolve(json.ok ? json.result.username : undefined)
+        } catch {
+          resolve(undefined)
+        }
+      })
+    }).on('error', () => resolve(undefined))
+  })
 
 const PATH_DIRS = [
   '/usr/local/bin',
@@ -60,7 +81,7 @@ const runCmd = (
 export const runOnboard = async (
   win: BrowserWindow,
   config: OnboardConfig
-): Promise<void> => {
+): Promise<OnboardResult> => {
   const log = (msg: string): void => {
     win.webContents.send('install:progress', msg)
   }
@@ -89,6 +110,8 @@ export const runOnboard = async (
   await runCmd(npm, onboardArgs, log)
   log('기본 설정 완료!')
 
+  let botUsername: string | undefined
+
   if (config.telegramBotToken) {
     log('텔레그램 채널 추가 중...')
     const configDir = platform() === 'win32' ? '' : join(homedir(), '.openclaw')
@@ -110,5 +133,9 @@ export const runOnboard = async (
     } else {
       log('OpenClaw 설정 파일을 찾을 수 없습니다')
     }
+
+    botUsername = await fetchBotUsername(config.telegramBotToken)
   }
+
+  return { botUsername }
 }

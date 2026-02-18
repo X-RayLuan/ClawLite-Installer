@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import LobsterLogo from '../components/LobsterLogo'
 import Button from '../components/Button'
 
-export default function DoneStep(): React.JSX.Element {
+export default function DoneStep({ botUsername }: { botUsername?: string }): React.JSX.Element {
   const [status, setStatus] = useState<'starting' | 'running' | 'stopped'>('starting')
 
   useEffect(() => {
@@ -57,7 +57,10 @@ export default function DoneStep(): React.JSX.Element {
       </div>
 
       <div className="flex gap-3">
-        <Button variant="primary" size="lg" onClick={() => window.open('https://t.me/', '_blank')}>
+        <Button variant="primary" size="lg" onClick={() => {
+          const url = botUsername ? `https://t.me/${botUsername}` : 'tg://'
+          window.open(url, '_blank')
+        }}>
           텔레그램 열기
         </Button>
         {status === 'running' ? (

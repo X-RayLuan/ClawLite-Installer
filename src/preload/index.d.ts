@@ -19,7 +19,7 @@ interface ElectronAPI {
     onError: (cb: (msg: string) => void) => () => void
   }
   onboard: {
-    run: (config: { anthropicApiKey: string; telegramBotToken?: string }) => Promise<{ success: boolean; error?: string }>
+    run: (config: { anthropicApiKey: string; telegramBotToken?: string }) => Promise<{ success: boolean; error?: string; botUsername?: string }>
   }
   reboot: () => void
   gateway: {
