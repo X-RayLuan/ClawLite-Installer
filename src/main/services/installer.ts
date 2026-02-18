@@ -79,7 +79,9 @@ export const installNodeWin = async (win: BrowserWindow): Promise<void> => {
 export const installWsl = async (win: BrowserWindow): Promise<void> => {
   const log = (msg: string): void => sendProgress(win, msg)
   log('WSL2 설치 시작... (관리자 권한 필요)')
-  await runWithLog('wsl', ['--install', '-d', 'Ubuntu'], log, { shell: true })
+  await runWithLog('wsl', ['--install', '-d', 'Ubuntu', '--no-launch'], log, { shell: true })
+  log('Ubuntu 기본 사용자 설정 중...')
+  await runWithLog('ubuntu', ['config', '--default-user', 'root'], log, { shell: true })
   log('WSL2 설치 완료! 재부팅이 필요할 수 있습니다.')
 }
 
