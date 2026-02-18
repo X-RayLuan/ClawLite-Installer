@@ -12,5 +12,9 @@ Thumbs.db
 .vercel
 *.key
 *.csr
+*.pem
+*.p12
+*.pfx
+.npmrc
 mascot-preview.html
 .env*
