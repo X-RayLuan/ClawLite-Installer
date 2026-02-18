@@ -1,4 +1,5 @@
-import { spawn } from 'child_process'
+import { spawn, execSync } from 'child_process'
+import { existsSync } from 'fs'
 import { platform } from 'os'
 import { join } from 'path'
 import { BrowserWindow } from 'electron'
@@ -8,25 +9,43 @@ interface OnboardConfig {
   telegramBotToken?: string
 }
 
+const PATH_DIRS = [
+  '/usr/local/bin',
+  '/opt/homebrew/bin',
+  `${process.env.HOME}/.nvm/versions/node`,
+  `${process.env.HOME}/.volta/bin`
+]
+
 const getPathEnv = (): NodeJS.ProcessEnv => ({
   ...process.env,
-  PATH: [
-    '/usr/local/bin',
-    '/opt/homebrew/bin',
-    `${process.env.HOME}/.nvm/versions/node`,
-    `${process.env.HOME}/.volta/bin`,
-    process.env.PATH ?? ''
-  ].join(':')
+  PATH: [...PATH_DIRS, process.env.PATH ?? ''].join(':')
 })
 
-const getNpmGlobalBin = (): Promise<string> =>
-  new Promise((resolve, reject) => {
-    const child = spawn('npm', ['prefix', '-g'], { env: getPathEnv() })
-    let out = ''
-    child.stdout.on('data', (d) => (out += d.toString()))
-    child.on('close', (code) => (code === 0 ? resolve(join(out.trim(), 'bin')) : reject()))
-    child.on('error', reject)
-  })
+const findOpenclawBin = (log: (msg: string) => void): string => {
+  if (platform() === 'win32') return 'openclaw'
+
+  // 1) 알려진 경로에서 직접 탐색
+  for (const dir of PATH_DIRS) {
+    const p = join(dir, 'openclaw')
+    if (existsSync(p)) {
+      log(`openclaw 경로: ${p}`)
+      return p
+    }
+  }
+
+  // 2) npm prefix -g 로 동적 탐색
+  try {
+    const prefix = execSync('npm prefix -g', { env: getPathEnv() }).toString().trim()
+    const p = join(prefix, 'bin', 'openclaw')
+    if (existsSync(p)) {
+      log(`openclaw 경로 (npm): ${p}`)
+      return p
+    }
+  } catch { /* ignore */ }
+
+  log('openclaw을 찾지 못해 PATH에서 탐색합니다')
+  return 'openclaw'
+}
 
 const runCmd = (
   cmd: string,
@@ -37,6 +56,8 @@ const runCmd = (
     const isWindows = platform() === 'win32'
     const fullCmd = isWindows ? 'wsl' : cmd
     const fullArgs = isWindows ? ['--', cmd, ...args] : args
+
+    onLog(`실행: ${fullCmd} ${fullArgs[0]} ...`)
 
     const child = spawn(fullCmd, fullArgs, {
       shell: isWindows,
@@ -66,9 +87,7 @@ export const runOnboard = async (
 
   log('OpenClaw 초기 설정 시작...')
 
-  const openclaw = platform() === 'win32'
-    ? 'openclaw'
-    : join(await getNpmGlobalBin(), 'openclaw')
+  const openclaw = findOpenclawBin(log)
 
   const onboardArgs = [
     'onboard',

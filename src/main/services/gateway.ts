@@ -1,32 +1,40 @@
-import { spawn } from 'child_process'
+import { spawn, execSync } from 'child_process'
+import { existsSync } from 'fs'
 import { platform } from 'os'
 import { join } from 'path'
 
+const PATH_DIRS = [
+  '/usr/local/bin',
+  '/opt/homebrew/bin',
+  `${process.env.HOME}/.nvm/versions/node`,
+  `${process.env.HOME}/.volta/bin`
+]
+
 const getPathEnv = (): NodeJS.ProcessEnv => ({
   ...process.env,
-  PATH: [
-    '/usr/local/bin',
-    '/opt/homebrew/bin',
-    `${process.env.HOME}/.nvm/versions/node`,
-    `${process.env.HOME}/.volta/bin`,
-    process.env.PATH ?? ''
-  ].join(':')
+  PATH: [...PATH_DIRS, process.env.PATH ?? ''].join(':')
 })
 
-const getNpmGlobalBin = (): Promise<string> =>
-  new Promise((resolve, reject) => {
-    const child = spawn('npm', ['prefix', '-g'], { env: getPathEnv() })
-    let out = ''
-    child.stdout.on('data', (d) => (out += d.toString()))
-    child.on('close', (code) => (code === 0 ? resolve(join(out.trim(), 'bin')) : reject()))
-    child.on('error', reject)
-  })
+const findOpenclawBin = (): string => {
+  if (platform() === 'win32') return 'openclaw'
 
-const runGateway = async (args: string[]): Promise<string> => {
+  for (const dir of PATH_DIRS) {
+    const p = join(dir, 'openclaw')
+    if (existsSync(p)) return p
+  }
+
+  try {
+    const prefix = execSync('npm prefix -g', { env: getPathEnv() }).toString().trim()
+    const p = join(prefix, 'bin', 'openclaw')
+    if (existsSync(p)) return p
+  } catch { /* ignore */ }
+
+  return 'openclaw'
+}
+
+const runGateway = (args: string[]): Promise<string> => {
   const isWindows = platform() === 'win32'
-  const openclaw = isWindows
-    ? 'openclaw'
-    : join(await getNpmGlobalBin(), 'openclaw')
+  const openclaw = findOpenclawBin()
   const cmd = isWindows ? 'wsl' : openclaw
   const fullArgs = isWindows
     ? ['--', 'openclaw', 'gateway', ...args]
