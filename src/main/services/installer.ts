@@ -69,10 +69,10 @@ export const installNodeWin = async (win: BrowserWindow): Promise<void> => {
 
   log('WSL 내 Node.js 22 설치 중...')
   const installScript = [
-    'curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -',
-    '&& sudo apt-get install -y nodejs'
+    'curl -fsSL https://deb.nodesource.com/setup_22.x | bash -',
+    '&& apt-get install -y nodejs'
   ].join(' ')
-  await runWithLog('wsl', ['--', 'bash', '-c', installScript], log, { shell: true })
+  await runWithLog('wsl', ['-u', 'root', '--', 'bash', '-c', installScript], log, { shell: true })
   log('Node.js 설치 완료!')
 }
 
@@ -100,7 +100,7 @@ export const installOpenClaw = async (win: BrowserWindow): Promise<void> => {
 
   const cmd = platform() === 'win32' ? 'wsl' : 'npm'
   const args = platform() === 'win32'
-    ? ['--', 'npm', 'install', '-g', 'openclaw@latest']
+    ? ['-u', 'root', '--', 'npm', 'install', '-g', 'openclaw@latest']
     : ['install', '-g', 'openclaw@latest']
 
   await runWithLog(cmd, args, log, { shell: true, env: getPathEnv() })
