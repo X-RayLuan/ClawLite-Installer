@@ -16,21 +16,33 @@ interface OnboardResult {
   botUsername?: string
 }
 
-const fetchBotUsername = (token: string): Promise<string | undefined> =>
+const telegramGet = (url: string): Promise<{ ok: boolean; [k: string]: unknown }> =>
   new Promise((resolve) => {
-    https.get(`https://api.telegram.org/bot${token}/getMe`, (res) => {
+    https.get(url, (res) => {
       let data = ''
       res.on('data', (chunk) => (data += chunk))
       res.on('end', () => {
-        try {
-          const json = JSON.parse(data)
-          resolve(json.ok ? json.result.username : undefined)
-        } catch {
-          resolve(undefined)
-        }
+        try { resolve(JSON.parse(data)) } catch { resolve({ ok: false }) }
       })
-    }).on('error', () => resolve(undefined))
+    }).on('error', () => resolve({ ok: false }))
   })
+
+const fetchBotUsername = async (token: string): Promise<string | undefined> => {
+  const json = await telegramGet(`https://api.telegram.org/bot${token}/getMe`)
+  return json.ok ? (json as unknown as { result: { username: string } }).result.username : undefined
+}
+
+// Telegram getUpdates 409 충돌 방지: 이전 long-poll이 해제될 때까지 대기
+// getUpdates?timeout=0 호출로 확인하고, 409면 3초 후 재시도 (최대 5회)
+const waitTelegramClear = async (token: string): Promise<void> => {
+  for (let i = 0; i < 5; i++) {
+    const res = await telegramGet(
+      `https://api.telegram.org/bot${token}/getUpdates?timeout=0&limit=1`
+    )
+    if (res.ok) return
+    await new Promise((r) => setTimeout(r, 3000))
+  }
+}
 
 const PATH_DIRS = [
   '/usr/local/bin',
@@ -163,13 +175,13 @@ export const runOnboard = async (
       try { unlinkSync(plist) } catch { /* ignore */ }
     }
     await new Promise<void>((resolve) => {
-      const child = spawn('pkill', ['-f', 'openclaw'])
+      const child = spawn('pkill', ['-9', '-f', 'openclaw'])
       child.on('close', () => resolve())
       child.on('error', () => resolve())
     })
   }
-  // 포트 해제 대기
-  await new Promise((resolve) => setTimeout(resolve, 3000))
+  // 포트 해제 + Telegram long-poll 해제 대기
+  await new Promise((resolve) => setTimeout(resolve, 5000))
 
   const authFlags: Record<OnboardConfig['provider'], string[]> = {
     anthropic: ['--auth-choice', 'apiKey', '--anthropic-api-key', config.apiKey],
@@ -222,7 +234,7 @@ export const runOnboard = async (
       child.on('close', () => resolve())
       child.on('error', () => resolve())
     })
-    await new Promise((resolve) => setTimeout(resolve, 2000))
+    await new Promise((resolve) => setTimeout(resolve, 5000))
   }
 
   // 제공사별 권장 모델 설정 (onboard 기본값 대신)
@@ -303,6 +315,12 @@ export const runOnboard = async (
     }
 
     botUsername = await fetchBotUsername(config.telegramBotToken)
+  }
+
+  // 모든 패치 완료 후 Telegram 409 충돌 방지: 이전 long-poll 해제 확인
+  if (config.telegramBotToken) {
+    log('Telegram 연결 상태 확인 중...')
+    await waitTelegramClear(config.telegramBotToken)
   }
 
   // 모든 패치 완료 후 데몬 완전 재시작
