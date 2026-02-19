@@ -1,4 +1,5 @@
 import { spawn } from 'child_process'
+import { StringDecoder } from 'string_decoder'
 import { createWriteStream } from 'fs'
 import { tmpdir, platform } from 'os'
 import { join } from 'path'
@@ -39,11 +40,13 @@ const runWithLog = (
       env: { ...process.env, ...options?.env },
     })
 
+    const outDecoder = new StringDecoder('utf8')
+    const errDecoder = new StringDecoder('utf8')
     child.stdout.on('data', (d) => {
-      d.toString().split('\n').filter(Boolean).forEach(onLog)
+      outDecoder.write(d).split('\n').filter(Boolean).forEach(onLog)
     })
     child.stderr.on('data', (d) => {
-      d.toString().split('\n').filter(Boolean).forEach(onLog)
+      errDecoder.write(d).split('\n').filter(Boolean).forEach(onLog)
     })
     child.on('close', (code) => {
       if (code === 0) resolve()
@@ -68,11 +71,9 @@ export const installNodeWin = async (win: BrowserWindow): Promise<void> => {
   const log = (msg: string): void => sendProgress(win, msg)
 
   log('WSL 내 Node.js 22 설치 중...')
-  const installScript = [
-    'curl -fsSL https://deb.nodesource.com/setup_22.x | bash -',
-    '&& apt-get install -y nodejs'
-  ].join(' ')
-  await runWithLog('wsl', ['-u', 'root', '--', 'bash', '-c', installScript], log, { shell: true })
+  const installScript =
+    'curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && apt-get install -y nodejs'
+  await runWithLog('wsl', ['-u', 'root', '--', 'bash', '-c', installScript], log)
   log('Node.js 설치 완료!')
 }
 
