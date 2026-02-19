@@ -66,6 +66,15 @@ const semverGte = (version: string, min: string): boolean => {
   return a3 >= b3
 }
 
+const checkWslRunning = (): Promise<boolean> =>
+  new Promise((resolve) => {
+    const child = spawn('wsl', ['-d', 'Ubuntu', '--', 'echo', 'ok'], { shell: true })
+    let out = ''
+    child.stdout.on('data', (d) => (out += d.toString()))
+    child.on('close', (code) => resolve(code === 0 && out.trim().includes('ok')))
+    child.on('error', () => resolve(false))
+  })
+
 const checkWsl = async (): Promise<boolean> => {
   try {
     const output = await new Promise<string>((resolve, reject) => {
@@ -88,7 +97,10 @@ const checkWsl = async (): Promise<boolean> => {
       })
       child.on('error', reject)
     })
-    return output.toLowerCase().includes('ubuntu')
+    if (!output.toLowerCase().includes('ubuntu')) return false
+
+    // Ubuntu가 목록에 있어도 실제로 실행 가능한지 확인
+    return await checkWslRunning()
   } catch {
     return false
   }

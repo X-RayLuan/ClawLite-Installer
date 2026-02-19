@@ -89,8 +89,24 @@ export const installNodeMac = async (win: BrowserWindow): Promise<void> => {
   log('Node.js 설치 완료!')
 }
 
+const ensureWslUsable = (): Promise<boolean> =>
+  new Promise((resolve) => {
+    const child = spawn('wsl', ['-d', 'Ubuntu', '--', 'echo', 'ok'], { shell: true })
+    let out = ''
+    child.stdout.on('data', (d) => (out += d.toString()))
+    child.on('close', (code) => resolve(code === 0 && out.trim().includes('ok')))
+    child.on('error', () => resolve(false))
+  })
+
 export const installNodeWin = async (win: BrowserWindow): Promise<void> => {
   const log = (msg: string): void => sendProgress(win, msg)
+
+  log('WSL 상태 확인 중...')
+  if (!(await ensureWslUsable())) {
+    throw new Error(
+      'WSL Ubuntu가 정상 동작하지 않습니다. WSL 설치 후 PC를 재부팅해 주세요.'
+    )
+  }
 
   log('WSL 내 Node.js 22 설치 중...')
   const installScript =
