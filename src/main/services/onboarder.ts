@@ -117,6 +117,7 @@ export const runOnboard = async (
   log('OpenClaw 초기 설정 시작...')
 
   const npm = findBin('npm')
+  const isWindows = platform() === 'win32'
   const isMac = platform() === 'darwin'
   const ocDir = join(homedir(), '.openclaw')
   const fixPath = join(ocDir, 'ipv4-fix.js')
@@ -147,7 +148,7 @@ export const runOnboard = async (
   }
 
   // 기존 daemon 제거 + 프로세스 종료 + 깨진 설정 정리
-  if (platform() === 'win32') {
+  if (isWindows) {
     await wslExec('pkill -9 -f openclaw || true').catch(() => {})
     await wslExec('rm -f $HOME/.openclaw/openclaw.json').catch(() => {})
   } else {
@@ -179,12 +180,27 @@ export const runOnboard = async (
     '--anthropic-api-key', config.anthropicApiKey,
     '--gateway-port', '18789',
     '--gateway-bind', 'loopback',
-    '--install-daemon',
-    '--daemon-runtime', 'node',
+    // Windows: DoneStep에서 포그라운드 프로세스로 시작하므로 데몬 설치 불필요
+    // WSL에서 --install-daemon 시 gateway가 바로 시작되나 데몬 환경이 불안정하여 1006 에러 발생
+    ...(isWindows ? [] : ['--install-daemon', '--daemon-runtime', 'node']),
     '--skip-skills'
   ]
 
-  await runCmd(npm, onboardArgs, log)
+  try {
+    await runCmd(npm, onboardArgs, log)
+  } catch (e) {
+    // Windows WSL에서 onboard가 gateway 연결 테스트(1006)로 실패해도
+    // config 파일이 생성되었으면 계속 진행 (DoneStep에서 gateway를 별도 시작)
+    if (isWindows) {
+      const configExists = await wslExec(
+        'test -f $HOME/.openclaw/openclaw.json && echo yes || echo no'
+      ).catch(() => 'no')
+      if (configExists.trim() !== 'yes') throw e
+      log('설정 파일 생성 완료 (gateway 검증 건너뜀)')
+    } else {
+      throw e
+    }
+  }
   log('기본 설정 완료!')
 
   // plist ProgramArguments에도 --require 추가 (cold start 대비)
@@ -206,7 +222,6 @@ export const runOnboard = async (
 
   if (config.telegramBotToken) {
     log('텔레그램 채널 추가 중...')
-    const isWindows = platform() === 'win32'
     const telegramChannel = {
       enabled: true,
       botToken: config.telegramBotToken,
@@ -244,7 +259,7 @@ export const runOnboard = async (
 
   // 모든 패치 완료 후 데몬 완전 재시작
   // Windows: DoneStep에서 포그라운드 프로세스로 시작하므로 여기서는 기존 프로세스만 정리
-  if (platform() === 'win32') {
+  if (isWindows) {
     log('기존 Gateway 정리 중...')
     await wslExec('pkill -9 -f openclaw || true').catch(() => {})
     await new Promise((resolve) => setTimeout(resolve, 2000))
