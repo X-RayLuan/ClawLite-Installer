@@ -16,24 +16,25 @@ export interface EnvCheckResult {
 const PATH_EXTENSIONS = [
   '/usr/local/bin',
   '/opt/homebrew/bin',
-  `${process.env.HOME}/.nvm/versions/node`,
+  process.env.NVM_BIN ?? '',
   `${process.env.HOME}/.volta/bin`,
   '/usr/bin',
   '/bin'
-].join(':')
+]
+  .filter(Boolean)
+  .join(':')
 
 const getEnv = (): NodeJS.ProcessEnv => ({
   ...process.env,
   PATH: `${PATH_EXTENSIONS}:${process.env.PATH ?? ''}`
 })
 
-const wslPrefix = (): string[] =>
-  platform() === 'win32' ? ['wsl', '--'] : []
+const isWindows = platform() === 'win32'
 
 const runCommand = (cmd: string, args: string[]): Promise<string> =>
   new Promise((resolve, reject) => {
-    const fullCmd = wslPrefix().length > 0 ? 'wsl' : cmd
-    const finalArgs = wslPrefix().length > 0 ? ['--', cmd, ...args] : args
+    const fullCmd = isWindows ? 'wsl' : cmd
+    const finalArgs = isWindows ? ['--', cmd, ...args] : args
 
     const child = spawn(fullCmd, finalArgs, {
       env: getEnv(),
@@ -95,23 +96,28 @@ const checkWsl = async (): Promise<boolean> => {
 
 const fetchLatestVersion = (pkg: string): Promise<string> =>
   new Promise((resolve, reject) => {
-    https.get(`https://registry.npmjs.org/${pkg}/latest`, (res) => {
-      let data = ''
-      res.on('data', (chunk) => (data += chunk))
-      res.on('end', () => {
-        try {
-          resolve(JSON.parse(data).version)
-        } catch {
-          reject(new Error('parse error'))
+    https
+      .get(`https://registry.npmjs.org/${pkg}/latest`, (res) => {
+        if (res.statusCode !== 200) {
+          res.resume()
+          reject(new Error(`npm registry HTTP ${res.statusCode}`))
+          return
         }
+        let data = ''
+        res.on('data', (chunk) => (data += chunk))
+        res.on('end', () => {
+          try {
+            resolve(JSON.parse(data).version)
+          } catch {
+            reject(new Error('parse error'))
+          }
+        })
       })
-    }).on('error', reject)
+      .on('error', reject)
   })
 
 export const checkEnvironment = async (): Promise<EnvCheckResult> => {
-  const os = platform() === 'darwin' ? 'macos'
-    : platform() === 'win32' ? 'windows'
-    : 'linux'
+  const os = platform() === 'darwin' ? 'macos' : platform() === 'win32' ? 'windows' : 'linux'
 
   let nodeVersion: string | null = null
   let nodeInstalled = false
@@ -151,5 +157,14 @@ export const checkEnvironment = async (): Promise<EnvCheckResult> => {
 
   const wslInstalled = os === 'windows' ? await checkWsl() : null
 
-  return { os, nodeInstalled, nodeVersion, nodeVersionOk, openclawInstalled, openclawVersion, openclawLatestVersion, wslInstalled }
+  return {
+    os,
+    nodeInstalled,
+    nodeVersion,
+    nodeVersionOk,
+    openclawInstalled,
+    openclawVersion,
+    openclawLatestVersion,
+    wslInstalled
+  }
 }

@@ -1,27 +1,6 @@
 import { spawn, ChildProcess } from 'child_process'
-import { existsSync } from 'fs'
 import { platform } from 'os'
-import { join } from 'path'
-
-const PATH_DIRS = [
-  '/usr/local/bin',
-  '/opt/homebrew/bin',
-  `${process.env.HOME}/.volta/bin`
-]
-
-const getPathEnv = (): NodeJS.ProcessEnv => ({
-  ...process.env,
-  PATH: [...PATH_DIRS, process.env.PATH ?? ''].join(':')
-})
-
-const findBin = (name: string): string => {
-  if (platform() === 'win32') return name
-  for (const dir of PATH_DIRS) {
-    const p = join(dir, name)
-    if (existsSync(p)) return p
-  }
-  return name
-}
+import { getPathEnv, findBin } from './path-utils'
 
 // Windows: gateway를 포그라운드 프로세스로 유지
 let wslGatewayProcess: ChildProcess | null = null
