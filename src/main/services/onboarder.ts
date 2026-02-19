@@ -65,6 +65,18 @@ const wslExec = (command: string): Promise<string> =>
     child.on('error', reject)
   })
 
+const wslWriteFile = (wslPath: string, content: string): Promise<void> =>
+  new Promise((resolve, reject) => {
+    const child = spawn('wsl', ['--', 'bash', '-c', `cat > ${wslPath}`])
+    child.on('close', (code) => {
+      if (code === 0) resolve()
+      else reject(new Error(`wsl write exit ${code}`))
+    })
+    child.on('error', reject)
+    child.stdin.write(content)
+    child.stdin.end()
+  })
+
 const runCmd = (
   cmd: string,
   args: string[],
@@ -203,8 +215,7 @@ export const runOnboard = async (
         const raw = await wslExec(`cat ${wslConfigPath}`)
         const ocConfig = JSON.parse(raw)
         ocConfig.channels = { ...ocConfig.channels, telegram: telegramChannel }
-        const escaped = JSON.stringify(JSON.stringify(ocConfig, null, 2))
-        await wslExec(`echo ${escaped} > ${wslConfigPath}`)
+        await wslWriteFile(wslConfigPath, JSON.stringify(ocConfig, null, 2))
         log('텔레그램 채널 추가 완료!')
       } catch {
         log('OpenClaw 설정 파일을 찾을 수 없습니다')
