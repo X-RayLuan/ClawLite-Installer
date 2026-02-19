@@ -37,12 +37,12 @@ src/renderer/    → Renderer process (React UI)
 
 ### Main process 서비스 (`src/main/services/`)
 
-| 파일 | 역할 |
-|------|------|
-| `env-checker.ts` | Node.js/OpenClaw/WSL 설치 여부 및 버전 감지 |
-| `installer.ts` | Node.js, WSL, OpenClaw 자동 설치 (플랫폼별 분기) |
-| `onboarder.ts` | `openclaw onboard` CLI 실행 (API 키 설정, 텔레그램 채널 추가) |
-| `gateway.ts` | OpenClaw gateway(로컬 서버) start/stop/status 관리 |
+| 파일             | 역할                                                          |
+| ---------------- | ------------------------------------------------------------- |
+| `env-checker.ts` | Node.js/OpenClaw/WSL 설치 여부 및 버전 감지                   |
+| `installer.ts`   | Node.js, WSL, OpenClaw 자동 설치 (플랫폼별 분기)              |
+| `onboarder.ts`   | `openclaw onboard` CLI 실행 (API 키 설정, 텔레그램 채널 추가) |
+| `gateway.ts`     | OpenClaw gateway(로컬 서버) start/stop/status 관리            |
 
 ### IPC 통신 패턴
 

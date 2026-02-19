@@ -23,14 +23,14 @@ function doPost(e) {
   // 중복 체크
   var emails = sheet.getRange('A2:A').getValues().flat().filter(String)
   if (emails.indexOf(email) !== -1) {
-    return ContentService.createTextOutput(
-      JSON.stringify({ success: true })
-    ).setMimeType(ContentService.MimeType.JSON)
+    return ContentService.createTextOutput(JSON.stringify({ success: true })).setMimeType(
+      ContentService.MimeType.JSON
+    )
   }
 
   sheet.appendRow([email, data.source || 'app', new Date().toISOString()])
 
-  return ContentService.createTextOutput(
-    JSON.stringify({ success: true })
-  ).setMimeType(ContentService.MimeType.JSON)
+  return ContentService.createTextOutput(JSON.stringify({ success: true })).setMimeType(
+    ContentService.MimeType.JSON
+  )
 }

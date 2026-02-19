@@ -29,18 +29,18 @@ EasyClaw는 [OpenClaw](https://github.com/openclaw/openclaw) AI 에이전트를 
 
 ## 주요 기능
 
-| 기능 | 설명 |
-|------|------|
-| **원클릭 설치** | WSL, Node.js, OpenClaw 등 필요한 환경을 자동 감지 및 설치 |
-| **AI 에이전트** | OpenClaw 기반 AI 에이전트와 자연어로 대화 |
-| **텔레그램 연동** | 텔레그램 봇을 통해 어디서든 AI 에이전트 사용 |
-| **크로스 플랫폼** | macOS / Windows 지원 |
+| 기능              | 설명                                                      |
+| ----------------- | --------------------------------------------------------- |
+| **원클릭 설치**   | WSL, Node.js, OpenClaw 등 필요한 환경을 자동 감지 및 설치 |
+| **AI 에이전트**   | OpenClaw 기반 AI 에이전트와 자연어로 대화                 |
+| **텔레그램 연동** | 텔레그램 봇을 통해 어디서든 AI 에이전트 사용              |
+| **크로스 플랫폼** | macOS / Windows 지원                                      |
 
 ## 다운로드
 
-| OS | 파일 | 링크 |
-|----|------|------|
-| macOS | `.dmg` | [다운로드](https://github.com/ybgwon96/easy-claw/releases/latest) |
+| OS      | 파일   | 링크                                                              |
+| ------- | ------ | ----------------------------------------------------------------- |
+| macOS   | `.dmg` | [다운로드](https://github.com/ybgwon96/easy-claw/releases/latest) |
 | Windows | `.exe` | [다운로드](https://github.com/ybgwon96/easy-claw/releases/latest) |
 
 또는 [easyclaw.kr](https://easyclaw.kr)에서 OS에 맞는 파일이 자동으로 선택됩니다.
@@ -69,6 +69,7 @@ EasyClaw는 [OpenClaw](https://github.com/openclaw/openclaw) AI 에이전트를 
 3. 하단 **"확인 없이 열기"** 클릭
 
 또는 터미널에서:
+
 ```bash
 xattr -cr /Applications/EasyClaw.app
 ```

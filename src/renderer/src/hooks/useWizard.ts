@@ -1,8 +1,23 @@
 import { useState, useCallback, useRef } from 'react'
 
-export type StepName = 'welcome' | 'envCheck' | 'install' | 'apiKeyGuide' | 'telegramGuide' | 'config' | 'done'
+export type StepName =
+  | 'welcome'
+  | 'envCheck'
+  | 'install'
+  | 'apiKeyGuide'
+  | 'telegramGuide'
+  | 'config'
+  | 'done'
 
-const STEPS: StepName[] = ['welcome', 'envCheck', 'install', 'apiKeyGuide', 'telegramGuide', 'config', 'done']
+const STEPS: StepName[] = [
+  'welcome',
+  'envCheck',
+  'install',
+  'apiKeyGuide',
+  'telegramGuide',
+  'config',
+  'done'
+]
 
 export const useWizard = () => {
   const [currentStep, setCurrentStep] = useState<StepName>('welcome')

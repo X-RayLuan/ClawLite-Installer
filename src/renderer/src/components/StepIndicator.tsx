@@ -33,15 +33,18 @@ export default function StepIndicator({
                       ? 'bg-primary/80'
                       : 'bg-white/15'
                 }`}
-                style={isCurrent ? { animation: 'glow-pulse 2s ease-in-out infinite', color: 'var(--color-primary)' } : {}}
+                style={
+                  isCurrent
+                    ? {
+                        animation: 'glow-pulse 2s ease-in-out infinite',
+                        color: 'var(--color-primary)'
+                      }
+                    : {}
+                }
               />
               <span
                 className={`mt-2 text-[10px] font-semibold tracking-wide transition-all duration-500 ${
-                  isCurrent
-                    ? 'text-primary'
-                    : isActive
-                      ? 'text-text/70'
-                      : 'text-text-muted/50'
+                  isCurrent ? 'text-primary' : isActive ? 'text-text/70' : 'text-text-muted/50'
                 }`}
               >
                 {label}

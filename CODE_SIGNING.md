@@ -21,8 +21,8 @@ All builds are reproducible from the public source code. No binary artifacts are
 
 ## Team Roles
 
-| Role | GitHub Username |
-|------|----------------|
+| Role              | GitHub Username                          |
+| ----------------- | ---------------------------------------- |
 | Author / Approver | [@ybgwon96](https://github.com/ybgwon96) |
 
 ## Privacy

@@ -23,15 +23,26 @@ body {
   margin: 0;
   background: var(--color-bg);
   color: var(--color-text);
-  font-family: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family:
+    'Nunito',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
   -webkit-app-region: drag;
   user-select: none;
   overflow: hidden;
 }
 
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
-input, button, textarea, a, select {
+input,
+button,
+textarea,
+a,
+select {
   -webkit-app-region: no-drag;
   font-family: inherit;
 }
@@ -49,16 +60,21 @@ input, button, textarea, a, select {
   inset: 0;
   z-index: 0;
   overflow: hidden;
-  background: radial-gradient(ellipse at 20% 80%, rgba(249, 115, 22, 0.12) 0%, transparent 50%),
-              radial-gradient(ellipse at 80% 20%, rgba(139, 92, 246, 0.08) 0%, transparent 50%),
-              radial-gradient(ellipse at 50% 50%, rgba(14, 165, 233, 0.06) 0%, transparent 60%),
-              var(--color-bg);
+  background:
+    radial-gradient(ellipse at 20% 80%, rgba(249, 115, 22, 0.12) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(139, 92, 246, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(14, 165, 233, 0.06) 0%, transparent 60%),
+    var(--color-bg);
   animation: aurora-shift 12s ease-in-out infinite alternate;
 }
 
 @keyframes aurora-shift {
-  0% { filter: hue-rotate(0deg) brightness(1); }
-  100% { filter: hue-rotate(15deg) brightness(1.05); }
+  0% {
+    filter: hue-rotate(0deg) brightness(1);
+  }
+  100% {
+    filter: hue-rotate(15deg) brightness(1.05);
+  }
 }
 
 /* Grain overlay */
@@ -92,16 +108,30 @@ input, button, textarea, a, select {
 .bubble {
   position: absolute;
   border-radius: 50%;
-  background: radial-gradient(circle at 30% 30%, rgba(249, 115, 22, 0.15), rgba(249, 115, 22, 0.03));
+  background: radial-gradient(
+    circle at 30% 30%,
+    rgba(249, 115, 22, 0.15),
+    rgba(249, 115, 22, 0.03)
+  );
   animation: bubble-float linear infinite;
   pointer-events: none;
 }
 
 @keyframes bubble-float {
-  0% { transform: translateY(100vh) scale(0); opacity: 0; }
-  10% { opacity: 1; }
-  90% { opacity: 0.6; }
-  100% { transform: translateY(-10vh) scale(1); opacity: 0; }
+  0% {
+    transform: translateY(100vh) scale(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: translateY(-10vh) scale(1);
+    opacity: 0;
+  }
 }
 
 /* Step transitions */
@@ -110,18 +140,40 @@ input, button, textarea, a, select {
 }
 
 @keyframes step-in {
-  from { opacity: 0; transform: translateY(16px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 /* Glow pulse for status dots */
 @keyframes glow-pulse {
-  0%, 100% { box-shadow: 0 0 4px currentColor; }
-  50% { box-shadow: 0 0 12px currentColor, 0 0 24px currentColor; }
+  0%,
+  100% {
+    box-shadow: 0 0 4px currentColor;
+  }
+  50% {
+    box-shadow:
+      0 0 12px currentColor,
+      0 0 24px currentColor;
+  }
 }
 
 /* Scrollbar */
-::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}

@@ -11,7 +11,10 @@ export default function WelcomeStep({ onNext }: { onNext: () => void }): React.J
 
       <div className="text-center space-y-2">
         <h1 className="text-3xl font-black tracking-tight">
-          Easy<span className="bg-gradient-to-r from-primary to-primary-light bg-clip-text text-transparent">Claw</span>
+          Easy
+          <span className="bg-gradient-to-r from-primary to-primary-light bg-clip-text text-transparent">
+            Claw
+          </span>
         </h1>
         <p className="text-text-muted text-[15px] font-semibold">
           나만의 AI 에이전트, 클릭 한 번으로
@@ -19,7 +22,8 @@ export default function WelcomeStep({ onNext }: { onNext: () => void }): React.J
       </div>
 
       <p className="text-text-muted/60 text-xs text-center leading-relaxed max-w-[260px]">
-        OpenClaw를 쉽고 빠르게 설치하고<br />
+        OpenClaw를 쉽고 빠르게 설치하고
+        <br />
         텔레그램으로 AI와 대화하세요
       </p>
 
