@@ -5,22 +5,27 @@ const BLOB_FILENAME = 'waitlist-emails.json'
 async function getEmails() {
   const { blobs } = await list({ prefix: BLOB_FILENAME })
   if (blobs.length === 0) return []
-  const res = await fetch(blobs[0].url)
+  const res = await fetch(blobs[0].downloadUrl)
   return res.json()
 }
 
 async function putEmails(emails) {
   await put(BLOB_FILENAME, JSON.stringify(emails), {
     contentType: 'application/json',
-    access: 'public',
+    access: 'private',
     addRandomSuffix: false,
     allowOverwrite: true,
     cacheControlMaxAge: 0
   })
 }
 
+const ALLOWED_ORIGINS = ['https://easyclaw.kr', 'https://www.easyclaw.kr']
+
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*')
+  const origin = req.headers.origin
+  if (ALLOWED_ORIGINS.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin)
+  }
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
 

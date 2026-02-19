@@ -18,13 +18,19 @@ interface OnboardResult {
 
 const telegramGet = (url: string): Promise<{ ok: boolean; [k: string]: unknown }> =>
   new Promise((resolve) => {
-    https.get(url, (res) => {
-      let data = ''
-      res.on('data', (chunk) => (data += chunk))
-      res.on('end', () => {
-        try { resolve(JSON.parse(data)) } catch { resolve({ ok: false }) }
+    https
+      .get(url, (res) => {
+        let data = ''
+        res.on('data', (chunk) => (data += chunk))
+        res.on('end', () => {
+          try {
+            resolve(JSON.parse(data))
+          } catch {
+            resolve({ ok: false })
+          }
+        })
       })
-    }).on('error', () => resolve({ ok: false }))
+      .on('error', () => resolve({ ok: false }))
   })
 
 const fetchBotUsername = async (token: string): Promise<string | undefined> => {
@@ -44,25 +50,7 @@ const waitTelegramClear = async (token: string): Promise<void> => {
   }
 }
 
-const PATH_DIRS = [
-  '/usr/local/bin',
-  '/opt/homebrew/bin',
-  `${process.env.HOME}/.volta/bin`
-]
-
-const getPathEnv = (): NodeJS.ProcessEnv => ({
-  ...process.env,
-  PATH: [...PATH_DIRS, process.env.PATH ?? ''].join(':')
-})
-
-const findBin = (name: string): string => {
-  if (platform() === 'win32') return name
-  for (const dir of PATH_DIRS) {
-    const p = join(dir, name)
-    if (existsSync(p)) return p
-  }
-  return name
-}
+import { getPathEnv, findBin } from './path-utils'
 
 const wslExec = (command: string): Promise<string> =>
   new Promise((resolve, reject) => {
@@ -90,11 +78,7 @@ const wslWriteFile = (wslPath: string, content: string): Promise<void> =>
     child.stdin.end()
   })
 
-const runCmd = (
-  cmd: string,
-  args: string[],
-  onLog: (msg: string) => void
-): Promise<void> =>
+const runCmd = (cmd: string, args: string[], onLog: (msg: string) => void): Promise<void> =>
   new Promise((resolve, reject) => {
     const isWindows = platform() === 'win32'
     const fullCmd = isWindows ? 'wsl' : cmd
@@ -106,12 +90,8 @@ const runCmd = (
 
     const outDecoder = new StringDecoder('utf8')
     const errDecoder = new StringDecoder('utf8')
-    child.stdout.on('data', (d) =>
-      outDecoder.write(d).split('\n').filter(Boolean).forEach(onLog)
-    )
-    child.stderr.on('data', (d) =>
-      errDecoder.write(d).split('\n').filter(Boolean).forEach(onLog)
-    )
+    child.stdout.on('data', (d) => outDecoder.write(d).split('\n').filter(Boolean).forEach(onLog))
+    child.stderr.on('data', (d) => errDecoder.write(d).split('\n').filter(Boolean).forEach(onLog))
     child.on('close', (code) => {
       if (code === 0) resolve()
       else reject(new Error(`Command failed with exit code ${code}`))
@@ -175,7 +155,11 @@ export const runOnboard = async (
         child.on('close', () => resolve())
         child.on('error', () => resolve())
       })
-      try { unlinkSync(plist) } catch { /* ignore */ }
+      try {
+        unlinkSync(plist)
+      } catch {
+        /* ignore */
+      }
     }
     await new Promise<void>((resolve) => {
       const child = spawn('pkill', ['-9', '-f', 'openclaw'])
@@ -184,11 +168,21 @@ export const runOnboard = async (
     })
     // 이전 설정 + 에이전트 인증 정리 (제공사 전환 시 auth.json 꼬임 방지)
     const configFile = join(ocDir, 'openclaw.json')
-    if (existsSync(configFile)) try { unlinkSync(configFile) } catch { /* ignore */ }
+    if (existsSync(configFile))
+      try {
+        unlinkSync(configFile)
+      } catch {
+        /* ignore */
+      }
     const agentAuthDir = join(ocDir, 'agents', 'main', 'agent')
     for (const f of ['auth.json', 'auth-profiles.json']) {
       const p = join(agentAuthDir, f)
-      if (existsSync(p)) try { unlinkSync(p) } catch { /* ignore */ }
+      if (existsSync(p))
+        try {
+          unlinkSync(p)
+        } catch {
+          /* ignore */
+        }
     }
   }
   // 포트 해제 + Telegram long-poll 해제 대기
@@ -201,14 +195,19 @@ export const runOnboard = async (
   }
 
   const onboardArgs = [
-    'exec', '--', 'openclaw',
+    'exec',
+    '--',
+    'openclaw',
     'onboard',
     '--non-interactive',
     '--accept-risk',
-    '--mode', 'local',
+    '--mode',
+    'local',
     ...authFlags[config.provider],
-    '--gateway-port', '18789',
-    '--gateway-bind', 'loopback',
+    '--gateway-port',
+    '18789',
+    '--gateway-bind',
+    'loopback',
     // Windows: DoneStep에서 포그라운드 프로세스로 시작하므로 데몬 설치 불필요
     // WSL에서 --install-daemon 시 gateway가 바로 시작되나 데몬 환경이 불안정하여 1006 에러 발생
     ...(isWindows ? [] : ['--install-daemon', '--daemon-runtime', 'node']),
@@ -262,14 +261,22 @@ export const runOnboard = async (
       const ocConfig = JSON.parse(raw)
       ocConfig.agents = ocConfig.agents ?? {}
       ocConfig.agents.defaults = ocConfig.agents.defaults ?? {}
-      ocConfig.agents.defaults.model = { ...ocConfig.agents.defaults.model, primary: defaultModels[config.provider] }
+      ocConfig.agents.defaults.model = {
+        ...ocConfig.agents.defaults.model,
+        primary: defaultModels[config.provider]
+      }
       await wslWriteFile(wslModelPath, JSON.stringify(ocConfig, null, 2))
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   } else if (existsSync(modelConfigPath)) {
     const ocConfig = JSON.parse(readFileSync(modelConfigPath, 'utf-8'))
     ocConfig.agents = ocConfig.agents ?? {}
     ocConfig.agents.defaults = ocConfig.agents.defaults ?? {}
-    ocConfig.agents.defaults.model = { ...ocConfig.agents.defaults.model, primary: defaultModels[config.provider] }
+    ocConfig.agents.defaults.model = {
+      ...ocConfig.agents.defaults.model,
+      primary: defaultModels[config.provider]
+    }
     writeFileSync(modelConfigPath, JSON.stringify(ocConfig, null, 2))
   }
   log('기본 설정 완료!')

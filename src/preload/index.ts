@@ -3,11 +3,19 @@ import { contextBridge, ipcRenderer } from 'electron'
 const electronAPI = {
   version: (): Promise<string> => ipcRenderer.invoke('app:version'),
   env: {
-    check: (): Promise<unknown> => ipcRenderer.invoke('env:check')
+    check: (): Promise<{
+      os: 'macos' | 'windows' | 'linux'
+      nodeInstalled: boolean
+      nodeVersion: string | null
+      nodeVersionOk: boolean
+      openclawInstalled: boolean
+      openclawVersion: string | null
+      openclawLatestVersion: string | null
+      wslInstalled: boolean | null
+    }> => ipcRenderer.invoke('env:check')
   },
   install: {
-    node: (): Promise<{ success: boolean; error?: string }> =>
-      ipcRenderer.invoke('install:node'),
+    node: (): Promise<{ success: boolean; error?: string }> => ipcRenderer.invoke('install:node'),
     wsl: (): Promise<{ success: boolean; needsReboot?: boolean; error?: string }> =>
       ipcRenderer.invoke('install:wsl'),
     openclaw: (): Promise<{ success: boolean; error?: string }> =>
@@ -24,17 +32,18 @@ const electronAPI = {
     }
   },
   onboard: {
-    run: (config: { provider: 'anthropic' | 'google' | 'openai'; apiKey: string; telegramBotToken?: string }): Promise<{ success: boolean; error?: string; botUsername?: string }> =>
+    run: (config: {
+      provider: 'anthropic' | 'google' | 'openai'
+      apiKey: string
+      telegramBotToken?: string
+    }): Promise<{ success: boolean; error?: string; botUsername?: string }> =>
       ipcRenderer.invoke('onboard:run', config)
   },
   reboot: (): void => ipcRenderer.send('system:reboot'),
   gateway: {
-    start: (): Promise<{ success: boolean; error?: string }> =>
-      ipcRenderer.invoke('gateway:start'),
-    stop: (): Promise<{ success: boolean; error?: string }> =>
-      ipcRenderer.invoke('gateway:stop'),
-    status: (): Promise<'running' | 'stopped'> =>
-      ipcRenderer.invoke('gateway:status')
+    start: (): Promise<{ success: boolean; error?: string }> => ipcRenderer.invoke('gateway:start'),
+    stop: (): Promise<{ success: boolean; error?: string }> => ipcRenderer.invoke('gateway:stop'),
+    status: (): Promise<'running' | 'stopped'> => ipcRenderer.invoke('gateway:status')
   },
   newsletter: {
     subscribe: (email: string): Promise<{ success: boolean }> =>

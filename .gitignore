@@ -19,3 +19,4 @@ Thumbs.db
 mascot-preview.html
 .env*
 .env*.local
+.claude/settings.local.json

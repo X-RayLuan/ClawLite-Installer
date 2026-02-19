@@ -13,12 +13,21 @@ interface EnvResult {
   wslInstalled: boolean | null
 }
 
-const CheckRow = ({ label, ok, detail }: { label: string; ok: boolean; detail: string }): React.JSX.Element => (
+const CheckRow = ({
+  label,
+  ok,
+  detail
+}: {
+  label: string
+  ok: boolean
+  detail: string
+}): React.JSX.Element => (
   <div className="glass-card flex items-center justify-between px-4 py-3">
     <span className="text-sm font-semibold">{label}</span>
     <div className="flex items-center gap-2">
       <span className="text-xs font-mono text-text-muted">{detail}</span>
-      <div className={`w-2 h-2 rounded-full ${ok ? 'bg-success' : 'bg-error'}`}
+      <div
+        className={`w-2 h-2 rounded-full ${ok ? 'bg-success' : 'bg-error'}`}
         style={ok ? { animation: 'glow-pulse 2s infinite', color: 'var(--color-success)' } : {}}
       />
     </div>
@@ -38,28 +47,39 @@ export default function EnvCheckStep({
 
   const runCheck = (): void => {
     setChecking(true)
-    window.electronAPI.env.check().then((result) => {
-      setEnv(result as EnvResult)
-      setChecking(false)
-    })
+    window.electronAPI.env
+      .check()
+      .then((result) => setEnv(result as EnvResult))
+      .catch(() => setEnv(null))
+      .finally(() => setChecking(false))
   }
 
-  useEffect(() => { runCheck() }, [])
+  useEffect(() => {
+    runCheck()
+  }, [])
 
-  const hasUpdate = env?.openclawInstalled
-    && env.openclawVersion
-    && env.openclawLatestVersion
-    && env.openclawVersion !== env.openclawLatestVersion
+  const hasUpdate =
+    env?.openclawInstalled &&
+    env.openclawVersion &&
+    env.openclawLatestVersion &&
+    env.openclawVersion !== env.openclawLatestVersion
 
   const handleUpdate = async (): Promise<void> => {
     setUpdating(true)
-    await window.electronAPI.install.openclaw()
-    setUpdating(false)
-    runCheck()
+    try {
+      await window.electronAPI.install.openclaw()
+      runCheck()
+    } catch {
+      /* install error is reported via IPC event */
+    } finally {
+      setUpdating(false)
+    }
   }
 
   const allReady = env
-    ? env.nodeInstalled && env.nodeVersionOk && env.openclawInstalled &&
+    ? env.nodeInstalled &&
+      env.nodeVersionOk &&
+      env.openclawInstalled &&
       (env.os !== 'windows' || env.wslInstalled === true)
     : false
 
@@ -84,7 +104,11 @@ export default function EnvCheckStep({
             detail={env.os === 'macos' ? 'macOS' : env.os === 'windows' ? 'Windows' : 'Linux'}
           />
           {env.os === 'windows' && (
-            <CheckRow label="WSL2" ok={env.wslInstalled === true} detail={env.wslInstalled ? '설치됨' : '미설치'} />
+            <CheckRow
+              label="WSL2"
+              ok={env.wslInstalled === true}
+              detail={env.wslInstalled ? '설치됨' : '미설치'}
+            />
           )}
           <CheckRow
             label="Node.js"
@@ -108,7 +132,13 @@ export default function EnvCheckStep({
         </div>
       ) : null}
 
-      <Button variant="primary" size="lg" onClick={handleContinue} disabled={checking} loading={checking}>
+      <Button
+        variant="primary"
+        size="lg"
+        onClick={handleContinue}
+        disabled={checking}
+        loading={checking}
+      >
         {checking ? '검사 중' : allReady ? '다음 단계로' : '필요한 것 설치하기'}
       </Button>
     </div>

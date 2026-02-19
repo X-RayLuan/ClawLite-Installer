@@ -6,54 +6,86 @@ import { installNodeMac, installNodeWin, installWsl, installOpenClaw } from './s
 import { runOnboard } from './services/onboarder'
 import { startGateway, stopGateway, getGatewayStatus } from './services/gateway'
 
-export const registerIpcHandlers = (win: BrowserWindow): void => {
+export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void => {
+  const win = (): BrowserWindow => {
+    const w = getWin()
+    if (!w || w.isDestroyed()) throw new Error('No active window')
+    return w
+  }
+
   ipcMain.handle('app:version', () => app.getVersion())
 
   ipcMain.handle('env:check', () => checkEnvironment())
 
   ipcMain.handle('install:node', async () => {
     try {
-      await (platform() === 'win32' ? installNodeWin(win) : installNodeMac(win))
+      await (platform() === 'win32' ? installNodeWin(win()) : installNodeMac(win()))
       return { success: true }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
-      win.webContents.send('install:error', msg)
+      try {
+        win().webContents.send('install:error', msg)
+      } catch {
+        /* window destroyed */
+      }
       return { success: false, error: msg }
     }
   })
 
   ipcMain.handle('install:wsl', async () => {
     try {
-      await installWsl(win)
+      await installWsl(win())
       return { success: true, needsReboot: true }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
-      win.webContents.send('install:error', msg)
+      try {
+        win().webContents.send('install:error', msg)
+      } catch {
+        /* window destroyed */
+      }
       return { success: false, error: msg }
     }
   })
 
   ipcMain.handle('install:openclaw', async () => {
     try {
-      await installOpenClaw(win)
+      await installOpenClaw(win())
       return { success: true }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
-      win.webContents.send('install:error', msg)
+      try {
+        win().webContents.send('install:error', msg)
+      } catch {
+        /* window destroyed */
+      }
       return { success: false, error: msg }
     }
   })
 
-  ipcMain.handle('onboard:run', async (_e, config: { provider: 'anthropic' | 'google' | 'openai'; apiKey: string; telegramBotToken?: string }) => {
-    try {
-      const result = await runOnboard(win, config)
-      return { success: true, botUsername: result.botUsername }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e)
-      win.webContents.send('install:error', msg)
-      return { success: false, error: msg }
+  ipcMain.handle(
+    'onboard:run',
+    async (
+      _e,
+      config: {
+        provider: 'anthropic' | 'google' | 'openai'
+        apiKey: string
+        telegramBotToken?: string
+      }
+    ) => {
+      try {
+        const result = await runOnboard(win(), config)
+        return { success: true, botUsername: result.botUsername }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e)
+        try {
+          win().webContents.send('install:error', msg)
+        } catch {
+          /* window destroyed */
+        }
+        return { success: false, error: msg }
+      }
     }
-  })
+  )
 
   ipcMain.handle('gateway:start', async () => {
     try {
@@ -82,6 +114,7 @@ export const registerIpcHandlers = (win: BrowserWindow): void => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, source: 'app' })
       })
+      if (!r.ok) return { success: false }
       const data = await r.json()
       return { success: data.success !== false }
     } catch {
@@ -90,6 +123,12 @@ export const registerIpcHandlers = (win: BrowserWindow): void => {
   })
 
   ipcMain.on('system:reboot', () => {
-    spawn('shutdown', ['/r', '/t', '0'], { shell: true, detached: true })
+    if (platform() !== 'win32') return
+    const child = spawn('shutdown', ['/r', '/t', '0'], {
+      shell: true,
+      detached: true,
+      stdio: 'ignore'
+    })
+    child.unref()
   })
 }

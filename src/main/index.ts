@@ -5,9 +5,10 @@ import { registerIpcHandlers } from './ipc-handlers'
 import icon from '../../resources/icon.png?asset'
 
 let ipcRegistered = false
+let mainWindow: BrowserWindow | null = null
 
 function createWindow(): void {
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 520,
     height: 680,
     resizable: false,
@@ -23,16 +24,23 @@ function createWindow(): void {
   })
 
   mainWindow.on('ready-to-show', () => {
-    mainWindow.show()
+    mainWindow?.show()
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
-    shell.openExternal(details.url)
+    try {
+      const url = new URL(details.url)
+      if (['https:', 'http:', 'tg:'].includes(url.protocol)) {
+        shell.openExternal(details.url)
+      }
+    } catch {
+      /* invalid URL — ignore */
+    }
     return { action: 'deny' }
   })
 
   if (!ipcRegistered) {
-    registerIpcHandlers(mainWindow)
+    registerIpcHandlers(() => mainWindow)
     ipcRegistered = true
   }
 

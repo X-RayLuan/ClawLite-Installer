@@ -12,18 +12,40 @@ const sendProgress = (win: BrowserWindow, msg: string): void => {
   win.webContents.send('install:progress', msg)
 }
 
-const downloadFile = (url: string, dest: string): Promise<void> =>
+const downloadFile = (url: string, dest: string, maxRedirects = 5): Promise<void> =>
   new Promise((resolve, reject) => {
+    let redirectCount = 0
     const follow = (u: string): void => {
-      https.get(u, (res) => {
-        if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-          follow(res.headers.location)
-          return
-        }
-        const file = createWriteStream(dest)
-        res.pipe(file)
-        file.on('finish', () => { file.close(); resolve() })
-      }).on('error', reject)
+      https
+        .get(u, (res) => {
+          if (
+            res.statusCode &&
+            res.statusCode >= 300 &&
+            res.statusCode < 400 &&
+            res.headers.location
+          ) {
+            res.resume()
+            if (++redirectCount > maxRedirects) {
+              reject(new Error('Too many redirects'))
+              return
+            }
+            follow(res.headers.location)
+            return
+          }
+          if (!res.statusCode || res.statusCode >= 400) {
+            res.resume()
+            reject(new Error(`HTTP ${res.statusCode}`))
+            return
+          }
+          const file = createWriteStream(dest)
+          res.pipe(file)
+          file.on('finish', () => {
+            file.close()
+            resolve()
+          })
+          file.on('error', reject)
+        })
+        .on('error', reject)
     }
     follow(url)
   })
@@ -37,7 +59,7 @@ const runWithLog = (
   new Promise((resolve, reject) => {
     const child = spawn(cmd, args, {
       shell: options?.shell ?? false,
-      env: { ...process.env, ...options?.env },
+      env: { ...process.env, ...options?.env }
     })
 
     const outDecoder = new StringDecoder('utf8')
@@ -99,10 +121,12 @@ const getPathEnv = (): NodeJS.ProcessEnv => ({
   PATH: [
     '/usr/local/bin',
     '/opt/homebrew/bin',
-    `${process.env.HOME}/.nvm/versions/node`,
+    process.env.NVM_BIN ?? '',
     `${process.env.HOME}/.volta/bin`,
     process.env.PATH ?? ''
-  ].join(':')
+  ]
+    .filter(Boolean)
+    .join(':')
 })
 
 export const installOpenClaw = async (win: BrowserWindow): Promise<void> => {
@@ -110,9 +134,10 @@ export const installOpenClaw = async (win: BrowserWindow): Promise<void> => {
   log('OpenClaw 설치 중...')
 
   const cmd = platform() === 'win32' ? 'wsl' : 'npm'
-  const args = platform() === 'win32'
-    ? ['-u', 'root', '--', 'npm', 'install', '-g', 'openclaw@latest']
-    : ['install', '-g', 'openclaw@latest']
+  const args =
+    platform() === 'win32'
+      ? ['-u', 'root', '--', 'npm', 'install', '-g', 'openclaw@latest']
+      : ['install', '-g', 'openclaw@latest']
 
   await runWithLog(cmd, args, log, { shell: true, env: getPathEnv() })
   log('OpenClaw 설치 완료!')
