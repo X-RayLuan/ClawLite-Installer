@@ -161,9 +161,12 @@ export const runOnboard = async (
   }
 
   // 기존 daemon 제거 + 프로세스 종료 + 깨진 설정 정리
+  // 재설치 시 이전 제공사의 인증 정보가 남아 있으면 새 제공사로 전환 실패하므로
+  // openclaw.json + 에이전트 인증 파일을 모두 삭제
   if (isWindows) {
     await wslExec('pkill -9 -f openclaw || true').catch(() => {})
     await wslExec('rm -f $HOME/.openclaw/openclaw.json').catch(() => {})
+    await wslExec('rm -rf $HOME/.openclaw/agents/main/agent/auth*.json').catch(() => {})
   } else {
     const plist = join(homedir(), 'Library', 'LaunchAgents', 'ai.openclaw.gateway.plist')
     if (existsSync(plist)) {
@@ -179,6 +182,14 @@ export const runOnboard = async (
       child.on('close', () => resolve())
       child.on('error', () => resolve())
     })
+    // 이전 설정 + 에이전트 인증 정리 (제공사 전환 시 auth.json 꼬임 방지)
+    const configFile = join(ocDir, 'openclaw.json')
+    if (existsSync(configFile)) try { unlinkSync(configFile) } catch { /* ignore */ }
+    const agentAuthDir = join(ocDir, 'agents', 'main', 'agent')
+    for (const f of ['auth.json', 'auth-profiles.json']) {
+      const p = join(agentAuthDir, f)
+      if (existsSync(p)) try { unlinkSync(p) } catch { /* ignore */ }
+    }
   }
   // 포트 해제 + Telegram long-poll 해제 대기
   await new Promise((resolve) => setTimeout(resolve, 5000))
@@ -263,7 +274,9 @@ export const runOnboard = async (
   }
   log('기본 설정 완료!')
 
-  // plist ProgramArguments에도 --require 추가 (cold start 대비)
+  // plist에 IPv4 fix 적용 (ProgramArguments + EnvironmentVariables 둘 다)
+  // ProgramArguments: 메인 프로세스에 --require 플래그 추가
+  // EnvironmentVariables: NODE_OPTIONS로 자식 프로세스에도 ipv4-fix 전파
   if (isMac) {
     const plistAfter = join(homedir(), 'Library', 'LaunchAgents', 'ai.openclaw.gateway.plist')
     if (existsSync(plistAfter)) {
@@ -273,8 +286,16 @@ export const runOnboard = async (
           '<string>/usr/local/bin/node</string>',
           `<string>/usr/local/bin/node</string>\n      <string>--require=${fixPath}</string>`
         )
-        writeFileSync(plistAfter, xml)
       }
+      // NODE_OPTIONS 환경변수 추가 (자식 프로세스 IPv4 fix 전파)
+      const nodeOpt = `--require=${fixPath}`
+      if (!xml.includes('NODE_OPTIONS')) {
+        xml = xml.replace(
+          '</dict>\n  </dict>',
+          `<key>NODE_OPTIONS</key>\n    <string>${nodeOpt}</string>\n    </dict>\n  </dict>`
+        )
+      }
+      writeFileSync(plistAfter, xml)
     }
   }
 
