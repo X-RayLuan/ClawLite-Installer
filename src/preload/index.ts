@@ -24,7 +24,7 @@ const electronAPI = {
     }
   },
   onboard: {
-    run: (config: { anthropicApiKey: string; telegramBotToken?: string }): Promise<{ success: boolean; error?: string; botUsername?: string }> =>
+    run: (config: { provider: 'anthropic' | 'google' | 'openai'; apiKey: string; telegramBotToken?: string }): Promise<{ success: boolean; error?: string; botUsername?: string }> =>
       ipcRenderer.invoke('onboard:run', config)
   },
   reboot: (): void => ipcRenderer.send('system:reboot'),
@@ -35,6 +35,10 @@ const electronAPI = {
       ipcRenderer.invoke('gateway:stop'),
     status: (): Promise<'running' | 'stopped'> =>
       ipcRenderer.invoke('gateway:status')
+  },
+  newsletter: {
+    subscribe: (email: string): Promise<{ success: boolean }> =>
+      ipcRenderer.invoke('newsletter:subscribe', email)
   }
 }
 

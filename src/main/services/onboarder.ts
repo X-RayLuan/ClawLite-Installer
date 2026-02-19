@@ -7,7 +7,8 @@ import https from 'https'
 import { BrowserWindow } from 'electron'
 
 interface OnboardConfig {
-  anthropicApiKey: string
+  provider: 'anthropic' | 'google' | 'openai'
+  apiKey: string
   telegramBotToken?: string
 }
 
@@ -170,14 +171,19 @@ export const runOnboard = async (
   // 포트 해제 대기
   await new Promise((resolve) => setTimeout(resolve, 3000))
 
+  const authFlags: Record<OnboardConfig['provider'], string[]> = {
+    anthropic: ['--auth-choice', 'apiKey', '--anthropic-api-key', config.apiKey],
+    google: ['--auth-choice', 'gemini-api-key', '--gemini-api-key', config.apiKey],
+    openai: ['--auth-choice', 'openai-api-key', '--openai-api-key', config.apiKey]
+  }
+
   const onboardArgs = [
     'exec', '--', 'openclaw',
     'onboard',
     '--non-interactive',
     '--accept-risk',
     '--mode', 'local',
-    '--auth-choice', 'apiKey',
-    '--anthropic-api-key', config.anthropicApiKey,
+    ...authFlags[config.provider],
     '--gateway-port', '18789',
     '--gateway-bind', 'loopback',
     // Windows: DoneStep에서 포그라운드 프로세스로 시작하므로 데몬 설치 불필요
@@ -200,6 +206,31 @@ export const runOnboard = async (
     } else {
       throw e
     }
+  }
+
+  // 제공사별 권장 모델 설정 (onboard 기본값 대신)
+  const defaultModels: Record<OnboardConfig['provider'], string> = {
+    anthropic: 'anthropic/claude-sonnet-4-6',
+    google: 'google/gemini-3-flash',
+    openai: 'openai/gpt-5.2'
+  }
+  const modelConfigPath = join(ocDir, 'openclaw.json')
+  if (isWindows) {
+    const wslModelPath = '$HOME/.openclaw/openclaw.json'
+    try {
+      const raw = await wslExec(`cat ${wslModelPath}`)
+      const ocConfig = JSON.parse(raw)
+      ocConfig.agents = ocConfig.agents ?? {}
+      ocConfig.agents.defaults = ocConfig.agents.defaults ?? {}
+      ocConfig.agents.defaults.model = { ...ocConfig.agents.defaults.model, primary: defaultModels[config.provider] }
+      await wslWriteFile(wslModelPath, JSON.stringify(ocConfig, null, 2))
+    } catch { /* ignore */ }
+  } else if (existsSync(modelConfigPath)) {
+    const ocConfig = JSON.parse(readFileSync(modelConfigPath, 'utf-8'))
+    ocConfig.agents = ocConfig.agents ?? {}
+    ocConfig.agents.defaults = ocConfig.agents.defaults ?? {}
+    ocConfig.agents.defaults.model = { ...ocConfig.agents.defaults.model, primary: defaultModels[config.provider] }
+    writeFileSync(modelConfigPath, JSON.stringify(ocConfig, null, 2))
   }
   log('기본 설정 완료!')
 

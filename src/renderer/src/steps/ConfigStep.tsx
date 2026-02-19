@@ -4,17 +4,30 @@ import Button from '../components/Button'
 import LogViewer from '../components/LogViewer'
 import { useInstallLogs } from '../hooks/useIpc'
 
-const API_KEY_PATTERN = /^sk-ant-/
+type Provider = 'anthropic' | 'google' | 'openai'
+
+const providerConfig: Record<Provider, { pattern: RegExp; label: string; placeholder: string }> = {
+  anthropic: { pattern: /^sk-ant-/, label: 'Anthropic API 키', placeholder: 'sk-ant-...' },
+  google: { pattern: /^AIza/, label: 'Gemini API 키', placeholder: 'AIza...' },
+  openai: { pattern: /^sk-/, label: 'OpenAI API 키', placeholder: 'sk-...' }
+}
+
 const BOT_TOKEN_PATTERN = /^\d+:[A-Za-z0-9_-]+$/
 
-export default function ConfigStep({ onDone }: { onDone: (botUsername?: string) => void }): React.JSX.Element {
+interface Props {
+  provider: Provider
+  onDone: (botUsername?: string) => void
+}
+
+export default function ConfigStep({ provider, onDone }: Props): React.JSX.Element {
   const [apiKey, setApiKey] = useState('')
   const [botToken, setBotToken] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { logs, clearLogs } = useInstallLogs()
 
-  const apiKeyValid = API_KEY_PATTERN.test(apiKey)
+  const { pattern, label, placeholder } = providerConfig[provider]
+  const apiKeyValid = pattern.test(apiKey)
   const botTokenValid = BOT_TOKEN_PATTERN.test(botToken)
   const canSave = apiKeyValid && botTokenValid && !saving
 
@@ -23,7 +36,8 @@ export default function ConfigStep({ onDone }: { onDone: (botUsername?: string) 
     setError(null)
     clearLogs()
     const result = await window.electronAPI.onboard.run({
-      anthropicApiKey: apiKey,
+      provider,
+      apiKey,
       telegramBotToken: botToken || undefined
     })
     if (result.success) {
@@ -46,11 +60,11 @@ export default function ConfigStep({ onDone }: { onDone: (botUsername?: string) 
 
       <div className="space-y-1.5">
         <label className="text-sm font-bold">
-          Anthropic API 키 <span className="text-error text-xs">필수</span>
+          {label} <span className="text-error text-xs">필수</span>
         </label>
         <input
           type="password"
-          placeholder="sk-ant-..."
+          placeholder={placeholder}
           value={apiKey}
           onChange={(e) => setApiKey(e.target.value)}
           className={`w-full bg-bg-input rounded-xl px-4 py-2.5 text-sm font-mono outline-none border transition-all duration-200 placeholder:text-text-muted/30 ${

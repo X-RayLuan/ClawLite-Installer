@@ -54,6 +54,7 @@ function App(): React.JSX.Element {
     needNode: false,
     needOpenclaw: false
   })
+  const [provider, setProvider] = useState<'anthropic' | 'google' | 'openai'>('anthropic')
   const [botUsername, setBotUsername] = useState<string | undefined>()
   const [version, setVersion] = useState('')
 
@@ -95,9 +96,9 @@ function App(): React.JSX.Element {
           {currentStep === 'install' && (
             <InstallStep needs={installNeeds} onDone={() => goTo('apiKeyGuide')} />
           )}
-          {currentStep === 'apiKeyGuide' && <ApiKeyGuideStep onNext={next} onPrev={prev} />}
+          {currentStep === 'apiKeyGuide' && <ApiKeyGuideStep provider={provider} onSelectProvider={setProvider} onNext={next} onPrev={prev} />}
           {currentStep === 'telegramGuide' && <TelegramGuideStep onNext={next} onPrev={prev} />}
-          {currentStep === 'config' && <ConfigStep onDone={(username) => { setBotUsername(username); goTo('done') }} />}
+          {currentStep === 'config' && <ConfigStep provider={provider} onDone={(username) => { setBotUsername(username); goTo('done') }} />}
           {currentStep === 'done' && <DoneStep botUsername={botUsername} />}
         </div>
 

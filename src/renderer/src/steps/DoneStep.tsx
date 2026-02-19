@@ -6,9 +6,19 @@ export default function DoneStep({ botUsername }: { botUsername?: string }): Rea
   const [status, setStatus] = useState<'starting' | 'running' | 'stopped'>('starting')
 
   useEffect(() => {
-    window.electronAPI.gateway.start().then((r) =>
+    const init = async (): Promise<void> => {
+      // onboarder가 이미 데몬을 재시작하므로 먼저 상태 확인
+      const s = await window.electronAPI.gateway.status()
+      if (s === 'running') { setStatus('running'); return }
+      // 데몬이 아직 올라오는 중일 수 있으므로 잠시 대기 후 재확인
+      await new Promise((r) => setTimeout(r, 3000))
+      const s2 = await window.electronAPI.gateway.status()
+      if (s2 === 'running') { setStatus('running'); return }
+      // 여전히 중지 상태면 직접 시작 시도
+      const r = await window.electronAPI.gateway.start()
       setStatus(r.success ? 'running' : 'stopped')
-    )
+    }
+    init()
   }, [])
 
   const handleStop = async (): Promise<void> => {
@@ -75,9 +85,16 @@ export default function DoneStep({ botUsername }: { botUsername?: string }): Rea
       {status === 'running' && (
         <button
           onClick={() => window.open('https://open.kakao.com/o/gbBkPehi', '_blank')}
-          className="text-xs text-text-muted/60 hover:text-text-muted transition-colors cursor-pointer"
+          className="glass-card flex items-center gap-3 px-5 py-3 cursor-pointer hover:border-primary/40 transition-all duration-200"
         >
-          사용법이 궁금하다면? 오픈채팅방 참여하기 →
+          <span className="text-base">💬</span>
+          <div className="text-left">
+            <p className="text-sm font-bold">카카오 오픈채팅방 참여하기</p>
+            <p className="text-[11px] text-text-muted">사용법, 질문, 피드백을 나눠보세요</p>
+          </div>
+          <svg className="ml-auto text-text-muted" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
         </button>
       )}
     </div>

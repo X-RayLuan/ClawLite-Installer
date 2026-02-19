@@ -44,7 +44,7 @@ export const registerIpcHandlers = (win: BrowserWindow): void => {
     }
   })
 
-  ipcMain.handle('onboard:run', async (_e, config: { anthropicApiKey: string; telegramBotToken?: string }) => {
+  ipcMain.handle('onboard:run', async (_e, config: { provider: 'anthropic' | 'google' | 'openai'; apiKey: string; telegramBotToken?: string }) => {
     try {
       const result = await runOnboard(win, config)
       return { success: true, botUsername: result.botUsername }
@@ -74,6 +74,20 @@ export const registerIpcHandlers = (win: BrowserWindow): void => {
   })
 
   ipcMain.handle('gateway:status', () => getGatewayStatus())
+
+  ipcMain.handle('newsletter:subscribe', async (_e, email: string) => {
+    try {
+      const r = await fetch('https://easyclaw.kr/api/newsletter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, source: 'app' })
+      })
+      const data = await r.json()
+      return { success: data.success !== false }
+    } catch {
+      return { success: false }
+    }
+  })
 
   ipcMain.on('system:reboot', () => {
     spawn('shutdown', ['/r', '/t', '0'], { shell: true, detached: true })
