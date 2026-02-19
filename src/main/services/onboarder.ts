@@ -208,6 +208,23 @@ export const runOnboard = async (
     }
   }
 
+  // onboard --install-daemon이 데몬을 시작하므로 즉시 중지
+  // config 패치 중 자동 재시작으로 Telegram 409 충돌이 발생하는 것을 방지
+  if (isMac) {
+    const uid = process.getuid?.() ?? ''
+    await new Promise<void>((resolve) => {
+      const child = spawn('launchctl', ['bootout', `gui/${uid}/ai.openclaw.gateway`])
+      child.on('close', () => resolve())
+      child.on('error', () => resolve())
+    })
+    await new Promise<void>((resolve) => {
+      const child = spawn('pkill', ['-9', '-f', 'openclaw-gateway'])
+      child.on('close', () => resolve())
+      child.on('error', () => resolve())
+    })
+    await new Promise((resolve) => setTimeout(resolve, 2000))
+  }
+
   // 제공사별 권장 모델 설정 (onboard 기본값 대신)
   const defaultModels: Record<OnboardConfig['provider'], string> = {
     anthropic: 'anthropic/claude-sonnet-4-6',
@@ -295,24 +312,10 @@ export const runOnboard = async (
     await wslExec('pkill -9 -f openclaw || true').catch(() => {})
     await new Promise((resolve) => setTimeout(resolve, 2000))
   } else if (isMac) {
-    log('Gateway 재시작 중...')
+    log('Gateway 시작 중...')
     const plistPath = join(homedir(), 'Library', 'LaunchAgents', 'ai.openclaw.gateway.plist')
     const uid = process.getuid?.() ?? ''
-    // 1. 데몬 언로드
-    await new Promise<void>((resolve) => {
-      const child = spawn('launchctl', ['bootout', `gui/${uid}/ai.openclaw.gateway`])
-      child.on('close', () => resolve())
-      child.on('error', () => resolve())
-    })
-    // 2. SIGKILL로 확실히 종료
-    await new Promise<void>((resolve) => {
-      const child = spawn('pkill', ['-9', '-f', 'openclaw'])
-      child.on('close', () => resolve())
-      child.on('error', () => resolve())
-    })
-    // 3. 포트 해제 + Telegram 서버 측 폴링 연결 정리 대기
-    await new Promise((resolve) => setTimeout(resolve, 5000))
-    // 4. 데몬 재등록
+    // 이미 onboard 직후에 중지했으므로 bootstrap만 실행
     if (existsSync(plistPath)) {
       await new Promise<void>((resolve) => {
         const child = spawn('launchctl', ['bootstrap', `gui/${uid}`, plistPath])
