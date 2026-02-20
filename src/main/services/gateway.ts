@@ -42,12 +42,15 @@ const runGateway = (args: string[]): Promise<string> => {
   })
 }
 
-const startGatewayWin = (): Promise<string> => {
+const startGatewayWin = async (): Promise<string> => {
   // 기존 프로세스가 있으면 먼저 종료
   if (wslGatewayProcess) {
     wslGatewayProcess.kill()
     wslGatewayProcess = null
   }
+  // WSL 안의 잔여 gateway 프로세스 + lock 파일 정리
+  await killWslGateway()
+  await new Promise((r) => setTimeout(r, 1000))
 
   return new Promise((resolve) => {
     const child = spawn('wsl', ['--', 'openclaw', 'gateway', 'run'], {
@@ -105,17 +108,27 @@ const startGatewayWin = (): Promise<string> => {
   })
 }
 
+const killWslGateway = (): Promise<void> =>
+  new Promise((resolve) => {
+    const child = spawn('wsl', [
+      '--',
+      'bash',
+      '-c',
+      // openclaw gateway stop → SIGKILL → lock 파일 제거
+      'openclaw gateway stop 2>/dev/null; pkill -9 -f openclaw-gateway 2>/dev/null; pkill -9 -f openclaw 2>/dev/null; rm -f /tmp/.openclaw-gateway.lock $HOME/.openclaw/.gateway.lock 2>/dev/null; true'
+    ])
+    child.on('close', () => resolve())
+    child.on('error', () => resolve())
+  })
+
 const stopGatewayWin = async (): Promise<string> => {
   if (wslGatewayProcess) {
     wslGatewayProcess.kill()
     wslGatewayProcess = null
   }
-  // WSL 안의 프로세스도 확실히 종료
-  await new Promise<void>((resolve) => {
-    const child = spawn('wsl', ['--', 'bash', '-c', 'pkill -f openclaw || true'])
-    child.on('close', () => resolve())
-    child.on('error', () => resolve())
-  })
+  await killWslGateway()
+  // 프로세스 + lock 정리 대기
+  await new Promise((r) => setTimeout(r, 1000))
   return 'stopped'
 }
 
