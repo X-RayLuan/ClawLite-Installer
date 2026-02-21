@@ -1,6 +1,6 @@
 import { spawn, ChildProcess } from 'child_process'
 import { platform } from 'os'
-import { getPathEnv, findBin } from './path-utils'
+import { getPathEnv, getNativeEnv, findBin } from './path-utils'
 import type { WinInstallMode } from './env-checker'
 
 // Windows install mode: ipc-handlers에서 설정
@@ -142,7 +142,7 @@ const startGatewayNative = async (): Promise<string> => {
   return new Promise((resolve) => {
     const child = spawn('openclaw', ['gateway', 'run'], {
       shell: true,
-      env: { ...process.env, NODE_OPTIONS: '--dns-result-order=ipv4first' },
+      env: getNativeEnv({ NODE_OPTIONS: '--dns-result-order=ipv4first' }),
       stdio: ['ignore', 'pipe', 'pipe']
     })
 
@@ -238,7 +238,7 @@ const runDoctorFix = (): Promise<void> =>
       : ['exec', '--', 'openclaw', 'doctor', '--fix']
 
     const child = spawn(cmd, args, {
-      env: isNative ? process.env : getPathEnv(),
+      env: isNative ? getNativeEnv() : getPathEnv(),
       shell: isNative
     })
     child.stdout.on('data', (d) => {

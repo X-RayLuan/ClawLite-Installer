@@ -113,8 +113,11 @@ export const installNodeNative = async (win: BrowserWindow): Promise<void> => {
   await runWithLog('msiexec', ['/i', dest, '/passive', '/norestart'], log, { shell: true })
   // MSI가 PATH를 추가하지만 현재 프로세스에는 미반영 → 직접 추가
   const nodePath = 'C:\\Program Files\\nodejs'
-  if (!process.env.PATH?.includes(nodePath)) {
-    process.env.PATH = `${nodePath};${process.env.PATH}`
+  const npmGlobalBin = join(process.env.APPDATA ?? '', 'npm')
+  for (const dir of [nodePath, npmGlobalBin]) {
+    if (dir && !process.env.PATH?.includes(dir)) {
+      process.env.PATH = `${dir};${process.env.PATH}`
+    }
   }
   log('Node.js 설치 완료!')
 }
@@ -122,6 +125,11 @@ export const installNodeNative = async (win: BrowserWindow): Promise<void> => {
 export const installOpenClawNative = async (win: BrowserWindow): Promise<void> => {
   const log = (msg: string): void => sendProgress(win, msg)
   log('OpenClaw 설치 중...')
+  // npm 글로벌 bin 경로가 PATH에 있어야 openclaw 명령 사용 가능
+  const npmGlobalBin = join(process.env.APPDATA ?? '', 'npm')
+  if (npmGlobalBin && !process.env.PATH?.includes(npmGlobalBin)) {
+    process.env.PATH = `${npmGlobalBin};${process.env.PATH}`
+  }
   await runWithLog('npm', ['install', '-g', 'openclaw@latest'], log, { shell: true })
   log('OpenClaw 설치 완료!')
 }

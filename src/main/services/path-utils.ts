@@ -24,6 +24,14 @@ export const decodeWslOutput = (buf: Buffer): string => {
   return buf.toString('utf8').trim()
 }
 
+/** Windows 네이티브 모드용 PATH 확장 (npm 글로벌 bin + Node.js 포함) */
+export const getNativeEnv = (extra?: Record<string, string>): NodeJS.ProcessEnv => {
+  const npmGlobalBin = join(process.env.APPDATA ?? '', 'npm')
+  const nodePath = 'C:\\Program Files\\nodejs'
+  const dirs = [npmGlobalBin, nodePath, process.env.PATH ?? ''].filter(Boolean)
+  return { ...process.env, PATH: dirs.join(';'), ...extra }
+}
+
 export const findBin = (name: string): string => {
   if (platform() === 'win32') return name
   for (const dir of PATH_DIRS) {
