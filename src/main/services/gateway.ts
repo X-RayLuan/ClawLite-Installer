@@ -42,31 +42,6 @@ const runGateway = (args: string[]): Promise<string> => {
   })
 }
 
-// WSL에 ipv4-fix.js를 생성하여 dns.lookup을 IPv4 전용으로 패치
-const ensureWslIpv4Fix = (): Promise<string> => {
-  const fixScript = [
-    'const dns=require("dns");',
-    'const ol=dns.lookup;',
-    'dns.lookup=function(h,o,c){',
-    'if(typeof o==="function"){c=o;o={family:4}}',
-    'else if(typeof o==="number"){o={family:4}}',
-    'else{o=Object.assign({},o,{family:4})}',
-    'return ol.call(this,h,o,c)}'
-  ].join('')
-  const fixPath = '$HOME/.openclaw/ipv4-fix.js'
-
-  return new Promise((resolve) => {
-    const child = spawn('wsl', [
-      '--', 'bash', '-c',
-      `mkdir -p $HOME/.openclaw && echo '${fixScript}' > ${fixPath} && echo ${fixPath}`
-    ])
-    let out = ''
-    child.stdout.on('data', (d) => (out += d.toString()))
-    child.on('close', () => resolve(out.trim() || fixPath))
-    child.on('error', () => resolve(fixPath))
-  })
-}
-
 const startGatewayWin = async (): Promise<string> => {
   // 기존 프로세스가 있으면 먼저 종료
   if (wslGatewayProcess) {
@@ -77,14 +52,11 @@ const startGatewayWin = async (): Promise<string> => {
   await killWslGateway()
   await new Promise((r) => setTimeout(r, 1000))
 
-  // IPv4 강제 패치 스크립트 생성
-  const fixPath = await ensureWslIpv4Fix()
-
   return new Promise((resolve) => {
-    // dns.lookup IPv4 패치 + DNS 순서 IPv4 우선 + autoSelectFamily 비활성화
+    // Node.js 22 autoSelectFamily IPv6 문제 방지: IPv4 우선
     const child = spawn(
       'wsl',
-      ['--', 'bash', '-c', `NODE_OPTIONS="--require=${fixPath} --dns-result-order=ipv4first --no-network-family-autoselection" openclaw gateway run`],
+      ['--', 'bash', '-c', 'NODE_OPTIONS="--dns-result-order=ipv4first" openclaw gateway run'],
       { env: getPathEnv(), stdio: ['ignore', 'pipe', 'pipe'] }
     )
 
