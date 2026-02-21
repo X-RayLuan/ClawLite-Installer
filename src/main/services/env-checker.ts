@@ -1,7 +1,7 @@
 import { spawn } from 'child_process'
 import { platform } from 'os'
 import https from 'https'
-import { decodeWslOutput } from './path-utils'
+import { decodeWslOutput, getNativeEnv } from './path-utils'
 
 export type WinInstallMode = 'wsl' | 'native' | null
 
@@ -39,7 +39,7 @@ const isWindows = platform() === 'win32'
 
 const runNativeCommand = (cmd: string, args: string[]): Promise<string> =>
   new Promise((resolve, reject) => {
-    const child = spawn(cmd, args, { shell: true, env: process.env })
+    const child = spawn(cmd, args, { shell: true, env: getNativeEnv() })
     const timer = setTimeout(() => {
       child.kill()
       reject(new Error('timeout'))

@@ -50,7 +50,7 @@ const waitTelegramClear = async (token: string): Promise<void> => {
   }
 }
 
-import { getPathEnv, findBin } from './path-utils'
+import { getPathEnv, getNativeEnv, findBin } from './path-utils'
 import type { WinInstallMode } from './env-checker'
 
 const wslExec = (command: string, timeoutMs = 30000): Promise<string> =>
@@ -101,7 +101,7 @@ const createRunCmd = (
       const fullArgs = isWsl ? ['--', cmd, ...args] : args
 
       const child = spawn(fullCmd, fullArgs, {
-        env: isNative ? process.env : getPathEnv(),
+        env: isNative ? getNativeEnv() : getPathEnv(),
         shell: isNative
       })
 
