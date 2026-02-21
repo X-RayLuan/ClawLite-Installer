@@ -277,6 +277,13 @@ export const installOpenClaw = async (win: BrowserWindow): Promise<void> => {
   } else {
     // macOS: Xcode Command Line Tools 필요 — 없으면 설치 팝업 띄움
     await ensureXcodeCli(log)
+    // macOS: ~/.npm 권한 문제 방지 — sudo npm 이력이 있으면 소유권 복원
+    const npmCacheDir = join(homedir(), '.npm')
+    if (existsSync(npmCacheDir)) {
+      const uid = process.getuid?.() ?? 501
+      const gid = process.getgid?.() ?? 20
+      await runWithLog('chown', ['-R', `${uid}:${gid}`, npmCacheDir], log).catch(() => {})
+    }
     // macOS: /usr/local 권한 문제 방지 — npm prefix를 사용자 홈으로 변경
     const npmGlobalDir = join(homedir(), '.npm-global')
     if (!existsSync(npmGlobalDir)) mkdirSync(npmGlobalDir, { recursive: true })
