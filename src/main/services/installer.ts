@@ -219,10 +219,45 @@ export const installWsl = async (
     log('Ubuntu가 이미 등록되어 있습니다. 초기화 확인 중...')
   } else {
     log('WSL2 설치 시작... (관리자 권한 필요)')
+
+    // 1) wsl --install -d Ubuntu (--no-launch 없이 — 구버전 Windows 호환)
+    let installed = false
     try {
-      await runWithLog('wsl', ['--install', '-d', 'Ubuntu', '--no-launch'], log, { shell: true })
+      await runWithLog('wsl', ['--install', '-d', 'Ubuntu'], log, { shell: true })
+      installed = true
     } catch {
-      log('WSL 설치 명령 완료 (이미 설치된 경우 무시)')
+      log('wsl --install -d Ubuntu 실패, 대체 방법 시도...')
+    }
+
+    // 2) 폴백: wsl --install (기본 배포판 Ubuntu 자동 설치)
+    if (!installed) {
+      try {
+        await runWithLog('wsl', ['--install'], log, { shell: true })
+        installed = true
+      } catch {
+        log('wsl --install 실패, Windows 기능 직접 활성화 시도...')
+      }
+    }
+
+    // 3) 폴백: dism으로 WSL/VM 기능 직접 활성화 (구형 Windows 10)
+    if (!installed) {
+      try {
+        await runWithLog(
+          'dism.exe',
+          ['/online', '/enable-feature', '/featurename:Microsoft-Windows-Subsystem-Linux', '/all', '/norestart'],
+          log,
+          { shell: true }
+        )
+        await runWithLog(
+          'dism.exe',
+          ['/online', '/enable-feature', '/featurename:VirtualMachinePlatform', '/all', '/norestart'],
+          log,
+          { shell: true }
+        )
+        log('WSL 기능 활성화 완료. 재부팅 후 Ubuntu를 설치합니다.')
+      } catch {
+        log('Windows 기능 활성화 실패')
+      }
     }
   }
 
