@@ -134,31 +134,31 @@ const stopGatewayWin = async (): Promise<string> => {
   return 'stopped'
 }
 
-const runDoctorFix = (): void => {
-  const isWindows = platform() === 'win32'
-  const cmd = isWindows ? 'wsl' : findBin('npm')
-  const args = isWindows
-    ? ['--', 'openclaw', 'doctor', '--fix']
-    : ['exec', '--', 'openclaw', 'doctor', '--fix']
+const runDoctorFix = (): Promise<void> =>
+  new Promise((resolve) => {
+    const isWindows = platform() === 'win32'
+    const cmd = isWindows ? 'wsl' : findBin('npm')
+    const args = isWindows
+      ? ['--', 'openclaw', 'doctor', '--fix']
+      : ['exec', '--', 'openclaw', 'doctor', '--fix']
 
-  const child = spawn(cmd, args, { env: getPathEnv() })
-  child.stdout.on('data', (d) => {
-    const msg = d.toString().trim()
-    if (msg) emitLog(msg)
+    const child = spawn(cmd, args, { env: getPathEnv() })
+    child.stdout.on('data', (d) => {
+      const msg = d.toString().trim()
+      if (msg) emitLog(msg)
+    })
+    child.stderr.on('data', (d) => {
+      const msg = d.toString().trim()
+      if (msg) emitLog(msg)
+    })
+    child.on('close', () => resolve())
+    child.on('error', () => resolve())
   })
-  child.stderr.on('data', (d) => {
-    const msg = d.toString().trim()
-    if (msg) emitLog(msg)
-  })
-}
 
 export const startGateway = async (): Promise<string> => {
-  const result = await (platform() === 'win32' ? startGatewayWin() : runGateway(['start']))
-  // gateway 시작 후 doctor --fix로 Telegram 등 설정 즉시 적용
-  if (result === 'started') {
-    setTimeout(runDoctorFix, 2000)
-  }
-  return result
+  // doctor --fix를 먼저 실행하여 세션/설정을 복구한 뒤 gateway 시작
+  await runDoctorFix()
+  return platform() === 'win32' ? startGatewayWin() : runGateway(['start'])
 }
 
 export const stopGateway = (): Promise<string> =>
