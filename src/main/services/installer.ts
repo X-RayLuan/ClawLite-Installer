@@ -5,7 +5,7 @@ import { tmpdir, platform, homedir } from 'os'
 import { join } from 'path'
 import https from 'https'
 import { BrowserWindow } from 'electron'
-import { decodeWslOutput } from './path-utils'
+import { decodeWslOutput, getNativeEnv } from './path-utils'
 
 type ProgressCallback = (msg: string) => void
 
@@ -59,12 +59,13 @@ const runWithLog = (
   cmd: string,
   args: string[],
   onLog: ProgressCallback,
-  options?: { shell?: boolean; env?: NodeJS.ProcessEnv }
+  options?: { shell?: boolean; env?: NodeJS.ProcessEnv; cwd?: string }
 ): Promise<string[]> =>
   new Promise((resolve, reject) => {
     const child = spawn(cmd, args, {
       shell: options?.shell ?? false,
-      env: { ...process.env, ...options?.env }
+      env: { ...process.env, ...options?.env },
+      cwd: options?.cwd
     })
 
     const lines: string[] = []
@@ -128,14 +129,26 @@ export const installOpenClawNative = async (win: BrowserWindow): Promise<void> =
   // MSI 기본 npm prefix는 C:\Program Files\nodejs → 관리자 권한 필요
   // %APPDATA%\npm 으로 변경하면 일반 유저 권한으로 글로벌 설치 가능
   const npmGlobalDir = join(process.env.APPDATA ?? '', 'npm')
-  if (npmGlobalDir) {
-    if (!existsSync(npmGlobalDir)) mkdirSync(npmGlobalDir, { recursive: true })
-    await runWithLog('npm', ['config', 'set', 'prefix', npmGlobalDir], log, { shell: true })
-    if (!process.env.PATH?.includes(npmGlobalDir)) {
-      process.env.PATH = `${npmGlobalDir};${process.env.PATH}`
-    }
+  // npm prefix + node_modules 디렉토리 구조 보장
+  for (const dir of [npmGlobalDir, join(npmGlobalDir, 'node_modules')]) {
+    if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
   }
-  await runWithLog('npm', ['install', '-g', 'openclaw@latest'], log, { shell: true })
+  // getNativeEnv()로 Node.js + npm global bin PATH 포함
+  const env = getNativeEnv()
+  // cwd를 홈 디렉토리로 설정 (Electron ASAR 내부 경로 참조 방지)
+  const cwd = homedir()
+  await runWithLog('npm', ['config', 'set', 'prefix', npmGlobalDir], log, { shell: true, env, cwd })
+  if (!process.env.PATH?.includes(npmGlobalDir)) {
+    process.env.PATH = `${npmGlobalDir};${process.env.PATH}`
+  }
+  const installArgs = ['install', '-g', 'openclaw@latest']
+  try {
+    await runWithLog('npm', installArgs, log, { shell: true, env, cwd })
+  } catch {
+    log('OpenClaw 설치 재시도 중...')
+    await new Promise((r) => setTimeout(r, 2000))
+    await runWithLog('npm', installArgs, log, { shell: true, env, cwd })
+  }
   log('OpenClaw 설치 완료!')
 }
 
