@@ -329,30 +329,52 @@ export const runOnboard = async (
     deepseek: 'deepseek/deepseek-chat',
     glm: 'zai/glm-5'
   }
+
+  // custom provider는 contextWindow/maxTokens 기본값이 4096으로 잡혀 에이전트 실행 실패
+  // 실제 모델 스펙에 맞게 패치
+  const modelSpecs: Partial<
+    Record<OnboardConfig['provider'], { contextWindow: number; maxTokens: number }>
+  > = {
+    deepseek: { contextWindow: 128000, maxTokens: 8192 }
+  }
+
+  const patchConfig = (ocConfig: Record<string, unknown>): void => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const cfg = ocConfig as any
+    cfg.agents = cfg.agents ?? {}
+    cfg.agents.defaults = cfg.agents.defaults ?? {}
+    cfg.agents.defaults.model = {
+      ...cfg.agents.defaults.model,
+      primary: defaultModels[config.provider]
+    }
+    // custom provider의 contextWindow/maxTokens 패치
+    const spec = modelSpecs[config.provider]
+    if (spec && cfg.models?.providers) {
+      for (const provider of Object.values(cfg.models.providers) as any[]) {
+        if (Array.isArray(provider.models)) {
+          for (const m of provider.models) {
+            m.contextWindow = spec.contextWindow
+            m.maxTokens = spec.maxTokens
+          }
+        }
+      }
+    }
+  }
+
   const modelConfigPath = join(ocDir, 'openclaw.json')
   if (isWsl) {
     const wslModelPath = '$HOME/.openclaw/openclaw.json'
     try {
       const raw = await wslExec(`cat ${wslModelPath}`)
       const ocConfig = JSON.parse(raw)
-      ocConfig.agents = ocConfig.agents ?? {}
-      ocConfig.agents.defaults = ocConfig.agents.defaults ?? {}
-      ocConfig.agents.defaults.model = {
-        ...ocConfig.agents.defaults.model,
-        primary: defaultModels[config.provider]
-      }
+      patchConfig(ocConfig)
       await wslWriteFile(wslModelPath, JSON.stringify(ocConfig, null, 2))
     } catch {
       /* ignore */
     }
   } else if (existsSync(modelConfigPath)) {
     const ocConfig = JSON.parse(readFileSync(modelConfigPath, 'utf-8'))
-    ocConfig.agents = ocConfig.agents ?? {}
-    ocConfig.agents.defaults = ocConfig.agents.defaults ?? {}
-    ocConfig.agents.defaults.model = {
-      ...ocConfig.agents.defaults.model,
-      primary: defaultModels[config.provider]
-    }
+    patchConfig(ocConfig)
     writeFileSync(modelConfigPath, JSON.stringify(ocConfig, null, 2))
   }
   log('기본 설정 완료!')
