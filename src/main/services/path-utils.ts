@@ -52,7 +52,11 @@ export const getNativeEnv = (extra?: Record<string, string>): NodeJS.ProcessEnv 
   const localCliBin = join(homedir(), '.openclaw', 'cli', 'node_modules', '.bin')
   const npmGlobalBin = join(process.env.APPDATA ?? '', 'npm')
   const nodePath = 'C:\\Program Files\\nodejs'
-  cleaned.PATH = [localCliBin, npmGlobalBin, nodePath, existingPath].filter(Boolean).join(';')
+  const gitPath = 'C:\\Program Files\\Git\\cmd'
+  const mingitPath = join(homedir(), '.openclaw', 'mingit', 'cmd')
+  cleaned.PATH = [localCliBin, npmGlobalBin, nodePath, gitPath, mingitPath, existingPath]
+    .filter(Boolean)
+    .join(';')
   return extra ? { ...cleaned, ...extra } : cleaned
 }
 

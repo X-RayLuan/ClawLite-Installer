@@ -208,6 +208,74 @@ const fetchPackageMeta = (pkg: string): Promise<{ version: string; tarball: stri
       .on('error', reject)
   })
 
+/** Git이 없으면 MinGit(경량 Git) 자동 설치 — openclaw 의존성 중 git 호스팅 패키지가 있음 */
+const ensureGitAvailable = async (log: ProgressCallback): Promise<void> => {
+  const gitOk = await new Promise<boolean>((resolve) => {
+    const child = spawn('git', ['--version'], { shell: true, env: getNativeEnv() })
+    child.on('close', (code) => resolve(code === 0))
+    child.on('error', () => resolve(false))
+  })
+  if (gitOk) return
+
+  const mingitDir = join(homedir(), '.openclaw', 'mingit')
+  const mingitCmd = join(mingitDir, 'cmd')
+
+  // 이전에 이미 설치한 MinGit이 있으면 PATH에 추가만
+  if (existsSync(join(mingitCmd, 'git.exe'))) {
+    if (!process.env.PATH?.includes(mingitCmd)) {
+      process.env.PATH = `${mingitCmd};${process.env.PATH}`
+    }
+    return
+  }
+
+  log('Git 설치 중 (openclaw 의존성에 필요)...')
+
+  // GitHub API로 최신 MinGit 다운로드 URL 조회
+  const url = await new Promise<string>((resolve, reject) => {
+    https
+      .get(
+        'https://api.github.com/repos/git-for-windows/git/releases/latest',
+        { headers: { 'User-Agent': 'EasyClaw' } },
+        (res) => {
+          let data = ''
+          res.on('data', (chunk) => (data += chunk))
+          res.on('end', () => {
+            try {
+              const json = JSON.parse(data)
+              const asset = json.assets?.find(
+                (a: { name: string }) =>
+                  a.name.startsWith('MinGit-') && a.name.endsWith('-64-bit.zip')
+              )
+              if (asset?.browser_download_url) resolve(asset.browser_download_url)
+              else reject(new Error('MinGit asset not found'))
+            } catch (e) {
+              reject(e)
+            }
+          })
+        }
+      )
+      .on('error', reject)
+  })
+
+  const zipPath = join(tmpdir(), 'mingit.zip')
+  log('MinGit 다운로드 중...')
+  await downloadFile(url, zipPath)
+
+  log('MinGit 추출 중...')
+  mkdirSync(mingitDir, { recursive: true })
+  await runWithLog(
+    'powershell',
+    ['-Command', `Expand-Archive -Path '${zipPath}' -DestinationPath '${mingitDir}' -Force`],
+    log,
+    { shell: true }
+  )
+
+  if (!process.env.PATH?.includes(mingitCmd)) {
+    process.env.PATH = `${mingitCmd};${process.env.PATH}`
+  }
+  log('Git 설치 완료!')
+}
+
 export const installOpenClawNative = async (win: BrowserWindow): Promise<void> => {
   const log = (msg: string): void => sendProgress(win, msg)
   log('OpenClaw 설치 중...')
@@ -222,6 +290,9 @@ export const installOpenClawNative = async (win: BrowserWindow): Promise<void> =
       'Node.js 설치를 찾을 수 없습니다. Node.js가 올바르게 설치되었는지 확인해 주세요.'
     )
   }
+
+  // Git이 없으면 MinGit 자동 설치 (openclaw 의존성 중 git URL 패키지가 있음)
+  await ensureGitAvailable(log)
 
   const npmGlobalDir = join(process.env.APPDATA ?? '', 'npm')
   for (const dir of [npmGlobalDir, join(npmGlobalDir, 'node_modules')]) {
