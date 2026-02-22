@@ -139,12 +139,22 @@ const logNpmDebug = (log: ProgressCallback): void => {
     const files = readdirSync(logsDir).sort().reverse()
     const latest = files.find((f) => f.endsWith('-debug-0.log'))
     if (!latest) return
-    const content = readFileSync(join(logsDir, latest), 'utf-8')
-    // ENOENT 관련 줄 + verbose path/dest/syscall/stack (실제 원인 파악용)
-    const lines = content
-      .split('\n')
-      .filter((l) => /enoent|error|ERR!|verbose (path|dest|syscall|errno|stack)/i.test(l))
-    lines.slice(-25).forEach((l) => log(`[npm] ${l.trim()}`))
+    const allLines = readFileSync(join(logsDir, latest), 'utf-8').split('\n')
+    // 마지막 ENOENT 발생 지점 전후 15줄 캡처 (verbose path/dest/syscall 포함)
+    let lastIdx = -1
+    for (let i = allLines.length - 1; i >= 0; i--) {
+      if (/\benoent\b/i.test(allLines[i])) {
+        lastIdx = i
+        break
+      }
+    }
+    if (lastIdx === -1) return
+    const start = Math.max(0, lastIdx - 15)
+    const end = Math.min(allLines.length, lastIdx + 3)
+    allLines
+      .slice(start, end)
+      .filter((l) => l.trim())
+      .forEach((l) => log(`[npm] ${l.trim()}`))
   } catch {
     /* ignore */
   }
@@ -217,18 +227,48 @@ export const installOpenClawNative = async (win: BrowserWindow): Promise<void> =
   for (const dir of [npmGlobalDir, join(npmGlobalDir, 'node_modules')]) {
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
   }
-  const env = getNativeEnv({ npm_config_prefix: npmGlobalDir })
   if (!process.env.PATH?.includes(npmGlobalDir)) {
     process.env.PATH = `${npmGlobalDir};${process.env.PATH}`
   }
 
-  // 1차: npm install -g 시도 (성공하면 가장 깔끔)
+  // npm 캐시 정리 (손상된 캐시가 ENOENT 원인일 수 있음)
+  log('[진단] npm 캐시 정리 중...')
   try {
+    await runWithLog(nodeExe, [npmCli, 'cache', 'clean', '--force'], log, {
+      shell: false,
+      env: getNativeEnv()
+    })
+  } catch {
+    /* ignore */
+  }
+
+  // 짧은 캐시/임시 경로 (Windows 260자 경로 제한 + 안티바이러스 파일 잠금 우회)
+  const shortCache = join(homedir(), '.oc-nc')
+  const shortTmp = join(homedir(), '.oc-tmp')
+  mkdirSync(shortCache, { recursive: true })
+  mkdirSync(shortTmp, { recursive: true })
+
+  // 1차: npm install -g (짧은 캐시/TMP 적용)
+  try {
+    const gEnv = getNativeEnv({
+      npm_config_prefix: npmGlobalDir,
+      TMP: shortTmp,
+      TEMP: shortTmp
+    })
     await runWithLog(
       nodeExe,
-      [npmCli, 'install', '-g', '--no-bin-links', '--ignore-scripts', 'openclaw@latest'],
+      [
+        npmCli,
+        'install',
+        '-g',
+        '--no-bin-links',
+        '--ignore-scripts',
+        '--cache',
+        shortCache,
+        'openclaw@latest'
+      ],
       log,
-      { shell: false, env, cwd: homedir() }
+      { shell: false, env: gEnv, cwd: homedir() }
     )
     createOpenclawShim(join(npmGlobalDir, 'node_modules', 'openclaw'), npmGlobalDir, nodeExe, log)
     log('OpenClaw 설치 완료!')
@@ -238,7 +278,7 @@ export const installOpenClawNative = async (win: BrowserWindow): Promise<void> =
     log('npm 설치 실패, 직접 다운로드로 전환...')
   }
 
-  // 2차: npm 우회 — 레지스트리에서 tarball 직접 다운로드 + tar 추출
+  // 2차: npm 우회 — tarball 직접 다운로드 + tar 추출
   const meta = await fetchPackageMeta('openclaw')
   log(`OpenClaw v${meta.version} 직접 다운로드 중...`)
 
@@ -248,7 +288,6 @@ export const installOpenClawNative = async (win: BrowserWindow): Promise<void> =
   const pkgJson = join(cliDir, 'package.json')
   if (!existsSync(pkgJson)) writeFileSync(pkgJson, '{"private":true}')
 
-  // 이전 설치 정리
   if (existsSync(openclawDir)) rmSync(openclawDir, { recursive: true, force: true })
   mkdirSync(openclawDir, { recursive: true })
 
@@ -256,7 +295,6 @@ export const installOpenClawNative = async (win: BrowserWindow): Promise<void> =
   await downloadFile(meta.tarball, tarball)
 
   log('패키지 추출 중...')
-  // Windows 10+ 내장 tar.exe 사용, --strip-components=1로 package/ 래퍼 제거
   await runWithLog('tar', ['-xzf', tarball, '-C', openclawDir, '--strip-components=1'], log, {
     shell: true,
     env: getNativeEnv()
@@ -266,12 +304,21 @@ export const installOpenClawNative = async (win: BrowserWindow): Promise<void> =
   const depsExist = existsSync(join(openclawDir, 'node_modules'))
   if (!depsExist) {
     log('의존성 설치 중...')
+    const depsEnv = getNativeEnv({ TMP: shortTmp, TEMP: shortTmp })
     try {
       await runWithLog(
         nodeExe,
-        [npmCli, 'install', '--production', '--no-bin-links', '--ignore-scripts'],
+        [
+          npmCli,
+          'install',
+          '--production',
+          '--no-bin-links',
+          '--ignore-scripts',
+          '--cache',
+          shortCache
+        ],
         log,
-        { shell: false, env: getNativeEnv(), cwd: openclawDir }
+        { shell: false, env: depsEnv, cwd: openclawDir }
       )
     } catch {
       logNpmDebug(log)
