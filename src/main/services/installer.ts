@@ -139,10 +139,45 @@ const logNpmDebug = (log: ProgressCallback): void => {
     const latest = files.find((f) => f.endsWith('-debug-0.log'))
     if (!latest) return
     const content = readFileSync(join(logsDir, latest), 'utf-8')
-    const lines = content.split('\n').filter((l) => /enoent|error|ERR!/i.test(l))
-    lines.slice(-15).forEach((l) => log(`[npm] ${l.trim()}`))
+    const allLines = content.split('\n')
+    // ENOENT 줄 + 직전 줄(실제 파일 경로 포함)까지 캡처
+    const relevant = new Set<number>()
+    allLines.forEach((l, i) => {
+      if (/enoent|error|ERR!/i.test(l)) {
+        if (i > 0) relevant.add(i - 1)
+        relevant.add(i)
+      }
+    })
+    ;[...relevant]
+      .sort((a, b) => a - b)
+      .slice(-20)
+      .forEach((i) => log(`[npm] ${allLines[i].trim()}`))
   } catch {
     /* ignore */
+  }
+}
+
+/** openclaw package.json의 bin 엔트리를 읽어 .cmd shim을 수동 생성 */
+const createOpenclawShim = (
+  pkgDir: string,
+  shimDir: string,
+  nodeExe: string,
+  log: ProgressCallback
+): void => {
+  try {
+    const pkgPath = join(pkgDir, 'package.json')
+    if (!existsSync(pkgPath)) return
+    const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'))
+    const binMap: Record<string, string> =
+      typeof pkg.bin === 'string' ? { [pkg.name]: pkg.bin } : (pkg.bin ?? {})
+    if (!existsSync(shimDir)) mkdirSync(shimDir, { recursive: true })
+    for (const [name, relPath] of Object.entries(binMap)) {
+      const entryAbs = join(pkgDir, relPath)
+      writeFileSync(join(shimDir, `${name}.cmd`), `@"${nodeExe}" "${entryAbs}" %*\r\n`)
+    }
+    log('[진단] openclaw.cmd shim 수동 생성 완료')
+  } catch (e) {
+    log(`[진단] shim 생성 실패: ${(e as Error).message}`)
   }
 }
 
@@ -170,14 +205,16 @@ export const installOpenClawNative = async (win: BrowserWindow): Promise<void> =
     process.env.PATH = `${npmGlobalDir};${process.env.PATH}`
   }
 
-  // 1차: 글로벌 설치 (node.exe로 npm-cli.js 직접 실행, shell: false)
+  // 1차: 글로벌 설치 (--no-bin-links로 .cmd shim 생성 단계를 건너뛰어 ENOENT 방지)
   try {
     await runWithLog(
       nodeExe,
-      [npmCli, 'install', '-g', '--ignore-scripts', 'openclaw@latest'],
+      [npmCli, 'install', '-g', '--no-bin-links', '--ignore-scripts', 'openclaw@latest'],
       log,
       { shell: false, env, cwd: homedir() }
     )
+    // --no-bin-links로 .cmd가 미생성 → 수동 생성
+    createOpenclawShim(join(npmGlobalDir, 'node_modules', 'openclaw'), npmGlobalDir, nodeExe, log)
     log('OpenClaw 설치 완료!')
     return
   } catch {
@@ -201,18 +238,20 @@ export const installOpenClawNative = async (win: BrowserWindow): Promise<void> =
   }
 
   try {
-    await runWithLog(nodeExe, [npmCli, 'install', '--ignore-scripts', 'openclaw@latest'], log, {
-      shell: false,
-      env,
-      cwd: cliDir
-    })
+    await runWithLog(
+      nodeExe,
+      [npmCli, 'install', '--no-bin-links', '--ignore-scripts', 'openclaw@latest'],
+      log,
+      { shell: false, env, cwd: cliDir }
+    )
   } catch {
     logNpmDebug(log)
     throw new Error('OpenClaw 설치에 실패했습니다. npm 로그를 확인해 주세요.')
   }
 
-  // 로컬 bin을 PATH에 추가 (openclaw.cmd가 여기에 생성됨)
+  // --no-bin-links로 .cmd가 미생성 → 수동 생성
   const binDir = join(cliDir, 'node_modules', '.bin')
+  createOpenclawShim(join(cliDir, 'node_modules', 'openclaw'), binDir, nodeExe, log)
   if (!process.env.PATH?.includes(binDir)) {
     process.env.PATH = `${binDir};${process.env.PATH}`
   }
