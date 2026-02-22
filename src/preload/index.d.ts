@@ -9,14 +9,10 @@ interface ElectronAPI {
       openclawInstalled: boolean
       openclawVersion: string | null
       openclawLatestVersion: string | null
-      wslInstalled: boolean | null
-      wslRegistered: boolean | null
-      installMode: 'wsl' | 'native' | null
     }>
   }
   install: {
     node: () => Promise<{ success: boolean; error?: string }>
-    wsl: () => Promise<{ success: boolean; needsReboot?: boolean; error?: string }>
     openclaw: () => Promise<{ success: boolean; error?: string }>
     onProgress: (cb: (msg: string) => void) => () => void
     onError: (cb: (msg: string) => void) => () => void

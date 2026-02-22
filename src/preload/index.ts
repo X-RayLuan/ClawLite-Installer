@@ -11,15 +11,10 @@ const electronAPI = {
       openclawInstalled: boolean
       openclawVersion: string | null
       openclawLatestVersion: string | null
-      wslInstalled: boolean | null
-      wslRegistered: boolean | null
-      installMode: 'wsl' | 'native' | null
     }> => ipcRenderer.invoke('env:check')
   },
   install: {
     node: (): Promise<{ success: boolean; error?: string }> => ipcRenderer.invoke('install:node'),
-    wsl: (): Promise<{ success: boolean; needsReboot?: boolean; error?: string }> =>
-      ipcRenderer.invoke('install:wsl'),
     openclaw: (): Promise<{ success: boolean; error?: string }> =>
       ipcRenderer.invoke('install:openclaw'),
     onProgress: (cb: (msg: string) => void): (() => void) => {

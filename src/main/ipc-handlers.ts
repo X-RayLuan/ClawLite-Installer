@@ -1,12 +1,10 @@
 import { ipcMain, BrowserWindow, app } from 'electron'
 import { spawn } from 'child_process'
 import { platform } from 'os'
-import { checkEnvironment, WinInstallMode } from './services/env-checker'
+import { checkEnvironment } from './services/env-checker'
 import {
   installNodeMac,
-  installNodeWin,
   installNodeNative,
-  installWsl,
   installOpenClaw,
   installOpenClawNative
 } from './services/installer'
@@ -15,11 +13,8 @@ import {
   startGateway,
   stopGateway,
   getGatewayStatus,
-  setGatewayLogCallback,
-  setWinInstallMode
+  setGatewayLogCallback
 } from './services/gateway'
-
-let currentInstallMode: WinInstallMode = null
 
 export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void => {
   const win = (): BrowserWindow => {
@@ -30,17 +25,12 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
 
   ipcMain.handle('app:version', () => app.getVersion())
 
-  ipcMain.handle('env:check', async () => {
-    const result = await checkEnvironment()
-    currentInstallMode = result.installMode
-    setWinInstallMode(result.installMode)
-    return result
-  })
+  ipcMain.handle('env:check', () => checkEnvironment())
 
   ipcMain.handle('install:node', async () => {
     try {
       if (platform() === 'win32') {
-        await (currentInstallMode === 'native' ? installNodeNative(win()) : installNodeWin(win()))
+        await installNodeNative(win())
       } else {
         await installNodeMac(win())
       }
@@ -56,24 +46,9 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
     }
   })
 
-  ipcMain.handle('install:wsl', async () => {
-    try {
-      const result = await installWsl(win())
-      return { success: true, needsReboot: result.needsReboot }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e)
-      try {
-        win().webContents.send('install:error', msg)
-      } catch {
-        /* window destroyed */
-      }
-      return { success: false, error: msg }
-    }
-  })
-
   ipcMain.handle('install:openclaw', async () => {
     try {
-      if (platform() === 'win32' && currentInstallMode === 'native') {
+      if (platform() === 'win32') {
         await installOpenClawNative(win())
       } else {
         await installOpenClaw(win())
@@ -101,7 +76,7 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
       }
     ) => {
       try {
-        const result = await runOnboard(win(), config, currentInstallMode)
+        const result = await runOnboard(win(), config)
         return { success: true, botUsername: result.botUsername }
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e)

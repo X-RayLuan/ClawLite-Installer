@@ -10,7 +10,6 @@ import ConfigStep from './steps/ConfigStep'
 import DoneStep from './steps/DoneStep'
 
 interface InstallNeeds {
-  needWsl: boolean
   needNode: boolean
   needOpenclaw: boolean
 }
@@ -50,7 +49,6 @@ const Bubbles = (): React.JSX.Element => {
 function App(): React.JSX.Element {
   const { currentStep, stepIndex, next, prev, canGoBack, goTo } = useWizard()
   const [installNeeds, setInstallNeeds] = useState<InstallNeeds>({
-    needWsl: false,
     needNode: false,
     needOpenclaw: false
   })
@@ -68,11 +66,8 @@ function App(): React.JSX.Element {
     os: string
     nodeVersionOk: boolean
     openclawInstalled: boolean
-    wslInstalled: boolean | null
-    installMode: 'wsl' | 'native' | null
   }): void => {
     setInstallNeeds({
-      needWsl: env.os === 'windows' && env.installMode !== 'native' && !env.wslInstalled,
       needNode: !env.nodeVersionOk,
       needOpenclaw: !env.openclawInstalled
     })
