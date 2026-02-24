@@ -11,6 +11,7 @@ import TelegramGuideStep from './steps/TelegramGuideStep'
 import ConfigStep from './steps/ConfigStep'
 import DoneStep from './steps/DoneStep'
 import TroubleshootStep from './steps/TroubleshootStep'
+import AgentStoreStep from './steps/AgentStoreStep'
 
 type WslState =
   | 'not_available'
@@ -130,9 +131,11 @@ function App(): React.JSX.Element {
       <Bubbles />
 
       <div className="flex flex-col h-full relative z-10">
-        {currentStep !== 'welcome' && currentStep !== 'troubleshoot' && (
-          <StepIndicator currentStep={currentStep} isWindows={isWindows} />
-        )}
+        {currentStep !== 'welcome' &&
+          currentStep !== 'troubleshoot' &&
+          currentStep !== 'agentStore' && (
+            <StepIndicator currentStep={currentStep} isWindows={isWindows} />
+          )}
 
         <div className="flex-1 flex flex-col min-h-0 step-enter" key={currentStep}>
           {currentStep === 'welcome' && <WelcomeStep onNext={next} />}
@@ -151,14 +154,27 @@ function App(): React.JSX.Element {
           {currentStep === 'telegramGuide' && <TelegramGuideStep onNext={next} />}
           {currentStep === 'config' && <ConfigStep provider={provider} onDone={handleDone} />}
           {currentStep === 'done' && (
-            <DoneStep botUsername={botUsername} onTroubleshoot={() => goTo('troubleshoot')} />
+            <DoneStep
+              botUsername={botUsername}
+              onTroubleshoot={() => goTo('troubleshoot')}
+              onAgentStore={() => goTo('agentStore')}
+            />
           )}
+          {currentStep === 'agentStore' && <AgentStoreStep onBack={prev} />}
           {currentStep === 'troubleshoot' && (
             <TroubleshootStep isWindows={isWindows} onBack={prev} />
           )}
         </div>
 
         <div className="absolute bottom-3 right-4 flex items-center gap-2">
+          {import.meta.env.DEV && currentStep !== 'done' && currentStep !== 'agentStore' && (
+            <button
+              onClick={() => goTo('done')}
+              className="text-[10px] text-text-muted/40 hover:text-primary/60 font-mono transition-colors"
+            >
+              [skip→done]
+            </button>
+          )}
           {version && (
             <span className="text-[10px] text-text-muted/30 font-medium select-none">
               v{version}
@@ -168,7 +184,7 @@ function App(): React.JSX.Element {
 
         <UpdateBanner />
 
-        {canGoBack && currentStep !== 'troubleshoot' && (
+        {canGoBack && currentStep !== 'troubleshoot' && currentStep !== 'agentStore' && (
           <button
             onClick={prev}
             className="absolute bottom-16 left-6 z-20 flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-text-muted hover:text-text bg-white/5 hover:bg-white/10 rounded-xl border border-glass-border transition-all duration-200"

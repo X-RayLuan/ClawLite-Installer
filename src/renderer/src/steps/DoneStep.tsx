@@ -5,10 +5,12 @@ import LogViewer from '../components/LogViewer'
 
 export default function DoneStep({
   botUsername,
-  onTroubleshoot
+  onTroubleshoot,
+  onAgentStore
 }: {
   botUsername?: string
   onTroubleshoot?: () => void
+  onAgentStore?: () => void
 }): React.JSX.Element {
   const [status, setStatus] = useState<'starting' | 'running' | 'stopped'>('starting')
   const [hasError, setHasError] = useState(false)
@@ -227,6 +229,32 @@ export default function DoneStep({
           <div className="text-left">
             <p className="text-sm font-bold">카카오 오픈채팅방 참여하기</p>
             <p className="text-[11px] text-text-muted">사용법, 질문, 피드백을 나눠보세요</p>
+          </div>
+          <svg
+            className="ml-auto text-text-muted"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </button>
+      )}
+
+      {onAgentStore && (
+        <button
+          onClick={onAgentStore}
+          className="glass-card flex items-center gap-3 px-5 py-3 cursor-pointer hover:border-primary/40 transition-all duration-200"
+        >
+          <span className="text-base">🤖</span>
+          <div className="text-left">
+            <p className="text-sm font-bold">에이전트 스토어</p>
+            <p className="text-[11px] text-text-muted">AI 에이전트로 생산성을 높여보세요</p>
           </div>
           <svg
             className="ml-auto text-text-muted"

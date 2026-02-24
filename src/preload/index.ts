@@ -117,6 +117,33 @@ const electronAPI = {
     get: (): Promise<{ enabled: boolean }> => ipcRenderer.invoke('autolaunch:get'),
     set: (enabled: boolean): Promise<{ success: boolean }> =>
       ipcRenderer.invoke('autolaunch:set', enabled)
+  },
+  agentStore: {
+    list: (): Promise<
+      {
+        id: string
+        name: string
+        description: string
+        version: string
+        price: number
+        features: string[]
+        checkoutUrl: string
+      }[]
+    > => ipcRenderer.invoke('agent-store:list'),
+    status: (agentId: string): Promise<'not_purchased' | 'activated' | 'installed'> =>
+      ipcRenderer.invoke('agent-store:status', agentId),
+    activate: (
+      agentId: string,
+      licenseKey: string
+    ): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('agent-store:activate', agentId, licenseKey),
+    install: (agentId: string): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('agent-store:install', agentId),
+    onProgress: (cb: (msg: string) => void): (() => void) => {
+      const handler = (_: unknown, msg: string): void => cb(msg)
+      ipcRenderer.on('agent-store:progress', handler)
+      return () => ipcRenderer.removeListener('agent-store:progress', handler)
+    }
   }
 }
 

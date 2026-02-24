@@ -76,6 +76,23 @@ interface ElectronAPI {
     get: () => Promise<{ enabled: boolean }>
     set: (enabled: boolean) => Promise<{ success: boolean }>
   }
+  agentStore: {
+    list: () => Promise<
+      {
+        id: string
+        name: string
+        description: string
+        version: string
+        price: number
+        features: string[]
+        checkoutUrl: string
+      }[]
+    >
+    status: (agentId: string) => Promise<'not_purchased' | 'activated' | 'installed'>
+    activate: (agentId: string, licenseKey: string) => Promise<{ success: boolean; error?: string }>
+    install: (agentId: string) => Promise<{ success: boolean; error?: string }>
+    onProgress: (cb: (msg: string) => void) => () => void
+  }
 }
 
 declare global {

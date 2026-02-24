@@ -10,6 +10,7 @@ export type StepName =
   | 'config'
   | 'done'
   | 'troubleshoot'
+  | 'agentStore'
 
 const STEPS: StepName[] = [
   'welcome',
