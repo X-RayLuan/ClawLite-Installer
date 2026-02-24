@@ -11,7 +11,13 @@ const electronAPI = {
       openclawInstalled: boolean
       openclawVersion: string | null
       openclawLatestVersion: string | null
-      wslState?: 'not_available' | 'not_installed' | 'needs_reboot' | 'no_distro' | 'ready'
+      wslState?:
+        | 'not_available'
+        | 'not_installed'
+        | 'needs_reboot'
+        | 'no_distro'
+        | 'not_initialized'
+        | 'ready'
     }> => ipcRenderer.invoke('env:check')
   },
   install: {
@@ -60,7 +66,7 @@ const electronAPI = {
   },
   wsl: {
     check: (): Promise<
-      'not_available' | 'not_installed' | 'needs_reboot' | 'no_distro' | 'ready'
+      'not_available' | 'not_installed' | 'needs_reboot' | 'no_distro' | 'not_initialized' | 'ready'
     > => ipcRenderer.invoke('wsl:check'),
     install: (): Promise<{ success: boolean; needsReboot?: boolean; error?: string }> =>
       ipcRenderer.invoke('wsl:install')

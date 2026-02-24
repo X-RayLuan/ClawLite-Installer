@@ -1,4 +1,10 @@
-type WslState = 'not_available' | 'not_installed' | 'needs_reboot' | 'no_distro' | 'ready'
+type WslState =
+  | 'not_available'
+  | 'not_installed'
+  | 'needs_reboot'
+  | 'no_distro'
+  | 'not_initialized'
+  | 'ready'
 
 interface WizardPersistedState {
   step: string

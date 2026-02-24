@@ -109,7 +109,23 @@ export const installWsl = async (win: BrowserWindow): Promise<{ needsReboot: boo
   const log = (msg: string): void => sendProgress(win, msg)
 
   log('WSL 설치 중... (관리자 권한 필요)')
-  await runWithLog('wsl', ['--install', '-d', 'Ubuntu', '--no-launch'], log, { shell: true })
+  try {
+    await runWithLog('wsl', ['--install', '-d', 'Ubuntu', '--no-launch'], log, { shell: true })
+  } catch (err) {
+    // exit 4294967295 = ERROR_ALREADY_EXISTS: Ubuntu가 이미 등록됨
+    const msg = err instanceof Error ? err.message : ''
+    if (msg.includes('4294967295')) {
+      log('Ubuntu가 이미 등록되어 있습니다. 초기화를 시도합니다...')
+      try {
+        await runInWsl('echo initialized', 30000)
+        log('Ubuntu 초기화 완료!')
+        return { needsReboot: false }
+      } catch {
+        throw err
+      }
+    }
+    throw err
+  }
   log('WSL 설치 완료! 재부팅이 필요합니다.')
   return { needsReboot: true }
 }

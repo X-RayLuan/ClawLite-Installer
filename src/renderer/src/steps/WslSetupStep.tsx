@@ -2,7 +2,13 @@ import { useState, useEffect } from 'react'
 import LobsterLogo from '../components/LobsterLogo'
 import Button from '../components/Button'
 
-type WslState = 'not_available' | 'not_installed' | 'needs_reboot' | 'no_distro' | 'ready'
+type WslState =
+  | 'not_available'
+  | 'not_installed'
+  | 'needs_reboot'
+  | 'no_distro'
+  | 'not_initialized'
+  | 'ready'
 
 interface WslSetupStepProps {
   wslState: WslState
@@ -53,8 +59,15 @@ export default function WslSetupStep({ wslState, onReady }: WslSetupStepProps): 
     setError(null)
     try {
       const result = await window.electronAPI.wsl.install()
-      if (result.success) {
-        // 설치 후 상태 재확인
+      if (result.success && result.needsReboot) {
+        setCurrentState('needs_reboot')
+        await window.electronAPI.wizard.saveState({
+          step: 'wslSetup',
+          wslInstalled: true,
+          timestamp: Date.now()
+        })
+      } else if (result.success) {
+        // 리부트 불필요 → 상태 재확인
         const state = await window.electronAPI.wsl.check()
         setCurrentState(state)
       } else {
@@ -123,6 +136,15 @@ export default function WslSetupStep({ wslState, onReady }: WslSetupStepProps): 
           <p className="text-text-muted text-sm">Ubuntu 배포판을 설치합니다.</p>
           <Button variant="primary" size="lg" onClick={handleInstallDistro} loading={installing}>
             {installing ? 'Ubuntu 설치 중...' : 'Ubuntu 설치'}
+          </Button>
+        </div>
+      )}
+
+      {currentState === 'not_initialized' && (
+        <div className="text-center space-y-3 max-w-sm">
+          <p className="text-text-muted text-sm">Ubuntu가 등록되어 있지만 초기화가 필요합니다.</p>
+          <Button variant="primary" size="lg" onClick={handleInstallDistro} loading={installing}>
+            {installing ? 'Ubuntu 초기화 중...' : 'Ubuntu 초기화'}
           </Button>
         </div>
       )}

@@ -1,6 +1,12 @@
 import { spawn } from 'child_process'
 
-export type WslState = 'not_available' | 'not_installed' | 'needs_reboot' | 'no_distro' | 'ready'
+export type WslState =
+  | 'not_available'
+  | 'not_installed'
+  | 'needs_reboot'
+  | 'no_distro'
+  | 'not_initialized'
+  | 'ready'
 
 const WSL_DISTRO = 'Ubuntu'
 const WSL_USER = 'root'
@@ -18,8 +24,8 @@ const runCmd = (cmd: string, args: string[], timeout = 15000): Promise<string> =
     child.stderr.on('data', (d) => (stderr += d.toString()))
     child.on('close', (code) => {
       clearTimeout(timer)
-      if (code === 0) resolve(stdout.trim())
-      else reject(new Error(stderr || `exit ${code}`))
+      if (code === 0) resolve(stdout.replace(/\0/g, '').trim())
+      else reject(new Error(stderr.replace(/\0/g, '') || `exit ${code}`))
     })
     child.on('error', (err) => {
       clearTimeout(timer)
@@ -53,8 +59,13 @@ export const checkWslState = async (): Promise<WslState> => {
     if (!list.includes(WSL_DISTRO)) {
       return 'no_distro'
     }
-    // 배포판이 있지만 Running이 아닌 경우도 ready 취급 (실행 시 자동 시작)
-    return 'ready'
+    // Ubuntu가 등록되어 있지만 정상 작동하는지 확인
+    try {
+      await runCmd('wsl', ['-d', WSL_DISTRO, '-u', WSL_USER, '--', 'echo', 'ok'])
+      return 'ready'
+    } catch {
+      return 'not_initialized'
+    }
   } catch {
     // --list 실패 → WSL 설치되었지만 아직 초기화 안 됨
     return 'not_installed'
@@ -77,8 +88,8 @@ export const runInWsl = (script: string, timeout = 30000): Promise<string> =>
     child.stderr.on('data', (d) => (stderr += d.toString()))
     child.on('close', (code) => {
       clearTimeout(timer)
-      if (code === 0) resolve(stdout.trim())
-      else reject(new Error(stderr || `exit ${code}`))
+      if (code === 0) resolve(stdout.replace(/\0/g, '').trim())
+      else reject(new Error(stderr.replace(/\0/g, '') || `exit ${code}`))
     })
     child.on('error', (err) => {
       clearTimeout(timer)

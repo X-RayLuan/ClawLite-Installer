@@ -2,7 +2,13 @@ import { useState, useEffect } from 'react'
 import LobsterLogo from '../components/LobsterLogo'
 import Button from '../components/Button'
 
-type WslState = 'not_available' | 'not_installed' | 'needs_reboot' | 'no_distro' | 'ready'
+type WslState =
+  | 'not_available'
+  | 'not_installed'
+  | 'needs_reboot'
+  | 'no_distro'
+  | 'not_initialized'
+  | 'ready'
 
 interface EnvResult {
   os: 'macos' | 'windows' | 'linux'
@@ -46,6 +52,8 @@ const wslStateLabel = (state?: WslState): string => {
       return '재부팅 필요'
     case 'not_installed':
       return '미설치'
+    case 'not_initialized':
+      return '초기화 필요'
     case 'not_available':
       return '미지원'
     default:
