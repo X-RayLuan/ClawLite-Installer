@@ -69,13 +69,13 @@ Windows 코드 서명 인증서 발급을 진행 중입니다. 현재는 설치 
 
 ## 기술 스택
 
-| 영역 | 기술 |
-| --- | --- |
-| 프레임워크 | Electron + electron-vite |
-| 프론트엔드 | React 19 + Tailwind CSS 4 |
-| 언어 | TypeScript |
-| 빌드/배포 | electron-builder + GitHub Actions |
-| 코드 서명 | Apple Notarization (macOS) / SignPath (Windows, 진행 중) |
+| 영역       | 기술                                                     |
+| ---------- | -------------------------------------------------------- |
+| 프레임워크 | Electron + electron-vite                                 |
+| 프론트엔드 | React 19 + Tailwind CSS 4                                |
+| 언어       | TypeScript                                               |
+| 빌드/배포  | electron-builder + GitHub Actions                        |
+| 코드 서명  | Apple Notarization (macOS) / SignPath (Windows, 진행 중) |
 
 ## 개발
 

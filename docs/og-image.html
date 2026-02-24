@@ -1,296 +1,362 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=1200">
-  <title>EasyClaw OG Image</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
-  <style>
-    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1200" />
+    <title>EasyClaw OG Image</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Syne:wght@700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      *,
+      *::before,
+      *::after {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
-    html, body {
-      width: 1200px;
-      height: 630px;
-      overflow: hidden;
-      background: #050810;
-    }
+      html,
+      body {
+        width: 1200px;
+        height: 630px;
+        overflow: hidden;
+        background: #050810;
+      }
 
-    .canvas {
-      position: relative;
-      width: 1200px;
-      height: 630px;
-      overflow: hidden;
-      background:
-        radial-gradient(ellipse 900px 500px at 50% 38%, rgba(249, 115, 22, 0.10) 0%, transparent 100%),
-        radial-gradient(ellipse 600px 400px at 20% 70%, rgba(139, 92, 246, 0.07) 0%, transparent 100%),
-        radial-gradient(ellipse 500px 350px at 85% 80%, rgba(6, 182, 212, 0.05) 0%, transparent 100%),
-        #050810;
-    }
+      .canvas {
+        position: relative;
+        width: 1200px;
+        height: 630px;
+        overflow: hidden;
+        background:
+          radial-gradient(
+            ellipse 900px 500px at 50% 38%,
+            rgba(249, 115, 22, 0.1) 0%,
+            transparent 100%
+          ),
+          radial-gradient(
+            ellipse 600px 400px at 20% 70%,
+            rgba(139, 92, 246, 0.07) 0%,
+            transparent 100%
+          ),
+          radial-gradient(
+            ellipse 500px 350px at 85% 80%,
+            rgba(6, 182, 212, 0.05) 0%,
+            transparent 100%
+          ),
+          #050810;
+      }
 
-    /* ── Dramatic spotlight on mascot ── */
-    .spotlight {
-      position: absolute;
-      width: 700px;
-      height: 700px;
-      top: -120px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: radial-gradient(circle, rgba(249, 115, 22, 0.08) 0%, rgba(249, 115, 22, 0.03) 35%, transparent 65%);
-      pointer-events: none;
-      z-index: 1;
-    }
+      /* ── Dramatic spotlight on mascot ── */
+      .spotlight {
+        position: absolute;
+        width: 700px;
+        height: 700px;
+        top: -120px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: radial-gradient(
+          circle,
+          rgba(249, 115, 22, 0.08) 0%,
+          rgba(249, 115, 22, 0.03) 35%,
+          transparent 65%
+        );
+        pointer-events: none;
+        z-index: 1;
+      }
 
-    /* ── Grid lines for depth ── */
-    .grid-overlay {
-      position: absolute;
-      inset: 0;
-      z-index: 1;
-      pointer-events: none;
-      opacity: 0.025;
-      background-image:
-        linear-gradient(rgba(255,255,255,0.4) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,0.4) 1px, transparent 1px);
-      background-size: 80px 80px;
-      mask-image: radial-gradient(ellipse 700px 400px at 50% 45%, black 0%, transparent 100%);
-      -webkit-mask-image: radial-gradient(ellipse 700px 400px at 50% 45%, black 0%, transparent 100%);
-    }
+      /* ── Grid lines for depth ── */
+      .grid-overlay {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        pointer-events: none;
+        opacity: 0.025;
+        background-image:
+          linear-gradient(rgba(255, 255, 255, 0.4) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.4) 1px, transparent 1px);
+        background-size: 80px 80px;
+        mask-image: radial-gradient(ellipse 700px 400px at 50% 45%, black 0%, transparent 100%);
+        -webkit-mask-image: radial-gradient(
+          ellipse 700px 400px at 50% 45%,
+          black 0%,
+          transparent 100%
+        );
+      }
 
-    /* ── Grain ── */
-    .grain {
-      position: absolute;
-      inset: 0;
-      z-index: 2;
-      pointer-events: none;
-      opacity: 0.028;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-      background-repeat: repeat;
-      background-size: 200px;
-    }
+      /* ── Grain ── */
+      .grain {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        pointer-events: none;
+        opacity: 0.028;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+        background-repeat: repeat;
+        background-size: 200px;
+      }
 
-    /* ── Vignette ── */
-    .vignette {
-      position: absolute;
-      inset: 0;
-      z-index: 2;
-      pointer-events: none;
-      background: radial-gradient(ellipse 1100px 550px at 50% 45%, transparent 40%, rgba(5, 8, 16, 0.7) 100%);
-    }
+      /* ── Vignette ── */
+      .vignette {
+        position: absolute;
+        inset: 0;
+        z-index: 2;
+        pointer-events: none;
+        background: radial-gradient(
+          ellipse 1100px 550px at 50% 45%,
+          transparent 40%,
+          rgba(5, 8, 16, 0.7) 100%
+        );
+      }
 
-    /* ── Top edge glow line ── */
-    .top-glow {
-      position: absolute;
-      top: 0;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 600px;
-      height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(249, 115, 22, 0.4), rgba(139, 92, 246, 0.2), transparent);
-      z-index: 5;
-    }
-    .top-glow::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 300px;
-      height: 40px;
-      background: linear-gradient(180deg, rgba(249, 115, 22, 0.06), transparent);
-      pointer-events: none;
-    }
+      /* ── Top edge glow line ── */
+      .top-glow {
+        position: absolute;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 600px;
+        height: 1px;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(249, 115, 22, 0.4),
+          rgba(139, 92, 246, 0.2),
+          transparent
+        );
+        z-index: 5;
+      }
+      .top-glow::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 300px;
+        height: 40px;
+        background: linear-gradient(180deg, rgba(249, 115, 22, 0.06), transparent);
+        pointer-events: none;
+      }
 
-    /* ── Content ── */
-    .content {
-      position: relative;
-      z-index: 10;
-      width: 100%;
-      height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
+      /* ── Content ── */
+      .content {
+        position: relative;
+        z-index: 10;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
 
-    .layout {
-      display: flex;
-      align-items: center;
-      gap: 56px;
-    }
+      .layout {
+        display: flex;
+        align-items: center;
+        gap: 56px;
+      }
 
-    /* ── Mascot ── */
-    .mascot-area {
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
+      /* ── Mascot ── */
+      .mascot-area {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
 
-    .mascot-glow-outer {
-      position: absolute;
-      width: 280px;
-      height: 280px;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(249, 115, 22, 0.14) 0%, transparent 70%);
-      filter: blur(30px);
-    }
+      .mascot-glow-outer {
+        position: absolute;
+        width: 280px;
+        height: 280px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(249, 115, 22, 0.14) 0%, transparent 70%);
+        filter: blur(30px);
+      }
 
-    .mascot-glow-inner {
-      position: absolute;
-      width: 200px;
-      height: 200px;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(249, 115, 22, 0.10) 0%, transparent 60%);
-    }
+      .mascot-glow-inner {
+        position: absolute;
+        width: 200px;
+        height: 200px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(249, 115, 22, 0.1) 0%, transparent 60%);
+      }
 
+      .mascot-area svg {
+        position: relative;
+        z-index: 2;
+        filter: drop-shadow(0 8px 32px rgba(249, 115, 22, 0.35))
+          drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5));
+      }
 
-    .mascot-area svg {
-      position: relative;
-      z-index: 2;
-      filter: drop-shadow(0 8px 32px rgba(249, 115, 22, 0.35)) drop-shadow(0 2px 8px rgba(0,0,0,0.5));
-    }
+      /* ── Text side ── */
+      .text-area {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+      }
 
-    /* ── Text side ── */
-    .text-area {
-      display: flex;
-      flex-direction: column;
-      gap: 0;
-    }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        width: fit-content;
+        padding: 5px 14px;
+        border-radius: 99px;
+        background: rgba(249, 115, 22, 0.08);
+        border: 1px solid rgba(249, 115, 22, 0.18);
+        margin-bottom: 20px;
+      }
+      .badge-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #f97316;
+        box-shadow: 0 0 8px rgba(249, 115, 22, 0.6);
+      }
+      .badge-text {
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-size: 12px;
+        font-weight: 700;
+        color: #f97316;
+        letter-spacing: 0.04em;
+      }
 
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      width: fit-content;
-      padding: 5px 14px;
-      border-radius: 99px;
-      background: rgba(249, 115, 22, 0.08);
-      border: 1px solid rgba(249, 115, 22, 0.18);
-      margin-bottom: 20px;
-    }
-    .badge-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: #f97316;
-      box-shadow: 0 0 8px rgba(249, 115, 22, 0.6);
-    }
-    .badge-text {
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      font-size: 12px;
-      font-weight: 700;
-      color: #f97316;
-      letter-spacing: 0.04em;
-    }
+      .logo {
+        font-family: 'Syne', sans-serif;
+        font-size: 72px;
+        font-weight: 800;
+        letter-spacing: -0.04em;
+        line-height: 1;
+        margin-bottom: 16px;
+      }
+      .logo .easy {
+        color: #f0eef6;
+      }
+      .logo .claw {
+        background: linear-gradient(135deg, #f97316 0%, #fdba74 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
 
-    .logo {
-      font-family: 'Syne', sans-serif;
-      font-size: 72px;
-      font-weight: 800;
-      letter-spacing: -0.04em;
-      line-height: 1;
-      margin-bottom: 16px;
-    }
-    .logo .easy { color: #f0eef6; }
-    .logo .claw {
-      background: linear-gradient(135deg, #f97316 0%, #fdba74 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
+      .tagline {
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-size: 20px;
+        font-weight: 500;
+        color: rgba(139, 138, 158, 0.9);
+        line-height: 1.5;
+        letter-spacing: -0.01em;
+      }
+      .tagline strong {
+        color: rgba(240, 238, 246, 0.85);
+        font-weight: 600;
+      }
 
-    .tagline {
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      font-size: 20px;
-      font-weight: 500;
-      color: rgba(139, 138, 158, 0.9);
-      line-height: 1.5;
-      letter-spacing: -0.01em;
-    }
-    .tagline strong {
-      color: rgba(240, 238, 246, 0.85);
-      font-weight: 600;
-    }
+      .domain-line {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-top: 24px;
+      }
+      .domain-line::before {
+        content: '';
+        width: 32px;
+        height: 1px;
+        background: linear-gradient(90deg, rgba(249, 115, 22, 0.5), rgba(249, 115, 22, 0));
+      }
+      .domain-text {
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-size: 14px;
+        font-weight: 600;
+        color: rgba(139, 138, 158, 0.4);
+        letter-spacing: 0.12em;
+        text-transform: lowercase;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="canvas">
+      <div class="spotlight"></div>
+      <div class="grid-overlay"></div>
+      <div class="grain"></div>
+      <div class="vignette"></div>
+      <div class="top-glow"></div>
 
-    .domain-line {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-top: 24px;
-    }
-    .domain-line::before {
-      content: '';
-      width: 32px;
-      height: 1px;
-      background: linear-gradient(90deg, rgba(249, 115, 22, 0.5), rgba(249, 115, 22, 0.0));
-    }
-    .domain-text {
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      font-size: 14px;
-      font-weight: 600;
-      color: rgba(139, 138, 158, 0.4);
-      letter-spacing: 0.12em;
-      text-transform: lowercase;
-    }
-  </style>
-</head>
-<body>
-  <div class="canvas">
-    <div class="spotlight"></div>
-    <div class="grid-overlay"></div>
-    <div class="grain"></div>
-    <div class="vignette"></div>
-    <div class="top-glow"></div>
-
-    <div class="content">
-      <div class="layout">
-        <!-- Mascot -->
-        <div class="mascot-area">
-          <div class="mascot-glow-outer"></div>
-          <div class="mascot-glow-inner"></div>
-          <svg width="180" height="180" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <linearGradient id="mg" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="#fb923c" />
-                <stop offset="100%" stop-color="#c2410c" />
-              </linearGradient>
-              <radialGradient id="gw" cx="50%" cy="45%">
-                <stop offset="0%" stop-color="#f97316" stop-opacity=".25" />
-                <stop offset="100%" stop-color="#f97316" stop-opacity="0" />
-              </radialGradient>
-            </defs>
-            <ellipse cx="60" cy="55" rx="48" ry="46" fill="url(#gw)" />
-            <path d="M45 15 Q36 4 29 7" stroke="#fb923c" stroke-width="2.5" stroke-linecap="round" fill="none"/>
-            <path d="M75 15 Q84 4 91 7" stroke="#fb923c" stroke-width="2.5" stroke-linecap="round" fill="none"/>
-            <path d="M60 12 C32 12 16 35 16 55 C16 74 30 93 44 98 L44 108 L53 108 L53 98 C56 99 60 100 60 100 C60 100 64 99 67 98 L67 108 L76 108 L76 98 C90 93 104 74 104 55 C104 35 88 12 60 12Z" fill="url(#mg)"/>
-            <path d="M20 44 C6 39 1 49 5 58 C9 67 19 63 24 54 C27 48 24 44 20 44Z" fill="url(#mg)"/>
-            <path d="M100 44 C114 39 119 49 115 58 C111 67 101 63 96 54 C93 48 96 44 100 44Z" fill="url(#mg)"/>
-            <circle cx="45" cy="40" r="7" fill="#050810" />
-            <circle cx="75" cy="40" r="7" fill="#050810" />
-            <circle cx="47" cy="38" r="3" fill="#34d4b0" />
-            <circle cx="77" cy="38" r="3" fill="#34d4b0" />
-          </svg>
-        </div>
-
-        <!-- Text -->
-        <div class="text-area">
-          <div class="badge">
-            <div class="badge-dot"></div>
-            <span class="badge-text">OpenClaw Installer</span>
+      <div class="content">
+        <div class="layout">
+          <!-- Mascot -->
+          <div class="mascot-area">
+            <div class="mascot-glow-outer"></div>
+            <div class="mascot-glow-inner"></div>
+            <svg
+              width="180"
+              height="180"
+              viewBox="0 0 120 120"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <defs>
+                <linearGradient id="mg" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#fb923c" />
+                  <stop offset="100%" stop-color="#c2410c" />
+                </linearGradient>
+                <radialGradient id="gw" cx="50%" cy="45%">
+                  <stop offset="0%" stop-color="#f97316" stop-opacity=".25" />
+                  <stop offset="100%" stop-color="#f97316" stop-opacity="0" />
+                </radialGradient>
+              </defs>
+              <ellipse cx="60" cy="55" rx="48" ry="46" fill="url(#gw)" />
+              <path
+                d="M45 15 Q36 4 29 7"
+                stroke="#fb923c"
+                stroke-width="2.5"
+                stroke-linecap="round"
+                fill="none"
+              />
+              <path
+                d="M75 15 Q84 4 91 7"
+                stroke="#fb923c"
+                stroke-width="2.5"
+                stroke-linecap="round"
+                fill="none"
+              />
+              <path
+                d="M60 12 C32 12 16 35 16 55 C16 74 30 93 44 98 L44 108 L53 108 L53 98 C56 99 60 100 60 100 C60 100 64 99 67 98 L67 108 L76 108 L76 98 C90 93 104 74 104 55 C104 35 88 12 60 12Z"
+                fill="url(#mg)"
+              />
+              <path
+                d="M20 44 C6 39 1 49 5 58 C9 67 19 63 24 54 C27 48 24 44 20 44Z"
+                fill="url(#mg)"
+              />
+              <path
+                d="M100 44 C114 39 119 49 115 58 C111 67 101 63 96 54 C93 48 96 44 100 44Z"
+                fill="url(#mg)"
+              />
+              <circle cx="45" cy="40" r="7" fill="#050810" />
+              <circle cx="75" cy="40" r="7" fill="#050810" />
+              <circle cx="47" cy="38" r="3" fill="#34d4b0" />
+              <circle cx="77" cy="38" r="3" fill="#34d4b0" />
+            </svg>
           </div>
-          <div class="logo">
-            <span class="easy">Easy</span><span class="claw">Claw</span>
-          </div>
-          <div class="tagline">
-            <strong>AI 에이전트</strong>를 클릭 한 번으로 설치하세요
-          </div>
-          <div class="domain-line">
-            <span class="domain-text">easyclaw.kr</span>
+
+          <!-- Text -->
+          <div class="text-area">
+            <div class="badge">
+              <div class="badge-dot"></div>
+              <span class="badge-text">OpenClaw Installer</span>
+            </div>
+            <div class="logo"><span class="easy">Easy</span><span class="claw">Claw</span></div>
+            <div class="tagline"><strong>AI 에이전트</strong>를 클릭 한 번으로 설치하세요</div>
+            <div class="domain-line">
+              <span class="domain-text">easyclaw.kr</span>
+            </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
-</body>
+  </body>
 </html>

@@ -75,12 +75,14 @@ Windows에서는 WSL을 통해 Node.js/OpenClaw를 실행. `env-checker`, `insta
 코드는 `ybgwon96/easyclaw` (private), 바이너리는 `ybgwon96/easyclaw-releases` (public)에 분리.
 
 **릴리즈 절차:**
+
 1. `package.json` 버전 bump (`npm version patch --no-git-tag-version`)
 2. 커밋 & 푸시
 3. `gh release create vX.Y.Z` 로 private 저장소에 릴리즈 생성
 4. GitHub Actions가 자동으로: macOS/Windows 빌드 → `easyclaw-releases`에 릴리즈 + 바이너리 업로드
 
 **워크플로우 구조** (`.github/workflows/release.yml`):
+
 - `build-mac` (macos-latest): `build:mac-local` → artifact 업로드
 - `build-win` (windows-latest): `build:win-local` → artifact 업로드
 - `publish` (ubuntu-latest): 두 빌드 완료 후 `easyclaw-releases` 저장소에 `gh release create`
@@ -88,6 +90,7 @@ Windows에서는 WSL을 통해 Node.js/OpenClaw를 실행. `env-checker`, `insta
 **시크릿**: `RELEASE_TOKEN` (fine-grained PAT, `easyclaw-releases` 저장소 Contents Read/Write 권한)
 
 **다운로드 URL** (버전 무관, 항상 최신):
+
 - macOS: `https://github.com/ybgwon96/easyclaw-releases/releases/latest/download/easy-claw.dmg`
 - Windows: `https://github.com/ybgwon96/easyclaw-releases/releases/latest/download/easy-claw-setup.exe`
 
@@ -108,6 +111,7 @@ Windows에서는 WSL을 통해 Node.js/OpenClaw를 실행. `env-checker`, `insta
 ## UI 테마
 
 다크 모드 기반. 커스텀 색상은 `src/renderer/src/assets/main.css`의 `@theme` 블록에 정의:
+
 - primary: `#f97316` (오렌지), bg: `#080c18` (다크)
 - Tailwind에서 `text-primary`, `bg-bg-card`, `text-text-muted` 등으로 사용
 - 배경: Aurora 그라디언트 + SVG 노이즈 그레인 + 버블 애니메이션
