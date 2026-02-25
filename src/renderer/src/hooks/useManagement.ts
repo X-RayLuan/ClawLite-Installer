@@ -95,6 +95,7 @@ export const useManagement = (
         restoreMsg: '복원이 완료되었습니다. Gateway가 재시작됩니다.'
       }))
       onStatusChange('starting')
+      await new Promise((r) => setTimeout(r, 2000))
       const gs = await window.electronAPI.gateway.status()
       onStatusChange(gs === 'running' ? 'running' : 'stopped')
     } else if (r.error === '취소됨') {

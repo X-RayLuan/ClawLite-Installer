@@ -3,10 +3,30 @@ import { existsSync, createWriteStream, createReadStream } from 'fs'
 import { homedir, platform } from 'os'
 import { join } from 'path'
 import { BrowserWindow, dialog } from 'electron'
-import { stopGateway, startGateway } from './gateway'
+import { stopGateway, startGateway, getGatewayStatus } from './gateway'
 import { runInWsl } from './wsl-utils'
 
 const openclawDir = (): string => join(homedir(), '.openclaw')
+
+const forceKillGateway = (): Promise<void> =>
+  new Promise((resolve) => {
+    const child = spawn('pkill', ['-f', 'openclaw gateway'])
+    child.on('close', () => resolve())
+    child.on('error', () => resolve())
+  })
+
+const waitUntilStopped = async (timeoutMs = 5000): Promise<void> => {
+  const start = Date.now()
+  while (Date.now() - start < timeoutMs) {
+    const status = await getGatewayStatus()
+    if (status === 'stopped') return
+    await new Promise((r) => setTimeout(r, 500))
+  }
+  if (platform() !== 'win32') {
+    await forceKillGateway()
+    await new Promise((r) => setTimeout(r, 1000))
+  }
+}
 
 const formatDate = (): string => {
   const d = new Date()
@@ -137,6 +157,8 @@ export const importBackup = async (
     } catch {
       /* already stopped */
     }
+
+    await waitUntilStopped()
 
     if (isWin) {
       await tarExtractWsl(backupFile)
