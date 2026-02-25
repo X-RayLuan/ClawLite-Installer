@@ -104,17 +104,30 @@ const runWithLog = (
 
 // ─── WSL 설치 함수 (Windows) ───
 
-/** WSL 자체를 설치 (wsl --install -d Ubuntu --no-launch) */
+/** WSL 자체를 설치 (wsl --install -d Ubuntu --no-launch) — UAC 권한 상승 */
 export const installWsl = async (win: BrowserWindow): Promise<{ needsReboot: boolean }> => {
   const log = (msg: string): void => sendProgress(win, msg)
 
   log('WSL 설치 중... (관리자 권한 필요)')
+  log('관리자 창이 열립니다. 설치가 완료될 때까지 기다려 주세요.')
   try {
-    await runWithLog('wsl', ['--install', '-d', 'Ubuntu', '--no-launch'], log, { shell: true })
+    const psCommand = [
+      'try {',
+      "  $p = Start-Process -FilePath 'wsl' -ArgumentList '--install -d Ubuntu --no-launch' -Verb RunAs -Wait -PassThru;",
+      '  exit $p.ExitCode',
+      '} catch {',
+      '  Write-Error $_.Exception.Message;',
+      '  exit 1',
+      '}'
+    ].join(' ')
+    await runWithLog('powershell', ['-NoProfile', '-Command', psCommand], log)
   } catch (err) {
+    const errMsg = err instanceof Error ? err.message : ''
+    const errLines = ((err as RunError).lines ?? []).join('\n')
+    const combined = errMsg + '\n' + errLines
+
     // exit 4294967295 = ERROR_ALREADY_EXISTS: Ubuntu가 이미 등록됨
-    const msg = err instanceof Error ? err.message : ''
-    if (msg.includes('4294967295')) {
+    if (combined.includes('4294967295')) {
       log('Ubuntu가 이미 등록되어 있습니다. 초기화를 시도합니다...')
       try {
         await runInWsl('echo initialized', 30000)
@@ -123,6 +136,14 @@ export const installWsl = async (win: BrowserWindow): Promise<{ needsReboot: boo
       } catch {
         throw err
       }
+    }
+    // 사용자가 UAC 거부 또는 권한 오류
+    if (
+      combined.includes('canceled') ||
+      combined.includes('cancelled') ||
+      combined.includes('elevation')
+    ) {
+      throw new Error('관리자 권한이 필요합니다. UAC 프롬프트에서 "예"를 선택해 주세요.')
     }
     throw err
   }
