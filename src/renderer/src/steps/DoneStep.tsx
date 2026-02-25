@@ -305,36 +305,27 @@ export default function DoneStep({
             </svg>
           </button>
         )}
-      </div>
-
-      {/* ─── 관리 ─── */}
-      <div className="w-full max-w-md border-t border-glass-border pt-4 mt-2 space-y-2">
-        <p className="text-[11px] text-text-muted/50 font-bold tracking-wide uppercase mb-2">
-          관리
-        </p>
-        <div className="flex gap-2">
-          <button
-            onClick={backup.execute}
-            className="glass-card flex-1 flex items-center gap-2 px-4 py-2.5 cursor-pointer hover:border-primary/40 transition-all duration-200"
-          >
-            <span className="text-sm">📦</span>
-            <span className="text-xs font-bold">백업</span>
-          </button>
-          <button
-            onClick={backup.openRestore}
-            className="glass-card flex-1 flex items-center gap-2 px-4 py-2.5 cursor-pointer hover:border-primary/40 transition-all duration-200"
-          >
-            <span className="text-sm">📥</span>
-            <span className="text-xs font-bold">복원</span>
-          </button>
-          <button
-            onClick={uninstall.open}
-            className="glass-card flex-1 flex items-center gap-2 px-4 py-2.5 cursor-pointer hover:border-error/40 transition-all duration-200"
-          >
-            <span className="text-sm">🗑️</span>
-            <span className="text-xs font-bold text-error/80">삭제</span>
-          </button>
-        </div>
+        <button
+          onClick={backup.execute}
+          className="glass-card flex items-center gap-2 px-4 py-2.5 cursor-pointer hover:border-primary/40 transition-all duration-200"
+        >
+          <span className="text-sm">📦</span>
+          <span className="text-xs font-bold flex-1 text-left">백업</span>
+        </button>
+        <button
+          onClick={backup.openRestore}
+          className="glass-card flex items-center gap-2 px-4 py-2.5 cursor-pointer hover:border-primary/40 transition-all duration-200"
+        >
+          <span className="text-sm">📥</span>
+          <span className="text-xs font-bold flex-1 text-left">복원</span>
+        </button>
+        <button
+          onClick={uninstall.open}
+          className="glass-card flex items-center gap-2 px-4 py-2.5 cursor-pointer hover:border-error/40 transition-all duration-200"
+        >
+          <span className="text-sm">🗑️</span>
+          <span className="text-xs font-bold flex-1 text-left text-error/80">삭제</span>
+        </button>
       </div>
 
       {/* ─── 삭제 모달 ─── */}
