@@ -38,9 +38,9 @@ export const checkWslState = async (): Promise<WslState> => {
   try {
     await runCmd('wsl', ['--version'])
   } catch {
-    // inbox WSL은 --version 미지원 → --help로 재확인
+    // inbox WSL은 --version 미지원 → wsl.exe 존재 여부로 재확인
     try {
-      await runCmd('wsl', ['--help'])
+      await runCmd('where', ['wsl'])
     } catch {
       return 'not_available'
     }

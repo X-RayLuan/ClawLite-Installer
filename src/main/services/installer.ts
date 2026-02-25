@@ -158,7 +158,7 @@ export const installNodeWsl = async (win: BrowserWindow): Promise<void> => {
 export const installOpenClawWsl = async (win: BrowserWindow): Promise<void> => {
   const log = (msg: string): void => sendProgress(win, msg)
   log('WSL 내부에 OpenClaw 설치 중...')
-  await runInWsl('npm install -g openclaw@2026.2.21', 120000)
+  await runInWsl('npm install -g openclaw@latest', 120000)
   log('OpenClaw 설치 완료!')
 }
 
@@ -233,7 +233,7 @@ export const installOpenClaw = async (win: BrowserWindow): Promise<void> => {
     shell: true,
     env: getPathEnv()
   })
-  await runWithLog('npm', ['install', '-g', 'openclaw@2026.2.21'], log, {
+  await runWithLog('npm', ['install', '-g', 'openclaw@latest'], log, {
     shell: true,
     env: getPathEnv()
   })
