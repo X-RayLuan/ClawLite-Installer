@@ -60,6 +60,7 @@ interface ElectronAPI {
   gateway: {
     start: () => Promise<{ success: boolean; error?: string }>
     stop: () => Promise<{ success: boolean; error?: string }>
+    restart: () => Promise<{ success: boolean; error?: string }>
     status: () => Promise<'running' | 'stopped'>
     onLog: (cb: (msg: string) => void) => () => void
     onStatusChanged: (cb: (status: 'running' | 'stopped') => void) => () => void

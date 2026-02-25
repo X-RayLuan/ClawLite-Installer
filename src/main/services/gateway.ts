@@ -1,6 +1,7 @@
 import { spawn, ChildProcess } from 'child_process'
 import { platform } from 'os'
 import { getPathEnv, findBin } from './path-utils'
+import { checkPort } from './troubleshooter'
 
 // Windows WSL: gateway를 포그라운드 프로세스로 유지
 let wslGatewayProcess: ChildProcess | null = null
@@ -160,6 +161,26 @@ const runDoctorFix = (): Promise<void> =>
     child.on('error', () => resolve())
   })
 
+const forceKillGateway = (): Promise<void> =>
+  new Promise((resolve) => {
+    const child = spawn('pkill', ['-f', 'openclaw gateway'])
+    child.on('close', () => resolve())
+    child.on('error', () => resolve())
+  })
+
+export const waitUntilStopped = async (timeoutMs = 5000): Promise<void> => {
+  const start = Date.now()
+  while (Date.now() - start < timeoutMs) {
+    const { inUse } = await checkPort()
+    if (!inUse) return
+    await new Promise((r) => setTimeout(r, 500))
+  }
+  if (platform() !== 'win32') {
+    await forceKillGateway()
+    await new Promise((r) => setTimeout(r, 1000))
+  }
+}
+
 export const startGateway = async (): Promise<string> => {
   const isWin = platform() === 'win32'
   const starter = isWin ? startGatewayWsl() : runGateway(['start'])
@@ -174,6 +195,16 @@ export const stopGateway = (): Promise<string> => {
   const isWin = platform() === 'win32'
   if (isWin) return stopGatewayWsl()
   return runGateway(['stop'])
+}
+
+export const restartGateway = async (): Promise<string> => {
+  try {
+    await stopGateway()
+  } catch {
+    /* already stopped */
+  }
+  await waitUntilStopped()
+  return startGateway()
 }
 
 export const getGatewayStatus = async (): Promise<'running' | 'stopped'> => {

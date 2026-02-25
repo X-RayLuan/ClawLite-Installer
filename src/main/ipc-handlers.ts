@@ -16,6 +16,7 @@ import { runOnboard } from './services/onboarder'
 import {
   startGateway,
   stopGateway,
+  restartGateway,
   getGatewayStatus,
   setGatewayLogCallback
 } from './services/gateway'
@@ -182,6 +183,15 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
   ipcMain.handle('gateway:stop', async () => {
     try {
       await stopGateway()
+      return { success: true }
+    } catch (e) {
+      return { success: false, error: e instanceof Error ? e.message : String(e) }
+    }
+  })
+
+  ipcMain.handle('gateway:restart', async () => {
+    try {
+      await restartGateway()
       return { success: true }
     } catch (e) {
       return { success: false, error: e instanceof Error ? e.message : String(e) }

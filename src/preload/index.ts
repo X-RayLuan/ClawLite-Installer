@@ -47,6 +47,8 @@ const electronAPI = {
   gateway: {
     start: (): Promise<{ success: boolean; error?: string }> => ipcRenderer.invoke('gateway:start'),
     stop: (): Promise<{ success: boolean; error?: string }> => ipcRenderer.invoke('gateway:stop'),
+    restart: (): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('gateway:restart'),
     status: (): Promise<'running' | 'stopped'> => ipcRenderer.invoke('gateway:status'),
     onLog: (cb: (msg: string) => void): (() => void) => {
       const handler = (_: unknown, msg: string): void => cb(msg)
