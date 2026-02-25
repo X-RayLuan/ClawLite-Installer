@@ -103,34 +103,17 @@ export default function DoneStep({
   }, [])
 
   return (
-    <div className="flex-1 flex flex-col items-center px-10 gap-6 pt-8 pb-10 overflow-y-auto">
+    <div className="flex-1 flex flex-col items-center px-10 gap-3 pt-4 pb-6 overflow-y-auto">
       <div className="relative">
         <div
-          className={`absolute inset-0 rounded-full blur-3xl scale-150 transition-colors duration-700 ${
+          className={`absolute inset-0 rounded-full blur-2xl scale-125 transition-colors duration-700 ${
             status === 'running' ? 'bg-success/10' : 'bg-primary/10'
           }`}
         />
         <LobsterLogo
           state={status === 'running' ? 'success' : status === 'starting' ? 'loading' : 'idle'}
-          size={110}
+          size={56}
         />
-      </div>
-
-      <div className="text-center space-y-1.5">
-        <h2 className="text-xl font-black">
-          {status === 'running'
-            ? '모든 준비 완료!'
-            : status === 'starting'
-              ? '시작하는 중...'
-              : '게이트웨이 중지됨'}
-        </h2>
-        <p className="text-text-muted text-sm font-medium">
-          {status === 'running'
-            ? '텔레그램에서 AI 에이전트와 대화하세요'
-            : status === 'starting'
-              ? ''
-              : '다시 시작할 수 있습니다'}
-        </p>
       </div>
 
       {/* Status pill */}
@@ -190,28 +173,6 @@ export default function DoneStep({
         ) : null}
       </div>
 
-      {/* 자동 시작 토글 */}
-      <button
-        onClick={toggleAutoLaunch}
-        className="glass-card flex items-center gap-3 px-5 py-3 w-full max-w-sm cursor-pointer hover:border-primary/40 transition-all duration-200"
-      >
-        <div className="text-left flex-1">
-          <p className="text-sm font-bold">시스템 시작 시 자동 실행</p>
-          <p className="text-[11px] text-text-muted">로그인 후 트레이에서 자동 시작</p>
-        </div>
-        <div
-          className={`w-10 h-5.5 rounded-full p-0.5 transition-colors duration-200 ${
-            autoLaunch ? 'bg-primary' : 'bg-white/15'
-          }`}
-        >
-          <div
-            className={`w-4.5 h-4.5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
-              autoLaunch ? 'translate-x-4.5' : 'translate-x-0'
-            }`}
-          />
-        </div>
-      </button>
-
       {/* Gateway 로그 */}
       {logs.length > 0 && (
         <div className="w-full max-w-sm">
@@ -226,86 +187,99 @@ export default function DoneStep({
         </div>
       )}
 
-      {onAgentStore && (
-        <button
-          onClick={onAgentStore}
-          className="glass-card flex items-center gap-3 px-5 py-3 w-full max-w-sm cursor-pointer hover:border-primary/40 transition-all duration-200"
+      {/* ─── 카카오 채팅 배너 ─── */}
+      <button
+        onClick={() => window.open('https://open.kakao.com/o/gbBkPehi', '_blank')}
+        className="w-full max-w-md flex items-center gap-3 px-5 py-3.5 rounded-xl cursor-pointer bg-gradient-to-r from-primary/20 via-primary/10 to-primary/20 border border-primary/40 shadow-[0_0_20px_rgba(249,115,22,0.15)] hover:shadow-[0_0_24px_rgba(249,115,22,0.25)] hover:border-primary/60 transition-all duration-200"
+      >
+        <span className="text-lg">💬</span>
+        <div className="flex-1 text-left">
+          <span className="text-sm font-bold">카카오 오픈채팅</span>
+          <p className="text-[11px] text-text-muted/70">궁금한 점을 물어보세요!</p>
+        </div>
+        <svg
+          className="text-primary/70"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
         >
-          <span className="text-base">🛒</span>
-          <div className="text-left">
-            <p className="text-sm font-bold">에이전트 스토어</p>
-            <p className="text-[11px] text-text-muted">AI 에이전트를 추가하여 기능을 확장하세요</p>
-          </div>
-          <svg
-            className="ml-auto text-text-muted"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <polyline points="9 18 15 12 9 6" />
-          </svg>
-        </button>
-      )}
+          <polyline points="9 18 15 12 9 6" />
+        </svg>
+      </button>
 
-      {status === 'running' && (
+      {/* ─── 액션 그리드 ─── */}
+      <div className="w-full max-w-md grid grid-cols-2 gap-2">
         <button
-          onClick={() => window.open('https://open.kakao.com/o/gbBkPehi', '_blank')}
-          className="glass-card flex items-center gap-3 px-5 py-3 cursor-pointer hover:border-primary/40 transition-all duration-200"
+          onClick={toggleAutoLaunch}
+          className="glass-card flex items-center gap-2 px-4 py-2.5 cursor-pointer hover:border-primary/40 transition-all duration-200"
         >
-          <span className="text-base">💬</span>
-          <div className="text-left">
-            <p className="text-sm font-bold">카카오 오픈채팅방 참여하기</p>
-            <p className="text-[11px] text-text-muted">사용법, 질문, 피드백을 나눠보세요</p>
-          </div>
-          <svg
-            className="ml-auto text-text-muted"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+          <span className="text-sm">⚙️</span>
+          <span className="text-xs font-bold flex-1 text-left">자동 실행</span>
+          <div
+            className={`w-10 h-5.5 rounded-full p-0.5 transition-colors duration-200 ${
+              autoLaunch ? 'bg-primary' : 'bg-white/15'
+            }`}
           >
-            <polyline points="9 18 15 12 9 6" />
-          </svg>
-        </button>
-      )}
-
-      {onTroubleshoot && (
-        <button
-          onClick={onTroubleshoot}
-          className="glass-card flex items-center gap-3 px-5 py-3 cursor-pointer hover:border-primary/40 transition-all duration-200"
-        >
-          <span className="text-base">🔧</span>
-          <div className="text-left">
-            <p className="text-sm font-bold">문제 해결</p>
-            <p className="text-[11px] text-text-muted">자동 진단 및 복구를 실행합니다</p>
+            <div
+              className={`w-4.5 h-4.5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                autoLaunch ? 'translate-x-4.5' : 'translate-x-0'
+              }`}
+            />
           </div>
-          <svg
-            className="ml-auto text-text-muted"
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <polyline points="9 18 15 12 9 6" />
-          </svg>
         </button>
-      )}
+        {onAgentStore && (
+          <button
+            onClick={onAgentStore}
+            className="glass-card flex items-center gap-2 px-4 py-2.5 cursor-pointer hover:border-primary/40 transition-all duration-200"
+          >
+            <span className="text-sm">🛒</span>
+            <span className="text-xs font-bold flex-1 text-left">에이전트 스토어</span>
+            <svg
+              className="text-text-muted"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </button>
+        )}
+        {onTroubleshoot && (
+          <button
+            onClick={onTroubleshoot}
+            className="glass-card flex items-center gap-2 px-4 py-2.5 cursor-pointer hover:border-primary/40 transition-all duration-200"
+          >
+            <span className="text-sm">🔧</span>
+            <span className="text-xs font-bold flex-1 text-left">문제 해결</span>
+            <svg
+              className="text-text-muted"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </button>
+        )}
+      </div>
 
-      {/* ─── 관리 섹션 ─── */}
-      <div className="w-full max-w-sm border-t border-glass-border pt-4 mt-2 space-y-2">
+      {/* ─── 관리 ─── */}
+      <div className="w-full max-w-md border-t border-glass-border pt-4 mt-2 space-y-2">
         <p className="text-[11px] text-text-muted/50 font-bold tracking-wide uppercase mb-2">
           관리
         </p>
