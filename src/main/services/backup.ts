@@ -31,7 +31,15 @@ const tarCreateMac = (destFile: string): Promise<void> =>
 
 const tarExtractMac = (srcFile: string): Promise<void> =>
   new Promise((resolve, reject) => {
-    const child = spawn('tar', ['-xzf', srcFile, '-C', homedir()])
+    const child = spawn('tar', [
+      '-xzf',
+      srcFile,
+      '-C',
+      homedir(),
+      '--no-same-owner',
+      '--exclude=../*',
+      '--exclude=*/../*'
+    ])
     child.stdout.resume()
     child.stderr.resume()
     child.on('close', (code) => {

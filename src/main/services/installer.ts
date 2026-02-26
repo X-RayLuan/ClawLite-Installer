@@ -236,11 +236,9 @@ export const installOpenClaw = async (win: BrowserWindow): Promise<void> => {
   const npmGlobalDir = join(homedir(), '.npm-global')
   if (!existsSync(npmGlobalDir)) mkdirSync(npmGlobalDir, { recursive: true })
   await runWithLog('npm', ['config', 'set', 'prefix', npmGlobalDir], log, {
-    shell: true,
     env: getPathEnv()
   })
   await runWithLog('npm', ['install', '-g', 'openclaw@latest'], log, {
-    shell: true,
     env: getPathEnv()
   })
 

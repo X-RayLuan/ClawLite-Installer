@@ -47,7 +47,7 @@ function createWindow(): void {
   mainWindow.webContents.setWindowOpenHandler((details) => {
     try {
       const url = new URL(details.url)
-      if (['https:', 'http:', 'tg:'].includes(url.protocol)) {
+      if (['https:', 'tg:'].includes(url.protocol)) {
         shell.openExternal(details.url)
       }
     } catch {

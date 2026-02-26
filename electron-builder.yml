@@ -20,7 +20,7 @@ win:
   icon: build/icon.ico
   executableName: EasyClaw
   forceCodeSigning: false
-  requestedExecutionLevel: requireAdministrator
+  requestedExecutionLevel: asInvoker
   target:
     - target: nsis
       arch:

@@ -139,7 +139,7 @@ const loadLicenses = (): Record<string, LicenseRecord> => {
 }
 
 const saveLicenses = (licenses: Record<string, LicenseRecord>): void => {
-  writeFileSync(getLicensesPath(), JSON.stringify(licenses, null, 2))
+  writeFileSync(getLicensesPath(), JSON.stringify(licenses, null, 2), { mode: 0o600 })
 }
 
 // ─── 에이전트 설치 경로 확인 ───

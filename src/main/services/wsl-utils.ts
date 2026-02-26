@@ -13,7 +13,7 @@ const WSL_USER = 'root'
 
 const runCmd = (cmd: string, args: string[], timeout = 15000): Promise<string> =>
   new Promise((resolve, reject) => {
-    const child = spawn(cmd, args, { shell: true })
+    const child = spawn(cmd, args)
     const timer = setTimeout(() => {
       child.kill()
       reject(new Error('timeout'))
