@@ -3,7 +3,7 @@ import { spawn } from 'child_process'
 import { platform } from 'os'
 import { join } from 'path'
 import { existsSync, readFileSync, writeFileSync, unlinkSync } from 'fs'
-import { checkEnvironment } from './services/env-checker'
+import { checkEnvironment, checkOpenclawUpdate } from './services/env-checker'
 import { checkPort, runDoctorFix } from './services/troubleshooter'
 import {
   installNodeMac,
@@ -44,6 +44,7 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
   ipcMain.handle('app:version', () => app.getVersion())
 
   ipcMain.handle('env:check', () => checkEnvironment())
+  ipcMain.handle('openclaw:check-update', () => checkOpenclawUpdate())
 
   // WSL 관련 IPC
   ipcMain.handle('wsl:check', () => checkWslState())

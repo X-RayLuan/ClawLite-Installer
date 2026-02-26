@@ -154,6 +154,10 @@ const electronAPI = {
     install: (agentId: string): Promise<{ success: boolean; error?: string }> =>
       ipcRenderer.invoke('agent-store:install', agentId)
   },
+  openclaw: {
+    checkUpdate: (): Promise<{ currentVersion: string | null; latestVersion: string | null }> =>
+      ipcRenderer.invoke('openclaw:check-update')
+  },
   autoLaunch: {
     get: (): Promise<{ enabled: boolean }> => ipcRenderer.invoke('autolaunch:get'),
     set: (enabled: boolean): Promise<{ success: boolean }> =>
@@ -178,9 +182,4 @@ const electronAPI = {
   }
 }
 
-if (process.contextIsolated) {
-  contextBridge.exposeInMainWorld('electronAPI', electronAPI)
-} else {
-  // @ts-expect-error fallback for non-isolated context
-  window.electronAPI = electronAPI
-}
+contextBridge.exposeInMainWorld('electronAPI', electronAPI)
