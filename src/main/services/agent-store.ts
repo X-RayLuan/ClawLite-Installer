@@ -96,8 +96,7 @@ const AGENTS: AgentMeta[] = [
     price: 19000,
     icon: 'thread',
     featured: true,
-    comingSoon: false,
-    purchaseUrl: AGENT_PURCHASE_URLS['thread-writer']
+    comingSoon: true
   },
   {
     id: 'coming-soon-1',
