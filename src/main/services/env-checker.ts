@@ -153,6 +153,49 @@ const checkNodeAndOpenclaw = async (
   return { nodeInstalled, nodeVersion, nodeVersionOk, openclawInstalled, openclawVersion }
 }
 
+export interface OpenclawUpdateInfo {
+  currentVersion: string | null
+  latestVersion: string | null
+}
+
+export const checkOpenclawUpdate = async (): Promise<OpenclawUpdateInfo> => {
+  const os = platform() === 'win32' ? 'windows' : 'other'
+
+  const getCurrentVersion = async (): Promise<string | null> => {
+    try {
+      if (os === 'windows') {
+        const shellEscape = (s: string): string => `'${s.replace(/'/g, "'\\''")}'`
+        const wslRun = (cmd: string, args: string[]): Promise<string> =>
+          runInWsl(`${cmd} ${args.map(shellEscape).join(' ')}`)
+        const raw = await wslRun('npm', ['list', '-g', 'openclaw', '--json'])
+        const json = JSON.parse(raw)
+        return json.dependencies?.openclaw?.version ?? null
+      } else {
+        const raw = await runCommand('npm', ['list', '-g', 'openclaw', '--json'])
+        const json = JSON.parse(raw)
+        return json.dependencies?.openclaw?.version ?? null
+      }
+    } catch {
+      return null
+    }
+  }
+
+  const getLatestVersion = async (): Promise<string | null> => {
+    try {
+      return await fetchLatestVersion('openclaw')
+    } catch {
+      return null
+    }
+  }
+
+  const [currentVersion, latestVersion] = await Promise.all([
+    getCurrentVersion(),
+    getLatestVersion()
+  ])
+
+  return { currentVersion, latestVersion }
+}
+
 export const checkEnvironment = async (): Promise<EnvCheckResult> => {
   const os = platform() === 'darwin' ? 'macos' : platform() === 'win32' ? 'windows' : 'linux'
 

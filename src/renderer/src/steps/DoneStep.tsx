@@ -1,10 +1,12 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import LobsterLogo from '../components/LobsterLogo'
 import Button from '../components/Button'
 import LogViewer from '../components/LogViewer'
 import ManagementModal from '../components/ManagementModal'
 import ProviderSwitchModal from '../components/ProviderSwitchModal'
 import { useManagement } from '../hooks/useManagement'
+
+const UPDATE_CHECK_INTERVAL = 30 * 60 * 1000 // 30분
 
 export default function DoneStep({
   botUsername,
@@ -26,7 +28,70 @@ export default function DoneStep({
   const [currentProvider, setCurrentProvider] = useState<string | undefined>()
   const [showProviderModal, setShowProviderModal] = useState(false)
 
+  // OpenClaw 업데이트 상태
+  const [openclawUpdate, setOpenclawUpdate] = useState<{
+    current: string
+    latest: string
+  } | null>(null)
+  const [updating, setUpdating] = useState(false)
+  const [updateLogs, setUpdateLogs] = useState<string[]>([])
+  const updateCheckedRef = useRef(false)
+
   const { uninstall, backup } = useManagement(setStatus)
+
+  // OpenClaw 업데이트 체크
+  const checkOpenclawUpdate = useCallback(async () => {
+    try {
+      const info = await window.electronAPI.openclaw.checkUpdate()
+      if (info.currentVersion && info.latestVersion && info.currentVersion !== info.latestVersion) {
+        setOpenclawUpdate({ current: info.currentVersion, latest: info.latestVersion })
+      } else {
+        setOpenclawUpdate(null)
+      }
+    } catch {
+      /* 네트워크 오류 무시 */
+    }
+  }, [])
+
+  // Gateway running 시 1회 체크 + 30분 주기
+  useEffect(() => {
+    if (status !== 'running') return
+
+    if (!updateCheckedRef.current) {
+      updateCheckedRef.current = true
+      checkOpenclawUpdate()
+    }
+
+    const timer = setInterval(checkOpenclawUpdate, UPDATE_CHECK_INTERVAL)
+    return () => clearInterval(timer)
+  }, [status, checkOpenclawUpdate])
+
+  // OpenClaw 업데이트 실행
+  const handleOpenclawUpdate = useCallback(async () => {
+    setUpdating(true)
+    setUpdateLogs([])
+
+    const unsubProgress = window.electronAPI.install.onProgress((msg) => {
+      setUpdateLogs((prev) => [...prev, msg])
+    })
+    const unsubError = window.electronAPI.install.onError((msg) => {
+      setUpdateLogs((prev) => [...prev, `[오류] ${msg}`])
+    })
+
+    try {
+      const result = await window.electronAPI.install.openclaw()
+      if (result.success) {
+        setUpdateLogs((prev) => [...prev, 'Gateway 재시작 중...'])
+        await window.electronAPI.gateway.restart()
+        setStatus('running')
+        await checkOpenclawUpdate()
+      }
+    } finally {
+      unsubProgress()
+      unsubError()
+      setUpdating(false)
+    }
+  }, [checkOpenclawUpdate])
 
   // 자동 시작 설정 로드
   useEffect(() => {
@@ -192,6 +257,40 @@ export default function DoneStep({
           )}
         </div>
       </div>
+
+      {/* OpenClaw 업데이트 배너 */}
+      {(openclawUpdate || updating) && (
+        <div className="w-full max-w-md flex items-center gap-3 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-500/15 via-blue-500/10 to-blue-500/15 border border-blue-500/30">
+          <span className="text-base">{updating ? '⏳' : '🔄'}</span>
+          <div className="flex-1 min-w-0">
+            {updating ? (
+              <div>
+                <span className="text-[12px] font-bold">업데이트 중...</span>
+                {updateLogs.length > 0 && (
+                  <p className="text-[11px] text-text-muted/70 truncate">
+                    {updateLogs[updateLogs.length - 1]}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <span className="text-[12px] font-bold">
+                OpenClaw v{openclawUpdate!.latest} 업데이트 가능
+                <span className="text-text-muted/50 font-normal ml-1">
+                  (현재 v{openclawUpdate!.current})
+                </span>
+              </span>
+            )}
+          </div>
+          {!updating && (
+            <button
+              onClick={handleOpenclawUpdate}
+              className="px-3 py-1 text-[11px] font-bold rounded-lg bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30 transition-all duration-200 cursor-pointer whitespace-nowrap"
+            >
+              업데이트
+            </button>
+          )}
+        </div>
+      )}
 
       {/* 액션 버튼 */}
       <div className="flex gap-3">

@@ -110,6 +110,9 @@ interface ElectronAPI {
     activate: (agentId: string, licenseKey: string) => Promise<{ success: boolean; error?: string }>
     install: (agentId: string) => Promise<{ success: boolean; error?: string }>
   }
+  openclaw: {
+    checkUpdate: () => Promise<{ currentVersion: string | null; latestVersion: string | null }>
+  }
   autoLaunch: {
     get: () => Promise<{ enabled: boolean }>
     set: (enabled: boolean) => Promise<{ success: boolean }>
