@@ -73,13 +73,14 @@ function App(): React.JSX.Element {
   // 앱 시작 시 버전 + OS 확인 + 리부트 복원
   useEffect(() => {
     window.electronAPI.version().then(setVersion)
-    window.electronAPI.env.check().then((env) => {
+
+    // env.check() 완료 후 loadState() 실행 (레이스 컨디션 방지)
+    window.electronAPI.env.check().then(async (env) => {
       setIsWindows(env.os === 'windows')
       if (env.wslState) setWslState(env.wslState)
-    })
 
-    // 리부트 후 상태 복원
-    window.electronAPI.wizard.loadState().then((state) => {
+      // 리부트 후 상태 복원 — wslState가 정확히 설정된 후 실행
+      const state = await window.electronAPI.wizard.loadState()
       if (state) {
         goTo(state.step as 'wslSetup' | 'envCheck')
       }

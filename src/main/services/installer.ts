@@ -117,7 +117,7 @@ export const installWsl = async (win: BrowserWindow): Promise<{ needsReboot: boo
       "  $p = Start-Process -FilePath 'wsl' -ArgumentList '--install -d Ubuntu --no-launch' -Verb RunAs -Wait -PassThru;",
       '  exit $p.ExitCode',
       '} catch {',
-      '  Write-Error $_.Exception.Message;',
+      '  Write-Output $_.Exception.Message;',
       '  exit 1',
       '}'
     ].join(' ')
@@ -138,13 +138,30 @@ export const installWsl = async (win: BrowserWindow): Promise<{ needsReboot: boo
         throw err
       }
     }
+    const lower = combined.toLowerCase()
+
     // 사용자가 UAC 거부 또는 권한 오류
     if (
-      combined.includes('canceled') ||
-      combined.includes('cancelled') ||
-      combined.includes('elevation')
+      lower.includes('canceled') ||
+      lower.includes('cancelled') ||
+      lower.includes('elevation') ||
+      lower.includes('access denied') ||
+      lower.includes('permission')
     ) {
       throw new Error('관리자 권한이 필요합니다. UAC 프롬프트에서 "예"를 선택해 주세요.')
+    }
+    // wsl 명령어를 찾을 수 없는 경우 (Windows 버전 미지원)
+    if (lower.includes('not recognized') || lower.includes('not found')) {
+      throw new Error(
+        'WSL을 사용할 수 없는 Windows 버전입니다. Windows 10 버전 2004 이상이 필요합니다.'
+      )
+    }
+    // 가상화 비활성화
+    if (lower.includes('virtualization') || lower.includes('hyper-v')) {
+      throw new Error(
+        'BIOS에서 가상화(Virtualization)를 활성화해야 합니다. ' +
+          'PC 재시작 후 BIOS 설정에서 VT-x/AMD-V를 켜 주세요.'
+      )
     }
     throw err
   }
