@@ -5,7 +5,11 @@
 <h1 align="center">EasyClaw</h1>
 
 <p align="center">
-  <strong>OpenClaw AI 에이전트를 원클릭으로 설치하세요</strong>
+  <strong>One-click installer for OpenClaw AI agent</strong>
+</p>
+
+<p align="center">
+  <a href="README.ko.md">한국어</a> · <a href="README.ja.md">日本語</a> · <a href="README.zh.md">中文</a>
 </p>
 
 <p align="center">
@@ -16,103 +20,109 @@
 </p>
 
 <p align="center">
-  <a href="https://easyclaw.kr">홈페이지</a> · <a href="https://github.com/ybgwon96/easyclaw/releases/latest">다운로드</a> · <a href="https://open.kakao.com/o/gbBkPehi">커뮤니티</a> · <a href="https://github.com/openclaw/openclaw">OpenClaw</a>
+  <a href="https://easyclaw.kr">Website</a> · <a href="https://github.com/ybgwon96/easyclaw/releases/latest">Download</a> · <a href="https://github.com/openclaw/openclaw">OpenClaw</a>
 </p>
 
 ---
 
+<!-- Replace with your demo GIF: <p align="center"><img src="docs/demo.gif" width="600" alt="EasyClaw Demo"></p> -->
+
 <p align="center">
-  <img src="docs/screenshots/welcome.png" width="270" alt="시작 화면">
+  <img src="docs/screenshots/welcome.png" width="270" alt="Welcome">
   &nbsp;&nbsp;
-  <img src="docs/screenshots/env-check.png" width="270" alt="환경 검사">
+  <img src="docs/screenshots/env-check.png" width="270" alt="Environment Check">
   &nbsp;&nbsp;
-  <img src="docs/screenshots/done.png" width="270" alt="설치 완료">
+  <img src="docs/screenshots/done.png" width="270" alt="Done">
 </p>
 
-## 소개
+## What is EasyClaw?
 
-[OpenClaw](https://github.com/openclaw/openclaw) AI 에이전트를 **복잡한 터미널 작업 없이** 설치할 수 있는 데스크톱 인스톨러입니다.
+EasyClaw is a desktop installer that sets up [OpenClaw](https://github.com/openclaw/openclaw) AI agent **without any terminal commands**.
 
-**다운로드 → 실행 → API 키 입력**, 3단계면 끝.
+**Download → Run → Enter API key** — that's it. Three steps.
 
-## 주요 기능
+## Features
 
-- **원클릭 설치** — WSL, Node.js, OpenClaw 등 필요한 환경을 자동 감지 및 설치
-- **AI 제공사 선택** — Anthropic, Google Gemini, OpenAI, MiniMax, GLM 지원
-- **텔레그램 연동** — 텔레그램 봇을 통해 어디서든 AI 에이전트 사용
-- **크로스 플랫폼** — macOS (Intel + Apple Silicon) / Windows 지원
+- **One-Click Install** — Automatically detects and installs WSL, Node.js, and OpenClaw
+- **Multiple AI Providers** — Supports Anthropic, Google Gemini, OpenAI, MiniMax, and GLM
+- **Telegram Integration** — Use your AI agent anywhere through a Telegram bot
+- **Cross-Platform** — macOS (Intel + Apple Silicon) and Windows
 
-## 다운로드
+## Download
 
-| OS      | 파일   | 링크                                                             |
+| OS      | File   | Link                                                             |
 | ------- | ------ | ---------------------------------------------------------------- |
-| macOS   | `.dmg` | [다운로드](https://github.com/ybgwon96/easyclaw/releases/latest) |
-| Windows | `.exe` | [다운로드](https://github.com/ybgwon96/easyclaw/releases/latest) |
+| macOS   | `.dmg` | [Download](https://github.com/ybgwon96/easyclaw/releases/latest/download/easy-claw.dmg) |
+| Windows | `.exe` | [Download](https://github.com/ybgwon96/easyclaw/releases/latest/download/easy-claw-setup.exe) |
 
-[easyclaw.kr](https://easyclaw.kr)에서도 OS에 맞는 파일이 자동으로 선택됩니다.
+You can also download from [easyclaw.kr](https://easyclaw.kr) — it auto-detects your OS.
 
-## Windows 보안 경고 안내
+## Windows Security Notice
 
-Windows 코드 서명 인증서 발급을 진행 중입니다. 현재는 설치 시 보안 경고가 나타날 수 있습니다.
+We're in the process of obtaining a Windows code signing certificate. You may see a security warning during installation.
 
-> - 🔍 [VirusTotal 검사 결과](https://www.virustotal.com/gui/url/800de679ba1d63c29023776989a531d27c4510666a320ae3b440c7785b2ab149) — 94개 백신 엔진에서 탐지 0건
-> - 📂 소스코드 전체 공개 — 누구나 코드를 직접 검증 가능
-> - 🔨 GitHub Actions CI/CD로 빌드 — 빌드 과정이 투명하게 공개
+> - [VirusTotal scan result](https://www.virustotal.com/gui/url/800de679ba1d63c29023776989a531d27c4510666a320ae3b440c7785b2ab149) — 0 detections across 94 antivirus engines
+> - Fully open source — anyone can inspect the code
+> - Built with GitHub Actions CI/CD — transparent build process
 
 <details>
-<summary><b>"Windows의 PC 보호" 경고가 나타나면</b></summary>
+<summary><b>If you see "Windows protected your PC"</b></summary>
 
-1. **"추가 정보"** 클릭
-2. **"실행"** 클릭
+1. Click **"More info"**
+2. Click **"Run anyway"**
 
 </details>
 
-## 기술 스택
+## Tech Stack
 
-| 영역       | 기술                                                     |
-| ---------- | -------------------------------------------------------- |
-| 프레임워크 | Electron + electron-vite                                 |
-| 프론트엔드 | React 19 + Tailwind CSS 4                                |
-| 언어       | TypeScript                                               |
-| 빌드/배포  | electron-builder + GitHub Actions                        |
-| 코드 서명  | Apple Notarization (macOS) / SignPath (Windows, 진행 중) |
+| Area        | Technology                                               |
+| ----------- | -------------------------------------------------------- |
+| Framework   | Electron + electron-vite                                 |
+| Frontend    | React 19 + Tailwind CSS 4                                |
+| Language    | TypeScript                                               |
+| Build/CI    | electron-builder + GitHub Actions                        |
+| Code Sign   | Apple Notarization (macOS) / SignPath (Windows, pending) |
 
-## 개발
+## Development
 
 ```bash
-npm install    # 의존성 설치
-npm run dev    # 개발 모드 (electron-vite dev)
-npm run build  # 타입 체크 + 빌드
+npm install    # Install dependencies
+npm run dev    # Development mode (electron-vite dev)
+npm run build  # Type check + build
 npm run lint   # ESLint
 npm run format # Prettier
 ```
 
-플랫폼별 패키징:
+Platform-specific packaging:
 
 ```bash
-npm run build:mac-local  # macOS 로컬 빌드
-npm run build:win-local  # Windows 로컬 빌드
+npm run build:mac-local  # macOS local build
+npm run build:win-local  # Windows local build
 ```
 
-> **참고**: macOS 코드 서명/공증을 위해 `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`, `CSC_LINK`, `CSC_KEY_PASSWORD` 환경변수가 필요합니다. 없으면 서명 없이 빌드됩니다.
+> **Note**: macOS code signing requires `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`, `CSC_LINK`, `CSC_KEY_PASSWORD` environment variables. Without them, the app will be built unsigned.
 
-## 프로젝트 구조
+## Project Structure
 
 ```
 src/
 ├── main/             # Main process (Node.js)
-│   ├── services/     # 환경 체크, 설치, 온보딩, 게이트웨이
-│   └── ipc-handlers  # IPC 채널 라우터
-├── preload/          # contextBridge (IPC API 노출)
-└── renderer/         # React UI (7단계 위자드)
-api/                  # Vercel 서버리스 함수
-docs/                 # 랜딩 페이지 (easyclaw.kr)
+│   ├── services/     # Env check, installer, onboarding, gateway
+│   └── ipc-handlers  # IPC channel router
+├── preload/          # contextBridge (IPC API bridge)
+└── renderer/         # React UI (7-step wizard)
+api/                  # Vercel serverless functions
+docs/                 # Landing page (easyclaw.kr)
 ```
 
-## 크레딧
+## Contributing
 
-[OpenClaw](https://github.com/openclaw/openclaw) (MIT License) 기반 — [openclaw](https://github.com/openclaw) 팀 개발
+Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) before getting started.
 
-## 라이선스
+## Credits
+
+Built on [OpenClaw](https://github.com/openclaw/openclaw) (MIT License) by the [openclaw](https://github.com/openclaw) team.
+
+## License
 
 [MIT](LICENSE)
