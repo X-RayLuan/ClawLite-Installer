@@ -1,36 +1,31 @@
 /**
- * Google Apps Script - ClawLite 뉴스레터 구독자 수집
+ * Google Apps Script - ClawLite newsletter collector
  *
- * 사용 방법:
- * 1. Google Sheets에서 시트를 하나 만들고, 첫 행에 [email, source, subscribedAt] 헤더를 추가
- * 2. 확장 프로그램 → Apps Script 열기
- * 3. 이 코드를 붙여넣고 저장
- * 4. 배포 → 새 배포 → 웹 앱 → 액세스 권한: "모든 사용자" → 배포
- * 5. 생성된 URL을 Vercel 환경 변수 NEWSLETTER_SCRIPT_URL에 설정
+ * Setup:
+ * 1) Create a Google Sheet with headers: [email, source, subscribedAt]
+ * 2) Open Extensions -> Apps Script
+ * 3) Paste this file and save
+ * 4) Deploy as Web App (access: Anyone)
+ * 5) Set the deployed URL as NEWSLETTER_SCRIPT_URL in your environment
  */
 
 function doPost(e) {
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet()
-  var data = JSON.parse(e.postData.contents)
-  var email = (data.email || '').trim().toLowerCase()
+  const sheet = SpreadsheetApp.getActiveSheet()
+  const payload = JSON.parse(e.postData.contents || '{}')
+  const email = payload.email || ''
+  const source = payload.source || 'web'
 
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return ContentService.createTextOutput(
-      JSON.stringify({ success: false, error: 'invalid email' })
-    ).setMimeType(ContentService.MimeType.JSON)
+  if (!email || !email.includes('@')) {
+    return ContentService.createTextOutput(JSON.stringify({ success: false, error: 'invalid email' }))
+      .setMimeType(ContentService.MimeType.JSON)
   }
 
-  // 중복 체크
-  var emails = sheet.getRange('A2:A').getValues().flat().filter(String)
-  if (emails.indexOf(email) !== -1) {
-    return ContentService.createTextOutput(JSON.stringify({ success: true })).setMimeType(
-      ContentService.MimeType.JSON
-    )
+  const values = sheet.getDataRange().getValues()
+  const exists = values.some((row, idx) => idx > 0 && row[0] === email)
+  if (!exists) {
+    sheet.appendRow([email, source, new Date().toISOString()])
   }
 
-  sheet.appendRow([email, data.source || 'app', new Date().toISOString()])
-
-  return ContentService.createTextOutput(JSON.stringify({ success: true })).setMimeType(
-    ContentService.MimeType.JSON
-  )
+  return ContentService.createTextOutput(JSON.stringify({ success: true }))
+    .setMimeType(ContentService.MimeType.JSON)
 }

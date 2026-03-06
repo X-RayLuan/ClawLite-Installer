@@ -112,18 +112,18 @@ Korean (`ko/steps.json`):
 
 ```json
 "authMethod": {
-  "oauth": "ChatGPT 로그인",
-  "apiKey": "API 키"
+  "oauth": "Sign in with ChatGPT",
+  "apiKey": "API key"
 },
-"oauthDesc": "ChatGPT Plus/Pro 구독으로 로그인하세요"
+"oauthDesc": "Sign in with your ChatGPT Plus/Pro subscription"
 ```
 
 ```json
-"oauthLogin": "OpenAI로 로그인",
-"oauthLoggingIn": "로그인 중...",
-"oauthSuccess": "로그인 완료",
-"oauthError": "로그인에 실패했습니다. 다시 시도해 주세요.",
-"oauthCancelled": "로그인이 취소되었습니다."
+"oauthLogin": "Sign in with OpenAI",
+"oauthLoggingIn": "Signing in...",
+"oauthSuccess": "Signed in",
+"oauthError": "Sign-in failed. Please try again.",
+"oauthCancelled": "Sign-in was cancelled."
 ```
 
 Japanese (`ja/steps.json`):
@@ -177,9 +177,9 @@ English:
 Korean:
 
 ```json
-"openai-codex/gpt-5.3-codex": "최신 코딩 (추천)",
-"openai-codex/gpt-5.2-codex": "안정 코딩",
-"openai-codex/gpt-5.1-codex": "레거시"
+"openai-codex/gpt-5.3-codex": "Latest coding (recommended)",
+"openai-codex/gpt-5.2-codex": "Stable coding",
+"openai-codex/gpt-5.1-codex": "Legacy"
 ```
 
 Japanese:
@@ -215,11 +215,11 @@ English:
 Korean:
 
 ```json
-"authMethod": "인증 방식",
-"oauthLogin": "OpenAI로 로그인",
-"oauthLoggingIn": "로그인 중...",
-"oauthSuccess": "로그인 완료",
-"oauthApiKey": "API 키"
+"authMethod": "Auth method",
+"oauthLogin": "Sign in with OpenAI",
+"oauthLoggingIn": "Signing in...",
+"oauthSuccess": "Signed in",
+"oauthApiKey": "API key"
 ```
 
 Japanese:
