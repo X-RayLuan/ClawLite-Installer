@@ -44,7 +44,7 @@
     "wslInstalling": "正在安装 WSL...",
     "wslInstall": "安装 WSL",
     "rebootRequired": "需要重启",
-    "rebootDesc": "要完成 WSL 安装，需要重启计算机。重启后请重新运行 EasyClaw。",
+    "rebootDesc": "要完成 WSL 安装，需要重启计算机。重启后请重新运行 ClawLite。",
     "rebootNow": "立即重启",
     "ubuntuInstallDesc": "安装 Ubuntu 发行版。",
     "ubuntuInstalling": "正在安装 Ubuntu...",
@@ -105,11 +105,11 @@
       },
       {
         "title": "输入机器人显示名称",
-        "desc": "输入机器人的显示名称。例如：EASYCLAW"
+        "desc": "输入机器人的显示名称。例如：CLAWLITE"
       },
       {
         "title": "设置机器人用户名",
-        "desc": "输入以 _bot 结尾的唯一 ID。例如：my_easyclaw_bot"
+        "desc": "输入以 _bot 结尾的唯一 ID。例如：my_clawlite_bot"
       },
       {
         "title": "复制机器人令牌",

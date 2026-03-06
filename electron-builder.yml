@@ -1,5 +1,5 @@
-appId: com.easyclaw.app
-productName: EasyClaw
+appId: com.clawlite.app
+productName: ClawLite
 directories:
   buildResources: build
 files:
@@ -13,7 +13,7 @@ asarUnpack:
   - resources/**
 win:
   icon: build/icon.ico
-  executableName: EasyClaw
+  executableName: ClawLite
   forceCodeSigning: false
   requestedExecutionLevel: asInvoker
   target:
@@ -56,7 +56,7 @@ dmg:
       path: /Applications
 publish:
   provider: github
-  owner: ybgwon96
-  repo: easyclaw
+  owner: X-RayLuan
+  repo: Mac-Installer
   releaseType: release
 npmRebuild: false

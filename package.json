@@ -1,11 +1,11 @@
 {
-  "name": "easy-claw",
+  "name": "clawlite",
   "version": "1.3.31",
   "description": "One-click installer for OpenClaw AI agent",
   "license": "MIT",
   "main": "./out/main/index.js",
-  "author": "EasyClaw",
-  "homepage": "https://easyclaw.kr",
+  "author": "ClawLite",
+  "homepage": "https://clawlite.ai",
   "keywords": [
     "openclaw",
     "ai-agent",

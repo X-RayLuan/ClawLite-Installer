@@ -285,7 +285,7 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
 
   ipcMain.handle('newsletter:subscribe', async (_e, email: string) => {
     try {
-      const r = await fetch('https://easyclaw.kr/api/newsletter', {
+      const r = await fetch('https://clawlite.ai/api/newsletter', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, source: 'app' })
