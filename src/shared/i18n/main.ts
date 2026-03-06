@@ -1,27 +1,15 @@
 import i18next from 'i18next'
 
-import koCommon from './locales/ko/common.json'
-import koMain from './locales/ko/main.json'
-
 import enCommon from './locales/en/common.json'
 import enMain from './locales/en/main.json'
-
-import jaCommon from './locales/ja/common.json'
-import jaMain from './locales/ja/main.json'
-
-import zhCommon from './locales/zh/common.json'
-import zhMain from './locales/zh/main.json'
 
 const i18nMain = i18next.createInstance()
 
 i18nMain.init({
   resources: {
-    ko: { common: koCommon, main: koMain },
-    en: { common: enCommon, main: enMain },
-    ja: { common: jaCommon, main: jaMain },
-    zh: { common: zhCommon, main: zhMain }
+    en: { common: enCommon, main: enMain }
   },
-  lng: 'ko',
+  lng: 'en',
   fallbackLng: 'en',
   defaultNS: 'main',
   ns: ['common', 'main'],
@@ -30,8 +18,8 @@ i18nMain.init({
 
 export const t = i18nMain.t.bind(i18nMain)
 
-export const initI18nMain = async (lng: string): Promise<void> => {
-  await i18nMain.changeLanguage(lng)
+export const initI18nMain = async (_lng: string): Promise<void> => {
+  await i18nMain.changeLanguage('en')
 }
 
 export default i18nMain

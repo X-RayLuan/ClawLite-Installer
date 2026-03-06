@@ -49,7 +49,7 @@ export const checkWslState = async (): Promise<WslState> => {
   // Check if reboot is needed via wsl --status
   try {
     const status = await runCmd('wsl', ['--status'])
-    if (status.includes('reboot') || status.includes('restart') || status.includes('재부팅')) {
+    if (status.includes('reboot') || status.includes('restart')) {
       return 'needs_reboot'
     }
   } catch {

@@ -34,7 +34,7 @@ export default async function handler(req, res) {
 
   const { email } = req.body || {}
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return res.status(400).json({ error: '올바른 이메일을 입력해주세요.' })
+    return res.status(400).json({ error: 'Please enter a valid email address.' })
   }
 
   if (!process.env.BLOB_READ_WRITE_TOKEN) {
@@ -52,6 +52,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ success: true })
   } catch (e) {
     console.error('Blob error:', e)
-    return res.status(500).json({ error: '서버 오류. 잠시 후 다시 시도해주세요.' })
+    return res.status(500).json({ error: 'Server error. Please try again later.' })
   }
 }

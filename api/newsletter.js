@@ -13,7 +13,7 @@ export default async function handler(req, res) {
 
   const { email, source } = req.body || {}
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return res.status(400).json({ error: '올바른 이메일을 입력해주세요.' })
+    return res.status(400).json({ error: 'Please enter a valid email address.' })
   }
 
   const scriptUrl = process.env.NEWSLETTER_SCRIPT_URL
@@ -37,6 +37,6 @@ export default async function handler(req, res) {
     }
   } catch (e) {
     console.error('Newsletter error:', e)
-    return res.status(500).json({ error: '서버 오류. 잠시 후 다시 시도해주세요.' })
+    return res.status(500).json({ error: 'Server error. Please try again later.' })
   }
 }
