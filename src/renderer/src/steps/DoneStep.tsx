@@ -358,21 +358,11 @@ export default function DoneStep({
         </div>
       )}
 
-      {/* ─── Star + Web Chat banner ─── */}
-      <div className="w-full max-w-md grid grid-cols-2 gap-2">
-        <button
-          onClick={() => window.open('https://github.com/X-RayLuan/Mac-Installer', '_blank')}
-          className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl cursor-pointer bg-white/5 border border-glass-border hover:border-primary/40 hover:bg-white/8 transition-all duration-200"
-        >
-          <span className="text-lg">⭐</span>
-          <div className="flex-1 text-left">
-            <span className="text-sm font-bold">Star on GitHub</span>
-            <p className="text-[11px] text-text-muted/70">{t('done.starDesc')}</p>
-          </div>
-        </button>
+      {/* ─── Web Chat banner ─── */}
+      <div className="w-full max-w-md">
         <button
           onClick={openWebChat}
-          className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl cursor-pointer bg-white/5 border border-glass-border hover:border-primary/40 hover:bg-white/8 transition-all duration-200"
+          className="w-full flex items-center gap-2.5 px-4 py-2.5 rounded-xl cursor-pointer bg-white/5 border border-glass-border hover:border-primary/40 hover:bg-white/8 transition-all duration-200"
         >
           <span className="text-lg">🌐</span>
           <div className="flex-1 text-left">
