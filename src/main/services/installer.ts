@@ -196,13 +196,39 @@ export const installOpenClawWsl = async (win: BrowserWindow): Promise<void> => {
   const log = (msg: string): void => sendProgress(win, msg)
   log(t('installer.ocWslInstalling'))
   
+  // Detect best npm registry based on network latency
+  log('Detecting fastest npm registry...')
+  const registries = [
+    { name: 'npmmirror (China)', url: 'https://registry.npmmirror.com' },
+    { name: 'npm official', url: 'https://registry.npmjs.org' },
+    { name: 'Tencent Cloud (China)', url: 'https://mirrors.cloud.tencent.com/npm/' }
+  ]
+  
+  let fastestRegistry = registries[1].url // default to official
   try {
-    // Try with npm registry mirror for China (5 min timeout)
-    log('Attempting installation with npm registry (this may take a few minutes)...')
-    await runInWsl('npm install -g openclaw@latest --registry=https://registry.npmmirror.com --verbose', 300000)
+    // Quick ping test to find fastest registry
+    const testCmd = registries.map(r => 
+      `curl -o /dev/null -s -w '%{time_total}' -m 3 ${r.url} || echo 999`
+    ).join(' & ')
+    
+    const times = await runInWsl(`bash -c "${testCmd}; wait"`, 15000)
+    const latencies = times.split('\n').map(t => parseFloat(t.trim()))
+    const fastestIdx = latencies.indexOf(Math.min(...latencies))
+    
+    if (fastestIdx >= 0 && latencies[fastestIdx] < 10) {
+      fastestRegistry = registries[fastestIdx].url
+      log(`Using ${registries[fastestIdx].name} (${latencies[fastestIdx].toFixed(2)}s)`)
+    }
+  } catch {
+    log('Registry detection failed, using default')
+  }
+  
+  try {
+    log(`Installing openclaw from ${fastestRegistry}...`)
+    await runInWsl(`npm install -g openclaw@latest --registry=${fastestRegistry} --verbose`, 300000)
   } catch (err) {
-    // Fallback to default registry
-    log('Retrying with default npm registry...')
+    // Fallback to official registry
+    log('Retrying with official npm registry...')
     await runInWsl('npm install -g openclaw@latest --verbose', 300000)
   }
   
