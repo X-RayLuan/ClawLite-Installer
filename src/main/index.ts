@@ -25,7 +25,8 @@ function createWindow(): void {
     minWidth: 800,
     minHeight: 700,
     resizable: true,
-    show: false,
+    // macOS: show immediately to avoid hidden-window edge cases on launch.
+    show: process.platform === 'darwin',
     autoHideMenuBar: true,
     titleBarStyle: 'hiddenInset',
     trafficLightPosition: { x: 16, y: 16 },
@@ -37,8 +38,26 @@ function createWindow(): void {
   })
 
   mainWindow.on('ready-to-show', () => {
-    if (!startHidden) mainWindow?.show()
+    if (!startHidden) {
+      mainWindow?.show()
+      mainWindow?.focus()
+    }
   })
+
+  mainWindow.webContents.on('did-finish-load', () => {
+    if (!startHidden) {
+      mainWindow?.show()
+      mainWindow?.focus()
+    }
+  })
+
+  // Fallback: ensure window is visible even if ready-to-show is delayed.
+  setTimeout(() => {
+    if (!startHidden && mainWindow && !mainWindow.isVisible()) {
+      mainWindow.show()
+      mainWindow.focus()
+    }
+  }, 1500)
 
   // Close window → stay in tray (not a real quit)
   mainWindow.on('close', (e) => {
