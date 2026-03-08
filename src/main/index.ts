@@ -12,6 +12,9 @@ let ipcRegistered = false
 let mainWindow: BrowserWindow | null = null
 let isQuitting = false
 
+// macOS white-screen mitigation on some GPUs/drivers
+app.disableHardwareAcceleration()
+
 const getWin = (): BrowserWindow | null => mainWindow
 
 function createWindow(): void {
@@ -94,6 +97,11 @@ function createWindow(): void {
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
+
+  mainWindow.webContents.on('did-fail-load', () => {
+    // Fallback to packaged renderer when load fails
+    mainWindow?.loadFile(join(__dirname, '../renderer/index.html')).catch(() => {})
+  })
 
   // Auto-start Gateway when launched hidden
   if (startHidden) {
