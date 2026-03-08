@@ -124,11 +124,11 @@ export default function DoneStep({
     if (!gatewayToken) {
       setLogs((prev) => [...prev, 'Web Chat token missing. Please re-run setup or switch provider.'])
       setShowLogs(true)
-      window.open(base, '_blank')
+      window.electronAPI.system.openExternal(base)
       return
     }
     const url = `${base}?token=${encodeURIComponent(gatewayToken)}`
-    window.open(url, '_blank')
+    window.electronAPI.system.openExternal(url)
   }
 
   const toggleAutoLaunch = async (): Promise<void> => {
@@ -322,7 +322,7 @@ export default function DoneStep({
             size="lg"
             onClick={() => {
               const url = botUsername ? `https://t.me/${botUsername}` : 'https://telegram.org/'
-              window.open(url, '_blank')
+              window.electronAPI.system.openExternal(url)
             }}
           >
             {t('done.openTelegram')}

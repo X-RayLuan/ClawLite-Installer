@@ -331,6 +331,18 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
     }, 1000)
   })
 
+  // External link opener
+  ipcMain.handle('system:open-external', async (_e, url: string) => {
+    try {
+      const { shell } = await import('electron')
+      await shell.openExternal(url)
+      return { success: true }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      return { success: false, error: msg }
+    }
+  })
+
   // Auto update IPC
   ipcMain.handle('update:check', () => {
     checkForUpdates()

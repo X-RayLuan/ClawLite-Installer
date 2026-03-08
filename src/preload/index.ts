@@ -144,6 +144,10 @@ const electronAPI = {
     set: (enabled: boolean): Promise<{ success: boolean }> =>
       ipcRenderer.invoke('autolaunch:set', enabled)
   },
+  system: {
+    openExternal: (url: string): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('system:open-external', url)
+  },
   uninstall: {
     openclaw: (opts: { removeConfig: boolean }): Promise<{ success: boolean; error?: string }> =>
       ipcRenderer.invoke('uninstall:openclaw', opts),
