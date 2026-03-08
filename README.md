@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/X-RayLuan/Mac-Installer/releases/latest">Download</a> · <a href="https://github.com/X-RayLuan/Mac-Installer">GitHub</a> · <a href="https://clawlite.ai">Website</a>
+  <a href="https://github.com/X-RayLuan/ClawLite-Installer/releases/latest">Download</a> · <a href="https://github.com/X-RayLuan/ClawLite-Installer">GitHub</a> · <a href="https://clawlite.ai">Website</a>
 </p>
 
 ---
@@ -29,8 +29,8 @@ ClawLite Installer is a desktop installer that sets up OpenClaw with minimal man
 
 ## Download
 
-- macOS `.dmg`: <https://github.com/X-RayLuan/Mac-Installer/releases/latest/download/clawlite.dmg>
-- Windows `.exe`: <https://github.com/X-RayLuan/Mac-Installer/releases/latest/download/clawlite-setup.exe>
+- macOS `.dmg`: <https://github.com/X-RayLuan/ClawLite-Installer/releases/latest/download/clawlite.dmg>
+- Windows `.exe`: <https://github.com/X-RayLuan/ClawLite-Installer/releases/latest/download/clawlite-setup.exe>
 
 ## Development
 

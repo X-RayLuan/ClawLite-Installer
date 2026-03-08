@@ -57,6 +57,6 @@ dmg:
 publish:
   provider: github
   owner: X-RayLuan
-  repo: Mac-Installer
+  repo: ClawLite-Installer
   releaseType: release
 npmRebuild: false

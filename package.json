@@ -64,5 +64,9 @@
     "tailwindcss": "^4.1.18",
     "typescript": "^5.9.3",
     "vite": "^7.2.6"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/X-RayLuan/ClawLite-Installer.git"
   }
 }
