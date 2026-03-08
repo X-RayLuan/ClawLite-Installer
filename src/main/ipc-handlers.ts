@@ -343,6 +343,8 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
     }
   })
 
+  ipcMain.handle('app:version', () => ({ version: app.getVersion() }))
+
   // Auto update IPC
   ipcMain.handle('update:check', () => {
     checkForUpdates()

@@ -148,6 +148,9 @@ const electronAPI = {
     openExternal: (url: string): Promise<{ success: boolean; error?: string }> =>
       ipcRenderer.invoke('system:open-external', url)
   },
+  app: {
+    version: (): Promise<{ version: string }> => ipcRenderer.invoke('app:version')
+  },
   uninstall: {
     openclaw: (opts: { removeConfig: boolean }): Promise<{ success: boolean; error?: string }> =>
       ipcRenderer.invoke('uninstall:openclaw', opts),

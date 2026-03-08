@@ -30,6 +30,7 @@ export default function DoneStep({
   const [currentProvider, setCurrentProvider] = useState<string | undefined>()
   const [showProviderModal, setShowProviderModal] = useState(false)
   const [gatewayToken, setGatewayToken] = useState<string | null>(null)
+  const [installerVersion, setInstallerVersion] = useState<string>('')
 
   // OpenClaw update state
   const [openclawUpdate, setOpenclawUpdate] = useState<{
@@ -102,6 +103,7 @@ export default function DoneStep({
   // Load auto launch settings
   useEffect(() => {
     window.electronAPI.autoLaunch.get().then((r) => setAutoLaunch(r.enabled))
+    window.electronAPI.app.version().then((r) => setInstallerVersion(r.version)).catch(() => {})
   }, [])
 
   // Read current provider/model
@@ -223,8 +225,9 @@ export default function DoneStep({
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-10 gap-3 overflow-hidden">
-      <div className="absolute top-4 right-4">
+      <div className="absolute top-4 right-4 text-right">
         <LanguageSwitcher />
+        {installerVersion && <p className="mt-1 text-[10px] text-text-muted/60">Installer v{installerVersion}</p>}
       </div>
 
       {/* Logo + status */}
