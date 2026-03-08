@@ -50,7 +50,12 @@ function createWindow(): void {
   mainWindow.webContents.setWindowOpenHandler((details) => {
     try {
       const url = new URL(details.url)
-      if (['https:', 'tg:'].includes(url.protocol)) {
+      const isExternalSafe = ['https:', 'tg:'].includes(url.protocol)
+      const isLocalWebChat =
+        url.protocol === 'http:' &&
+        (url.hostname === '127.0.0.1' || url.hostname === 'localhost')
+
+      if (isExternalSafe || isLocalWebChat) {
         shell.openExternal(details.url)
       }
     } catch {

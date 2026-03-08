@@ -307,7 +307,7 @@ export default function DoneStep({
             variant="primary"
             size="lg"
             onClick={() => {
-              const url = botUsername ? `tg://resolve?domain=${botUsername}` : 'tg://'
+              const url = botUsername ? `https://t.me/${botUsername}` : 'https://telegram.org/'
               window.open(url, '_blank')
             }}
           >
