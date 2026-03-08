@@ -16,10 +16,9 @@ win:
   executableName: ClawLite
   forceCodeSigning: false
   requestedExecutionLevel: asInvoker
-  signingHashAlgorithms:
-    - sha256
-  timeStampServer: https://timestamp.digicert.com
-  rfc3161TimeStampServer: https://timestamp.digicert.com
+  signtoolOptions:
+    timeStampServer: https://timestamp.digicert.com
+    rfc3161TimeStampServer: https://timestamp.digicert.com
   target:
     - target: nsis
       arch:
