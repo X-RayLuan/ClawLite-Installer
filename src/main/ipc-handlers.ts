@@ -300,12 +300,35 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
 
   ipcMain.on('system:reboot', () => {
     if (platform() !== 'win32') return
-    const child = spawn('shutdown', ['/r', '/t', '0'], {
+    
+    // Add installer to Windows startup registry before reboot
+    const exePath = app.getPath('exe')
+    const psCommand = [
+      'try {',
+      `  Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run' -Name 'ClawLiteInstaller' -Value '"${exePath.replace(/\\/g, '\\\\')}"';`,
+      '  exit 0',
+      '} catch {',
+      '  Write-Output $_.Exception.Message;',
+      '  exit 1',
+      '}'
+    ].join(' ')
+    
+    // Set registry key (non-blocking)
+    spawn('powershell', ['-NoProfile', '-Command', psCommand], {
       shell: true,
       detached: true,
       stdio: 'ignore'
-    })
-    child.unref()
+    }).unref()
+    
+    // Wait a moment for registry write, then reboot
+    setTimeout(() => {
+      const child = spawn('shutdown', ['/r', '/t', '5'], {
+        shell: true,
+        detached: true,
+        stdio: 'ignore'
+      })
+      child.unref()
+    }, 1000)
   })
 
   // Auto update IPC
