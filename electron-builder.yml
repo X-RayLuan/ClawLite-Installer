@@ -14,7 +14,7 @@ asarUnpack:
 win:
   icon: build/icon.ico
   executableName: ClawLite
-  forceCodeSigning: true
+  forceCodeSigning: false
   requestedExecutionLevel: asInvoker
   signingHashAlgorithms:
     - sha256
