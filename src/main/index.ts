@@ -15,8 +15,9 @@ let isQuitting = false
 const getWin = (): BrowserWindow | null => mainWindow
 
 function createWindow(): void {
-  const startHidden =
-    app.getLoginItemSettings().wasOpenedAsHidden || process.argv.includes('--hidden')
+  // Only hide when explicitly launched with --hidden.
+  // Manual app launch (double-click) should always show window.
+  const startHidden = process.argv.includes('--hidden')
 
   mainWindow = new BrowserWindow({
     width: 800,
