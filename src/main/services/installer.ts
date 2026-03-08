@@ -176,8 +176,20 @@ export const installNodeWsl = async (win: BrowserWindow): Promise<void> => {
   const log = (msg: string): void => sendProgress(win, msg)
 
   log(t('installer.wslPackages'))
+  
+  // Use Tsinghua mirror for apt sources (faster in China)
+  log('Configuring apt sources for faster downloads...')
   try {
-    await runInWsl('apt-get update && apt-get install -y curl ca-certificates gnupg', 60000)
+    await runInWsl(
+      'sed -i "s@http://.*archive.ubuntu.com@https://mirrors.tuna.tsinghua.edu.cn@g" /etc/apt/sources.list',
+      30000
+    )
+  } catch {
+    log('Mirror configuration failed, using default sources')
+  }
+  
+  try {
+    await runInWsl('apt-get update && apt-get install -y curl ca-certificates gnupg', 120000)
   } catch {
     log(t('installer.aptFailed'))
   }
@@ -185,7 +197,7 @@ export const installNodeWsl = async (win: BrowserWindow): Promise<void> => {
   log(t('installer.nodeWslInstalling'))
   await runInWsl(
     'curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && apt-get install -y nodejs',
-    120000
+    300000
   )
 
   log(t('installer.nodeWslDone'))
