@@ -25,21 +25,22 @@ nsis:
   shortcutName: ${productName}
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
-  language: 1033
 mac:
   icon: build/icon.icns
-  hardenedRuntime: false
+  category: public.app-category.developer-tools
+  hardenedRuntime: true
   gatekeeperAssess: false
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
-  extendInfo:
-    - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
-    - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
-  notarize: false
+  identity: "Developer ID Application"
+  notarize: true
   target:
     - target: dmg
       arch:
         - universal
+  extendInfo:
+    NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
+    NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
 dmg:
   artifactName: ${name}.${ext}
   title: ${productName}

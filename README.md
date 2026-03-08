@@ -47,6 +47,15 @@ npm run build:mac-local
 npm run build:win-local
 ```
 
+macOS notarized release (Developer ID + Notary):
+
+```bash
+export APPLE_API_KEY=/path/to/AuthKey_XXXXXX.p8
+export APPLE_API_KEY_ID=XXXXXX
+export APPLE_API_ISSUER=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+npm run build:mac
+```
+
 ## License
 
 MIT
