@@ -467,6 +467,7 @@ export interface CurrentConfig {
   provider?: string
   model?: string
   hasTelegram?: boolean
+  gatewayToken?: string
 }
 
 export const readCurrentConfig = async (): Promise<CurrentConfig | null> => {
@@ -484,9 +485,10 @@ export const readCurrentConfig = async (): Promise<CurrentConfig | null> => {
     const cfg = JSON.parse(raw) as any
     const model = cfg?.agents?.defaults?.model?.primary as string | undefined
     const hasTelegram = !!cfg?.channels?.telegram?.botToken
+    const gatewayToken = cfg?.gateway?.auth?.token as string | undefined
     // Extract provider from model ID (e.g. "anthropic/claude-sonnet-4-6" → "anthropic")
     const provider = model?.split('/')[0]
-    return { provider, model, hasTelegram }
+    return { provider, model, hasTelegram, gatewayToken }
   } catch {
     return null
   }

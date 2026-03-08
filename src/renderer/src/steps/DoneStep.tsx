@@ -29,6 +29,7 @@ export default function DoneStep({
   const [currentModel, setCurrentModel] = useState<string | null>(null)
   const [currentProvider, setCurrentProvider] = useState<string | undefined>()
   const [showProviderModal, setShowProviderModal] = useState(false)
+  const [gatewayToken, setGatewayToken] = useState<string | null>(null)
 
   // OpenClaw update state
   const [openclawUpdate, setOpenclawUpdate] = useState<{
@@ -109,6 +110,7 @@ export default function DoneStep({
       if (r.success && r.config) {
         setCurrentModel(r.config.model || null)
         setCurrentProvider(r.config.provider)
+        setGatewayToken(r.config.gatewayToken || null)
       }
     })
   }, [])
@@ -116,6 +118,18 @@ export default function DoneStep({
   useEffect(() => {
     loadCurrentConfig()
   }, [loadCurrentConfig])
+
+  const openWebChat = (): void => {
+    const base = 'http://127.0.0.1:18789/'
+    if (!gatewayToken) {
+      setLogs((prev) => [...prev, 'Web Chat token missing. Please re-run setup or switch provider.'])
+      setShowLogs(true)
+      window.open(base, '_blank')
+      return
+    }
+    const url = `${base}?token=${encodeURIComponent(gatewayToken)}`
+    window.open(url, '_blank')
+  }
 
   const toggleAutoLaunch = async (): Promise<void> => {
     const next = !autoLaunch
@@ -357,7 +371,7 @@ export default function DoneStep({
           </div>
         </button>
         <button
-          onClick={() => window.open('http://127.0.0.1:18789', '_blank')}
+          onClick={openWebChat}
           className="flex items-center gap-2.5 px-4 py-2.5 rounded-xl cursor-pointer bg-white/5 border border-glass-border hover:border-primary/40 hover:bg-white/8 transition-all duration-200"
         >
           <span className="text-lg">🌐</span>

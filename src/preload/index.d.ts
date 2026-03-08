@@ -81,7 +81,7 @@ interface ElectronAPI {
   config: {
     read: () => Promise<{
       success: boolean
-      config: { provider?: string; model?: string; hasTelegram?: boolean } | null
+      config: { provider?: string; model?: string; hasTelegram?: boolean; gatewayToken?: string } | null
       error?: string
     }>
     switchProvider: (config: {
