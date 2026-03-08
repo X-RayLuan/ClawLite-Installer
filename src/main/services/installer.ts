@@ -128,6 +128,10 @@ export const installWsl = async (win: BrowserWindow): Promise<{ needsReboot: boo
     const errLines = ((err as RunError).lines ?? []).join('\n')
     const combined = errMsg + '\n' + errLines
 
+    // Log full error for debugging
+    log('WSL installation error details:')
+    log(combined)
+
     // exit 4294967295 = ERROR_ALREADY_EXISTS: Ubuntu already registered
     if (combined.includes('4294967295')) {
       log(t('installer.ubuntuAlreadyRegistered'))
@@ -136,7 +140,7 @@ export const installWsl = async (win: BrowserWindow): Promise<{ needsReboot: boo
         log(t('installer.ubuntuInitDone'))
         return { needsReboot: false }
       } catch {
-        throw err
+        throw new Error(`WSL already installed but not responding. Full error: ${combined}`)
       }
     }
     const lower = combined.toLowerCase()
@@ -149,17 +153,19 @@ export const installWsl = async (win: BrowserWindow): Promise<{ needsReboot: boo
       lower.includes('access denied') ||
       lower.includes('permission')
     ) {
-      throw new Error(t('installer.adminRequired'))
+      throw new Error(`${t('installer.adminRequired')} - Please run the installer as Administrator.`)
     }
     // wsl command not found (unsupported Windows version)
     if (lower.includes('not recognized') || lower.includes('not found')) {
-      throw new Error(t('installer.windowsVersionError'))
+      throw new Error(`${t('installer.windowsVersionError')} - WSL requires Windows 10 version 1903+ or Windows 11.`)
     }
     // Virtualization disabled
     if (lower.includes('virtualization') || lower.includes('hyper-v')) {
-      throw new Error(t('installer.biosVirtualization'))
+      throw new Error(`${t('installer.biosVirtualization')} - Please enable Virtualization (VT-x/AMD-V) in BIOS settings.`)
     }
-    throw err
+    
+    // Generic error with full details
+    throw new Error(`WSL installation failed. Details: ${combined}`)
   }
   log(t('installer.wslDone'))
   return { needsReboot: true }
