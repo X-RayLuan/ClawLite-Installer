@@ -422,22 +422,40 @@ export const runOnboard = async (
       }
     }
 
-    botUsername = await fetchBotUsername(config.telegramBotToken)
-    if (botUsername) {
-      log(`Telegram token valid (BotFather): @${botUsername}`)
-      log(`Activation guide: open https://t.me/${botUsername} and send /start`)
+    let telegramReachable = true
+    try {
+      botUsername = await fetchBotUsername(config.telegramBotToken)
+      if (botUsername) {
+        log(`Telegram token valid (BotFather): @${botUsername}`)
+        log(`Activation guide: open https://t.me/${botUsername} and send /start`)
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      const lower = msg.toLowerCase()
+      if (
+        lower.includes('etimedout') ||
+        lower.includes('econnreset') ||
+        lower.includes('enotfound') ||
+        lower.includes('eai_again')
+      ) {
+        telegramReachable = false
+        log('Telegram network unreachable (ETIMEDOUT).')
+        log('Skipping Telegram validation for now. You can finish setup and retry Telegram later.')
+      } else {
+        throw e
+      }
     }
-  }
 
-  if (config.telegramBotToken) {
-    log(t('onboarder.checkingTelegram'))
-    const pollState = await waitTelegramClear(config.telegramBotToken)
-    if (pollState === 'conflict') {
-      throw new Error(
-        'Telegram polling conflict detected: another client is calling getUpdates. Stop other bots/services, then retry.'
-      )
+    if (telegramReachable) {
+      log(t('onboarder.checkingTelegram'))
+      const pollState = await waitTelegramClear(config.telegramBotToken)
+      if (pollState === 'conflict') {
+        throw new Error(
+          'Telegram polling conflict detected: another client is calling getUpdates. Stop other bots/services, then retry.'
+        )
+      }
+      log('Telegram polling check passed (no getUpdates conflict).')
     }
-    log('Telegram polling check passed (no getUpdates conflict).')
   }
 
   // Restart daemon after all patches are complete

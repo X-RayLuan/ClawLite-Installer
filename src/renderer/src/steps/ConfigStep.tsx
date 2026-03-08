@@ -53,10 +53,8 @@ export default function ConfigStep({
   const label = t(`config.apiKeyLabel.${provider}`)
   const placeholder = tp(`apiKeyPlaceholder.${provider}`, providerPlaceholders[provider])
   const apiKeyValid = pattern.test(apiKey)
-  const botTokenValid = BOT_TOKEN_PATTERN.test(botToken)
-  const canSave = isOAuth
-    ? oauthDone && botTokenValid && !saving
-    : apiKeyValid && botTokenValid && !saving
+  const botTokenValid = botToken ? BOT_TOKEN_PATTERN.test(botToken) : true
+  const canSave = isOAuth ? oauthDone && !saving : apiKeyValid && !saving
 
   const handleOAuthLogin = async (): Promise<void> => {
     setOauthLoading(true)
@@ -186,10 +184,7 @@ export default function ConfigStep({
         )}
 
         <div className="space-y-1.5">
-          <label className="text-sm font-bold">
-            {t('config.telegramToken')}{' '}
-            <span className="text-error text-xs">{t('config.required')}</span>
-          </label>
+          <label className="text-sm font-bold">{t('config.telegramToken')} <span className="text-text-muted text-xs">(optional)</span></label>
           <input
             type="text"
             placeholder="123456:ABCDEF..."
