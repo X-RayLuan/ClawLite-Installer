@@ -15,9 +15,9 @@ let isQuitting = false
 const getWin = (): BrowserWindow | null => mainWindow
 
 function createWindow(): void {
-  // Only hide when explicitly launched with --hidden.
-  // Manual app launch (double-click) should always show window.
-  const startHidden = process.argv.includes('--hidden')
+  // macOS: always show window on app launch (double-click should never be hidden).
+  // Windows/Linux keep --hidden support for tray auto-start flows.
+  const startHidden = process.platform !== 'darwin' && process.argv.includes('--hidden')
 
   mainWindow = new BrowserWindow({
     width: 800,
