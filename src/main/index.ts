@@ -13,7 +13,7 @@ let mainWindow: BrowserWindow | null = null
 let isQuitting = false
 
 // macOS white-screen mitigation on some GPUs/drivers
-app.disableHardwareAcceleration()
+if (process.platform === 'darwin') app.disableHardwareAcceleration()
 
 const getWin = (): BrowserWindow | null => mainWindow
 
@@ -21,6 +21,9 @@ function createWindow(): void {
   // macOS: always show window on app launch (double-click should never be hidden).
   // Windows/Linux keep --hidden support for tray auto-start flows.
   const startHidden = process.platform !== 'darwin' && process.argv.includes('--hidden')
+  let userHidden = false
+  let didRetryLocalLoad = false
+  let selfHealDone = false
 
   mainWindow = new BrowserWindow({
     width: 800,
@@ -56,7 +59,7 @@ function createWindow(): void {
 
   // Fallback: ensure window is visible even if ready-to-show is delayed.
   setTimeout(() => {
-    if (!startHidden && mainWindow && !mainWindow.isVisible()) {
+    if (!startHidden && !userHidden && mainWindow && !mainWindow.isVisible()) {
       mainWindow.show()
       mainWindow.focus()
     }
@@ -65,6 +68,7 @@ function createWindow(): void {
   // Close window → stay in tray (not a real quit)
   mainWindow.on('close', (e) => {
     if (!isQuitting) {
+      userHidden = true
       e.preventDefault()
       mainWindow?.hide()
     }
@@ -99,7 +103,9 @@ function createWindow(): void {
   }
 
   mainWindow.webContents.on('did-fail-load', () => {
-    // Fallback to packaged renderer when load fails
+    // Fallback to packaged renderer when load fails (one-shot)
+    if (didRetryLocalLoad) return
+    didRetryLocalLoad = true
     mainWindow?.loadFile(join(__dirname, '../renderer/index.html')).catch(() => {})
   })
 
@@ -115,7 +121,13 @@ function createWindow(): void {
   })
 
   mainWindow.webContents.on('did-finish-load', () => {
-    // White-screen self-heal: if root is still empty, show fallback diagnostics page.
+    // White-screen self-heal: only run once on app pages, not on data: fallback pages.
+    if (selfHealDone || !mainWindow) return
+    const currentUrl = mainWindow.webContents.getURL()
+    if (currentUrl.startsWith('data:')) return
+    if (!(currentUrl.startsWith('file:') || currentUrl.startsWith('http://localhost') || currentUrl.startsWith('http://127.0.0.1'))) return
+
+    selfHealDone = true
     setTimeout(async () => {
       try {
         const hasUi = await mainWindow?.webContents.executeJavaScript(
