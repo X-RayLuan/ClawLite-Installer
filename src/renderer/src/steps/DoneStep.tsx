@@ -182,6 +182,21 @@ export default function DoneStep({
     setAutoLaunch(next)
   }
 
+  const downloadLogs = (): void => {
+    if (logs.length === 0) return
+    const content = logs.join('\n')
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    const ts = new Date().toISOString().replace(/[:.]/g, '-')
+    a.href = url
+    a.download = `clawlite-logs-${ts}.txt`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
   useEffect(() => {
     statusRef.current = status
   }, [status])
@@ -428,13 +443,21 @@ export default function DoneStep({
       <div className="w-full max-w-sm min-h-40">
       {logs.length > 0 && (
         <div className="w-full max-w-sm">
-          <button
-            onClick={() => setShowLogs((v) => !v)}
-            className="text-[11px] text-text-muted/60 hover:text-text-muted transition-colors mb-1"
-          >
-            {showLogs ? t('done.hideLog') : t('done.showLog')}
-            {hasError && <span className="ml-1.5 text-error">{t('done.errorDetected')}</span>}
-          </button>
+          <div className="mb-1 flex items-center justify-between">
+            <button
+              onClick={() => setShowLogs((v) => !v)}
+              className="text-[11px] text-text-muted/60 hover:text-text-muted transition-colors"
+            >
+              {showLogs ? t('done.hideLog') : t('done.showLog')}
+              {hasError && <span className="ml-1.5 text-error">{t('done.errorDetected')}</span>}
+            </button>
+            <button
+              onClick={downloadLogs}
+              className="text-[11px] text-primary/80 hover:text-primary transition-colors"
+            >
+              Download Log
+            </button>
+          </div>
           {showLogs && <LogViewer lines={logs} />}
         </div>
       )}
