@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 const MAX_LINES = 500
@@ -6,11 +6,15 @@ const MAX_LINES = 500
 export default function LogViewer({ lines }: { lines: string[] }): React.JSX.Element {
   const { t } = useTranslation('management')
   const bottomRef = useRef<HTMLDivElement>(null)
+  const viewportRef = useRef<HTMLDivElement>(null)
+  const [follow, setFollow] = useState(true)
   const displayLines = lines.length > MAX_LINES ? lines.slice(-MAX_LINES) : lines
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [displayLines.length])
+    if (follow) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [displayLines.length, follow])
 
   return (
     <div className="glass-card !rounded-xl overflow-hidden">
@@ -22,7 +26,16 @@ export default function LogViewer({ lines }: { lines: string[] }): React.JSX.Ele
         <span className="ml-2 text-[10px] text-text-muted/50 font-mono">output</span>
       </div>
 
-      <div className="p-3 h-32 overflow-y-auto font-mono text-[11px] leading-5 text-text-muted">
+      <div
+        ref={viewportRef}
+        onScroll={() => {
+          const el = viewportRef.current
+          if (!el) return
+          const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 16
+          if (nearBottom !== follow) setFollow(nearBottom)
+        }}
+        className="p-3 h-32 overflow-y-auto font-mono text-[11px] leading-5 text-text-muted"
+      >
         {displayLines.length === 0 && (
           <span className="opacity-40 italic">{t('logViewer.waiting')}</span>
         )}

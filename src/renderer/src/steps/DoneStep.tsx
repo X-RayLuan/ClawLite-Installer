@@ -41,6 +41,7 @@ export default function DoneStep({
   const [updating, setUpdating] = useState(false)
   const [updateLogs, setUpdateLogs] = useState<string[]>([])
   const updateCheckedRef = useRef(false)
+  const lastLogRef = useRef<{ msg: string; ts: number } | null>(null)
 
   const tRef = useRef<TFunction>(t)
   tRef.current = t
@@ -123,14 +124,26 @@ export default function DoneStep({
     loadCurrentConfig()
   }, [loadCurrentConfig])
 
-  const openWebChat = (): void => {
+  const openWebChat = async (): Promise<void> => {
     const base = 'http://127.0.0.1:18789/'
-    if (!gatewayToken) {
+    let token = gatewayToken
+
+    // Re-read config once to avoid race where token is written slightly later
+    if (!token) {
+      const r = await window.electronAPI.config.read()
+      if (r.success && r.config?.gatewayToken) {
+        token = r.config.gatewayToken
+        setGatewayToken(token)
+      }
+    }
+
+    if (!token) {
       setLogs((prev) => [...prev, 'Web Chat token missing. Please re-run setup or switch provider.'])
       setShowLogs(true)
       return
     }
-    const url = `${base}?token=${encodeURIComponent(gatewayToken)}`
+
+    const url = `${base}?token=${encodeURIComponent(token)}`
     window.electronAPI.system.openExternal(url)
   }
 
@@ -142,16 +155,26 @@ export default function DoneStep({
 
   useEffect(() => {
     const unsub = window.electronAPI.gateway.onLog((msg) => {
+      const now = Date.now()
+      const last = lastLogRef.current
+      if (last && last.msg === msg && now - last.ts < 1200) return
+      lastLogRef.current = { msg, ts: now }
+
       setLogs((prev) => [...prev, msg])
-      
+
       // Strip ANSI color codes before classification
-      const clean = msg.replace(/\x1b\[[0-9;]*m/g, '')
-      
-      // Only treat as error if it contains actual error keywords (not warnings/fallbacks)
-      const isError = /error|failed|fatal|exception/i.test(clean) && 
-                     !/fetch fallback|forcing autoselectFamily|dnsResultOrder/i.test(clean)
-      
-      if (isError) {
+      const clean = msg.replace(/\x1b\[[0-9;]*m/g, '').toLowerCase()
+
+      // Ignore known non-fatal network fallback/noise lines
+      const ignored =
+        clean.includes('fetch fallback') ||
+        clean.includes('autoselectfamily') ||
+        clean.includes('dnsresultorder=ipv4first') ||
+        clean.includes('telegram network unreachable') ||
+        clean.includes('continuing setup; fix telegram later')
+
+      const isError = /\berror\b|\bfailed\b|\bfatal\b|\bexception\b/.test(clean)
+      if (isError && !ignored) {
         setHasError(true)
       }
     })
