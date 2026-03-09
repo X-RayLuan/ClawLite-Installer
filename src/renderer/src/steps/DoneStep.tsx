@@ -150,6 +150,27 @@ export default function DoneStep({
       return
     }
 
+    // Preflight readiness retry (2~5s)
+    let ready = false
+    for (let i = 0; i < 6; i++) {
+      try {
+        const res = await fetch(base, { method: 'GET' })
+        if (res.ok || res.status > 0) {
+          ready = true
+          break
+        }
+      } catch {
+        /* retry */
+      }
+      await new Promise((r) => setTimeout(r, 500))
+    }
+
+    if (!ready) {
+      setLogs((prev) => [...prev, 'Gateway is not ready yet. Please retry Web Chat in a moment.'])
+      setShowLogs(true)
+      return
+    }
+
     const url = `${base}?token=${encodeURIComponent(token)}`
     window.electronAPI.system.openExternal(url)
   }
@@ -358,7 +379,7 @@ export default function DoneStep({
       </div>
 
       {/* Action buttons */}
-      <div className="flex gap-3">
+      <div className="flex gap-3 min-h-9 items-center">
         {status === 'running' && hasTelegram && (
           <Button
             variant="primary"

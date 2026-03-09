@@ -63,11 +63,12 @@ const waitForGatewayReady = async (timeoutMs = 30000): Promise<boolean> => {
   const start = Date.now()
   while (Date.now() - start < timeoutMs) {
     try {
-      const p = await checkPort()
-      if (p.inUse) {
-        const ok = await checkGatewayHttp()
-        if (ok) return true
-      }
+      // HTTP reachability is authoritative readiness
+      const ok = await checkGatewayHttp()
+      if (ok) return true
+
+      // Port check as secondary hint only
+      await checkPort().catch(() => ({ inUse: false }))
     } catch {
       /* ignore */
     }
@@ -303,7 +304,9 @@ export const restartGateway = async (): Promise<GatewayResult> => {
 
 export const getGatewayStatus = async (): Promise<'running' | 'stopped'> => {
   if (platform() === 'win32') {
-    return wslGatewayProcess && !wslGatewayProcess.killed ? 'running' : 'stopped'
+    if (wslGatewayProcess && !wslGatewayProcess.killed) return 'running'
+    const httpReady = await checkGatewayHttp().catch(() => false)
+    return httpReady ? 'running' : 'stopped'
   }
   try {
     const output = await runGateway(['status'])

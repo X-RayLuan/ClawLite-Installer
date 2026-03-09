@@ -20,18 +20,32 @@ const exec = (
 
 export const checkPort = async (port = 18789): Promise<{ inUse: boolean; pid?: string }> => {
   const isWin = platform() === 'win32'
-  // On Windows, check port via host OS netstat (WSL localhost forwarding)
-  const out = isWin
-    ? await exec('netstat', ['-ano'], process.env as NodeJS.ProcessEnv, true)
-    : await exec('lsof', ['-i', `:${port}`, '-t'], getPathEnv())
 
   if (isWin) {
-    const line = out.split('\n').find((l) => l.includes(`:${port}`) && l.includes('LISTENING'))
+    const psOut = await exec(
+      'powershell',
+      [
+        '-NoProfile',
+        '-Command',
+        `try { $c = Get-NetTCPConnection -LocalPort ${port} -State Listen -ErrorAction Stop | Select-Object -First 1 OwningProcess; if ($c) { Write-Output $c.OwningProcess } } catch {}`
+      ],
+      process.env as NodeJS.ProcessEnv,
+      true
+    )
+    const psPid = psOut.split('\n')[0]?.trim()
+    if (psPid) return { inUse: true, pid: psPid }
+
+    // Fallback for environments without Get-NetTCPConnection
+    const out = await exec('netstat', ['-ano'], process.env as NodeJS.ProcessEnv, true)
+    const line = out
+      .split('\n')
+      .find((l) => l.includes(`:${port}`) && /\s\d+\s*$/.test(l))
     if (!line) return { inUse: false }
     const pid = line.trim().split(/\s+/).pop()
     return { inUse: true, pid }
   }
 
+  const out = await exec('lsof', ['-i', `:${port}`, '-t'], getPathEnv())
   const pid = out.split('\n')[0]?.trim()
   return pid ? { inUse: true, pid } : { inUse: false }
 }
