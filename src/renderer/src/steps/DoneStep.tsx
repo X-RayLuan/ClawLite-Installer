@@ -220,6 +220,10 @@ export default function DoneStep({
         clean.includes('dnsresultorder=ipv4first') ||
         clean.includes('telegram network unreachable') ||
         clean.includes('continuing setup; fix telegram later') ||
+        clean.includes('telegram: failed (unknown) - fetch failed') ||
+        clean.includes('memory search is enabled but no embedding provider is configured') ||
+        clean.includes('gateway memory probe for default agent is not ready') ||
+        clean.includes('no api key found for provider') ||
         (clean.includes('gateway health check failed') && statusRef.current === 'starting')
 
       const isError = /\berror\b|\bfailed\b|\bfatal\b|\bexception\b/.test(clean)
