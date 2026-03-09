@@ -108,6 +108,10 @@ const startGatewayWsl = async (): Promise<GatewayResult> => {
     child.stdout.on('data', (d) => {
       const msg = d.toString().trim()
       if (msg) emitLog(msg)
+      if (!resolved && /host mounted at http:\/\/127\.0\.0\.1:18789|gateway running|listening on/i.test(msg)) {
+        resolved = true
+        resolve({ status: 'started' })
+      }
     })
 
     child.stderr.on('data', (d) => {
@@ -115,6 +119,10 @@ const startGatewayWsl = async (): Promise<GatewayResult> => {
       if (msg) {
         emitLog(msg)
         stderrBuffer += msg + '\n'
+      }
+      if (!resolved && /host mounted at http:\/\/127\.0\.0\.1:18789|gateway running|listening on/i.test(msg)) {
+        resolved = true
+        resolve({ status: 'started' })
       }
     })
 
@@ -146,8 +154,22 @@ const startGatewayWsl = async (): Promise<GatewayResult> => {
     setTimeout(async () => {
       if (!resolved) {
         const healthy = await waitForGatewayReady()
+        if (healthy) {
+          resolved = true
+          resolve({ status: 'started' })
+          return
+        }
+
+        // Fallback: if process is still alive and port is open, treat as started to avoid false negatives
+        const port = await checkPort().catch(() => ({ inUse: false }))
+        if (!resolved && child.exitCode === null && port.inUse) {
+          resolved = true
+          resolve({ status: 'started' })
+          return
+        }
+
         resolved = true
-        resolve(healthy ? { status: 'started' } : { status: 'error', error: 'Gateway health check failed' })
+        resolve({ status: 'error', error: 'Gateway health check failed' })
       }
     }, 500)
   })
