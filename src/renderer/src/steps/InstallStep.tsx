@@ -47,7 +47,7 @@ export default function InstallStep({
   const logoState = installing ? 'loading' : failed ? 'error' : done ? 'success' : 'idle'
 
   return (
-    <div className="flex-1 flex flex-col px-8 gap-4 justify-center">
+    <div className="flex-1 flex flex-col px-8 pt-8 gap-4 justify-start">
       <div className="flex items-center gap-4">
         <LobsterLogo state={logoState} size={56} />
         <div>
@@ -86,7 +86,9 @@ export default function InstallStep({
         )}
       </div>
 
-      {(installing || logs.length > 0) && <LogViewer lines={logs} />}
+      <div className="min-h-36">
+        {(installing || logs.length > 0) && <LogViewer lines={logs} />}
+      </div>
       {error && <p className="text-error text-xs font-medium">{error}</p>}
 
       <div className="flex gap-3 justify-end mt-1">

@@ -126,6 +126,13 @@ export default function DoneStep({
 
   const openWebChat = async (): Promise<void> => {
     const base = 'http://127.0.0.1:18789/'
+
+    if (status !== 'running') {
+      setLogs((prev) => [...prev, 'Gateway is still starting. Please wait a few seconds and retry Web Chat.'])
+      setShowLogs(true)
+      return
+    }
+
     let token = gatewayToken
 
     // Re-read config once to avoid race where token is written slightly later
@@ -192,31 +199,27 @@ export default function DoneStep({
   useEffect(() => {
     let cancelled = false
 
-    const poll = async (): Promise<void> => {
-      for (let i = 0; i < 15; i++) {
-        if (cancelled) return
-        const s = await window.electronAPI.gateway.status()
-        if (cancelled) return
-        if (s === 'running') {
-          setStatus('running')
-          return
-        }
-        await new Promise((r) => setTimeout(r, 2000))
-      }
+    const boot = async (): Promise<void> => {
+      const s = await window.electronAPI.gateway.status()
       if (cancelled) return
+      if (s === 'running') {
+        setStatus('running')
+        return
+      }
+
+      setStatus('starting')
       const r = await window.electronAPI.gateway.start()
-      if (!cancelled) {
-        setStatus(r.success ? 'running' : 'stopped')
-        if (!r.success) {
-          setHasError(true)
-          if (r.error) {
-            setLogs((prev) => [...prev, tRef.current('done.errorPrefix', { msg: r.error })])
-            setShowLogs(true)
-          }
+      if (cancelled) return
+      setStatus(r.success ? 'running' : 'stopped')
+      if (!r.success) {
+        setHasError(true)
+        if (r.error) {
+          setLogs((prev) => [...prev, tRef.current('done.errorPrefix', { msg: r.error })])
+          setShowLogs(true)
         }
       }
     }
-    poll()
+    boot()
 
     return () => {
       cancelled = true
@@ -259,7 +262,7 @@ export default function DoneStep({
   }, [])
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center px-10 gap-3 overflow-hidden">
+    <div className="flex-1 flex flex-col items-center justify-start pt-10 px-10 gap-3 overflow-hidden">
       <div className="absolute top-4 right-4 text-right">
         <LanguageSwitcher />
         {installerVersion && <p className="mt-1 text-[10px] text-text-muted/60">Installer v{installerVersion}</p>}
@@ -319,6 +322,7 @@ export default function DoneStep({
       </div>
 
       {/* OpenClaw update banner */}
+      <div className="w-full max-w-md min-h-12">
       {(openclawUpdate || updating) && (
         <div className="w-full max-w-md flex items-center gap-3 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-500/15 via-blue-500/10 to-blue-500/15 border border-blue-500/30">
           <span className="text-base">{updating ? '⏳' : '🔄'}</span>
@@ -351,6 +355,7 @@ export default function DoneStep({
           )}
         </div>
       )}
+      </div>
 
       {/* Action buttons */}
       <div className="flex gap-3">
@@ -383,6 +388,7 @@ export default function DoneStep({
       </div>
 
       {/* Gateway logs */}
+      <div className="w-full max-w-sm min-h-40">
       {logs.length > 0 && (
         <div className="w-full max-w-sm">
           <button
@@ -395,6 +401,7 @@ export default function DoneStep({
           {showLogs && <LogViewer lines={logs} />}
         </div>
       )}
+      </div>
 
       {/* ─── Web Chat banner ─── */}
       <div className="w-full max-w-md">

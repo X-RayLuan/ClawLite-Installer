@@ -1,4 +1,5 @@
 import { spawn, ChildProcess } from 'child_process'
+import http from 'http'
 import { platform } from 'os'
 import { getPathEnv, findBin } from './path-utils'
 import { checkPort } from './troubleshooter'
@@ -45,16 +46,32 @@ const runGateway = (args: string[]): Promise<string> => {
   })
 }
 
-const waitForGatewayPort = async (timeoutMs = 12000): Promise<boolean> => {
+const checkGatewayHttp = (): Promise<boolean> =>
+  new Promise((resolve) => {
+    const req = http.get('http://127.0.0.1:18789/', { timeout: 1500 }, (res) => {
+      res.resume()
+      resolve(Boolean(res.statusCode && res.statusCode > 0))
+    })
+    req.on('error', () => resolve(false))
+    req.on('timeout', () => {
+      req.destroy()
+      resolve(false)
+    })
+  })
+
+const waitForGatewayReady = async (timeoutMs = 30000): Promise<boolean> => {
   const start = Date.now()
   while (Date.now() - start < timeoutMs) {
     try {
       const p = await checkPort()
-      if (p.inUse) return true
+      if (p.inUse) {
+        const ok = await checkGatewayHttp()
+        if (ok) return true
+      }
     } catch {
       /* ignore */
     }
-    await new Promise((r) => setTimeout(r, 500))
+    await new Promise((r) => setTimeout(r, 700))
   }
   return false
 }
@@ -128,11 +145,11 @@ const startGatewayWsl = async (): Promise<GatewayResult> => {
 
     setTimeout(async () => {
       if (!resolved) {
-        const healthy = await waitForGatewayPort()
+        const healthy = await waitForGatewayReady()
         resolved = true
         resolve(healthy ? { status: 'started' } : { status: 'error', error: 'Gateway health check failed' })
       }
-    }, 1000)
+    }, 500)
   })
 }
 
