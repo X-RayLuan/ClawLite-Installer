@@ -12,7 +12,7 @@ No terminal. No npm. No config files.
 
 Download → Run → Enter API key. Done.
 
-🔗 github.com/X-RayLuan/Mac-Installer
+🔗 github.com/X-RayLuan/ClawLite-Installer
 
 🧵 Here's why I built it and what I learned ↓
 
@@ -74,7 +74,7 @@ Try it out:
 🍎 macOS: clawlite.kr
 🪟 Windows: clawlite.kr
 
-⭐ Star on GitHub: github.com/X-RayLuan/Mac-Installer
+⭐ Star on GitHub: github.com/X-RayLuan/ClawLite-Installer
 
 Feedback, issues, PRs — all welcome!
 

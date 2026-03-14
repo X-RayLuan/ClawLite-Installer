@@ -59,14 +59,14 @@ We built a custom `useWizard` hook with history tracking for back navigation and
 
 ## Screenshots
 
-![Welcome](https://raw.githubusercontent.com/X-RayLuan/Mac-Installer/main/docs/screenshots/welcome.png)
-![Environment Check](https://raw.githubusercontent.com/X-RayLuan/Mac-Installer/main/docs/screenshots/env-check.png)
-![Done](https://raw.githubusercontent.com/X-RayLuan/Mac-Installer/main/docs/screenshots/done.png)
+![Welcome](https://raw.githubusercontent.com/X-RayLuan/ClawLite-Installer/main/docs/screenshots/welcome.png)
+![Environment Check](https://raw.githubusercontent.com/X-RayLuan/ClawLite-Installer/main/docs/screenshots/env-check.png)
+![Done](https://raw.githubusercontent.com/X-RayLuan/ClawLite-Installer/main/docs/screenshots/done.png)
 
 ## Try it out
 
-- **Download**: [macOS (.dmg)](https://github.com/X-RayLuan/Mac-Installer/releases/latest/download/clawlite.dmg) | [Windows (.exe)](https://github.com/X-RayLuan/Mac-Installer/releases/latest/download/clawlite-setup.exe)
-- **GitHub**: [github.com/X-RayLuan/Mac-Installer](https://github.com/X-RayLuan/Mac-Installer)
+- **Download**: [macOS (.dmg)](https://github.com/X-RayLuan/ClawLite-Installer/releases/latest/download/clawlite.dmg) | [Windows (.exe)](https://github.com/X-RayLuan/ClawLite-Installer/releases/latest/download/clawlite-setup.exe)
+- **GitHub**: [github.com/X-RayLuan/ClawLite-Installer](https://github.com/X-RayLuan/ClawLite-Installer)
 - **Website**: [clawlite.kr](https://clawlite.kr)
 
 It's MIT licensed and fully open source. Contributions welcome!

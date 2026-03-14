@@ -97,7 +97,7 @@ Windows에서는 WSL(Windows Subsystem for Linux) Ubuntu 내에서 Node.js/OpenC
 
 ### 릴리즈 배포
 
-소스코드와 바이너리 모두 `X-RayLuan/Mac-Installer` 단일 저장소에서 관리.
+소스코드와 바이너리 모두 `X-RayLuan/ClawLite-Installer` 단일 저장소에서 관리.
 
 **릴리즈 절차** (`npm run release` = `scripts/release.mjs`):
 
@@ -117,8 +117,8 @@ Windows에서는 WSL(Windows Subsystem for Linux) Ubuntu 내에서 Node.js/OpenC
 
 **다운로드 URL** (버전 무관, 항상 최신):
 
-- macOS: `https://github.com/X-RayLuan/Mac-Installer/releases/latest/download/clawlite.dmg`
-- Windows: `https://github.com/X-RayLuan/Mac-Installer/releases/latest/download/clawlite-setup.exe`
+- macOS: `https://github.com/X-RayLuan/ClawLite-Installer/releases/latest/download/clawlite.dmg`
+- Windows: `https://github.com/X-RayLuan/ClawLite-Installer/releases/latest/download/clawlite-setup.exe`
 
 **빌드 파일명**: `electron-builder.yml`에서 버전 없이 고정 (`clawlite.dmg`, `clawlite-setup.exe`)
 
