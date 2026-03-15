@@ -1,53 +1,73 @@
-<p align="center">
-  <img src="resources/icon.png" width="120" alt="ClawLite Logo">
-</p>
+# ClawLite Installer
 
-<h1 align="center">ClawLite Installer</h1>
+**One-click installer for OpenClaw on macOS and Windows.**
 
-<p align="center">
-  <strong>One-click installer for OpenClaw on macOS and Windows</strong>
-</p>
+ClawLite Installer is the desktop app that helps users install OpenClaw with fewer manual steps and less terminal friction.
 
-<p align="center">
-  <a href="https://github.com/X-RayLuan/ClawLite-Installer/releases/latest">Download</a> · <a href="https://github.com/X-RayLuan/ClawLite-Installer">GitHub</a> · <a href="https://clawlite.ai">Website</a>
-</p>
+**Download:** <https://github.com/X-RayLuan/ClawLite-Installer/releases/latest>
+
+**Website:** <https://clawlite.ai>
 
 ---
 
-## What is ClawLite Installer?
+# Why people use it
 
-ClawLite Installer is a desktop installer that sets up OpenClaw with minimal manual steps.
+- Faster OpenClaw setup
+- Lower friction for beginners
+- Cross-platform installer flow
+- Easier onboarding for BYOK / token setup
+- Cleaner path from download to first run
 
-**Download → Run → Enter API key**
+---
 
-## Key Features
+# What it does
 
-- One-click setup flow
-- Supports multiple model providers
-- Telegram bot integration
-- Cross-platform: macOS (Intel/Apple Silicon) + Windows
+The installer is designed around a simple flow:
 
-## Download
+**Download → Run → Configure → Launch OpenClaw**
 
-- macOS `.dmg`: <https://github.com/X-RayLuan/ClawLite-Installer/releases/latest/download/clawlite.dmg>
-- Windows `.exe`: <https://github.com/X-RayLuan/ClawLite-Installer/releases/latest/download/clawlite-setup.exe>
+Current repo scope includes:
 
-## Development
+- desktop installer app
+- macOS and Windows packaging
+- release scripts
+- content / launch assets
+- signing and release workflow support
+
+---
+
+# Supported platforms
+
+- macOS
+- Windows
+
+---
+
+# Development
 
 ```bash
 npm install
 npm run dev
+```
+
+Build:
+
+```bash
 npm run build
 ```
 
-Packaging:
+Package locally:
 
 ```bash
 npm run build:mac-local
 npm run build:win-local
 ```
 
-macOS notarized release (Developer ID + Notary):
+---
+
+# Release notes
+
+macOS notarized release:
 
 ```bash
 export APPLE_API_KEY=/path/to/AuthKey_XXXXXX.p8
@@ -56,7 +76,7 @@ export APPLE_API_ISSUER=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 npm run build:mac
 ```
 
-Windows signed release (Authenticode):
+Windows signed release:
 
 ```bash
 export CSC_LINK=/path/to/windows-codesign.p12
@@ -64,6 +84,18 @@ export CSC_KEY_PASSWORD=your_cert_password
 npm run build:win
 ```
 
-## License
+---
 
-MIT
+# Repo highlights
+
+- `resources/` app icons and packaged assets
+- `build/` platform packaging config
+- `scripts/release.mjs` release workflow
+- `docs/` web assets / docs collateral
+- `marketing/` launch copy and campaign material
+
+---
+
+# Bottom line
+
+If ClawLite is the easier path into OpenClaw, this repo is the installer that makes that promise real.
