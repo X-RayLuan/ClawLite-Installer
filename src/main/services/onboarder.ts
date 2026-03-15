@@ -89,6 +89,35 @@ const MODEL_SPECS: Partial<
   minimax: { contextWindow: 1000000, maxTokens: 16384 }
 }
 
+const normalizeAuthConfig = (
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  cfg: any,
+  authMethod: OnboardConfig['authMethod']
+): void => {
+  if (authMethod === 'oauth') {
+    cfg.auth = cfg.auth ?? {}
+    cfg.auth.profiles = {
+      ...cfg.auth.profiles,
+      [OAUTH_PROFILE_ID]: { provider: 'openai-codex', mode: 'oauth' }
+    }
+    cfg.auth.order = { ...cfg.auth.order, 'openai-codex': [OAUTH_PROFILE_ID] }
+    return
+  }
+
+  if (!cfg.auth) return
+
+  // API-key onboarding should not retain profile-based auth routing from prior installs.
+  if (cfg.auth.profiles && typeof cfg.auth.profiles === 'object') {
+    delete cfg.auth.profiles
+  }
+  if (cfg.auth.order && typeof cfg.auth.order === 'object') {
+    delete cfg.auth.order
+  }
+  if (Object.keys(cfg.auth).length === 0) {
+    delete cfg.auth
+  }
+}
+
 const createRunCmd = (): ((
   cmd: string,
   args: string[],
@@ -323,15 +352,7 @@ export const runOnboard = async (
       ...cfg.agents.defaults.model,
       primary: config.modelId || DEFAULT_MODELS[effectiveProvider]
     }
-    // OAuth: register auth profile reference in config
-    if (config.authMethod === 'oauth') {
-      cfg.auth = cfg.auth ?? {}
-      cfg.auth.profiles = {
-        ...cfg.auth.profiles,
-        [OAUTH_PROFILE_ID]: { provider: 'openai-codex', mode: 'oauth' }
-      }
-      cfg.auth.order = { ...cfg.auth.order, 'openai-codex': [OAUTH_PROFILE_ID] }
-    }
+    normalizeAuthConfig(cfg, config.authMethod)
     const spec = MODEL_SPECS[config.provider]
     if (spec && cfg.models?.providers) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -683,15 +704,7 @@ export const switchProvider = async (
       ...ocConfig.agents.defaults.model,
       primary: config.modelId || DEFAULT_MODELS[effectiveProvider]
     }
-    // OAuth: register auth profile reference in config
-    if (config.authMethod === 'oauth') {
-      ocConfig.auth = ocConfig.auth ?? {}
-      ocConfig.auth.profiles = {
-        ...ocConfig.auth.profiles,
-        [OAUTH_PROFILE_ID]: { provider: 'openai-codex', mode: 'oauth' }
-      }
-      ocConfig.auth.order = { ...ocConfig.auth.order, 'openai-codex': [OAUTH_PROFILE_ID] }
-    }
+    normalizeAuthConfig(ocConfig, config.authMethod)
     const spec = MODEL_SPECS[effectiveProvider as OnboardConfig['provider']]
     if (spec && ocConfig.models?.providers) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
