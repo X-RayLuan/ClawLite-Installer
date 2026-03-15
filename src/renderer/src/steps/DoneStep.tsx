@@ -227,7 +227,6 @@ export default function DoneStep({
         clean.includes('fetch failed') ||
         clean.includes('memory search is enabled but no embedding provider is configured') ||
         clean.includes('gateway memory probe for default agent is not ready') ||
-        clean.includes('no api key found for provider') ||
         (clean.includes('gateway health check failed') && statusRef.current === 'starting')
 
       const isErrorWord = /\berror\b|\bfailed\b|\bfatal\b|\bexception\b/.test(clean)
