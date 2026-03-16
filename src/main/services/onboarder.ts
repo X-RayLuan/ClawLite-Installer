@@ -5,7 +5,13 @@ import { platform, homedir } from 'os'
 import { join } from 'path'
 import https from 'https'
 import { BrowserWindow } from 'electron'
-import { runInWsl, readWslFile, writeWslFile } from './wsl-utils'
+import {
+  runInWsl,
+  readWslFile,
+  writeWslFile,
+  resolveWslOpenClawConfigPath,
+  resolveWslOpenClawStateDir
+} from './wsl-utils'
 import { t } from '../../shared/i18n/main'
 
 interface OnboardConfig {
@@ -223,6 +229,8 @@ export const runOnboard = async (
   const ocBin = isWindows ? 'openclaw' : findBin('openclaw')
   const fixPath = join(homedir(), '.openclaw', 'ipv4-fix.js')
   const runCmd = createRunCmd()
+  const wslConfigPath = isWindows ? await resolveWslOpenClawConfigPath() : null
+  const wslStateDir = isWindows ? await resolveWslOpenClawStateDir() : null
 
   // Prevent Telegram API ETIMEDOUT on environments without IPv6 (Node.js 22 autoSelectFamily)
   if (isMac) {
@@ -252,14 +260,14 @@ export const runOnboard = async (
     await wslKillOpenclaw().catch(() => {})
     // Clean up config files inside WSL (preserve auth-profiles.json for OAuth)
     try {
-      await runInWsl('rm -f /root/.openclaw/openclaw.json')
+      await runInWsl(`rm -f '${wslConfigPath}'`)
     } catch {
       /* ignore */
     }
     const wslAuthClean =
       config.authMethod === 'oauth'
-        ? 'rm -f /root/.openclaw/agents/main/agent/auth.json'
-        : 'rm -f /root/.openclaw/agents/main/agent/auth.json /root/.openclaw/agents/main/agent/auth-profiles.json'
+        ? `rm -f '${wslStateDir}/agents/main/agent/auth.json'`
+        : `rm -f '${wslStateDir}/agents/main/agent/auth.json' '${wslStateDir}/agents/main/agent/auth-profiles.json'`
     try {
       await runInWsl(wslAuthClean)
     } catch {
@@ -349,7 +357,7 @@ export const runOnboard = async (
     // continue if config file was created
     if (isWindows) {
       try {
-        await readWslFile('/root/.openclaw/openclaw.json')
+        await readWslFile(wslConfigPath!)
       } catch {
         throw e
       }
@@ -400,11 +408,24 @@ export const runOnboard = async (
   // Patch config file
   if (isWindows) {
     try {
-      const raw = await readWslFile('/root/.openclaw/openclaw.json')
+      const raw = await readWslFile(wslConfigPath!)
       const ocConfig = JSON.parse(raw)
       patchConfig(ocConfig)
-      await writeWslFile('/root/.openclaw/openclaw.json', JSON.stringify(ocConfig, null, 2))
-    } catch {
+      await writeWslFile(wslConfigPath!, JSON.stringify(ocConfig, null, 2))
+      const patchedRaw = await readWslFile(wslConfigPath!)
+      const patchedConfig = JSON.parse(patchedRaw) as {
+        agents?: { defaults?: { model?: { primary?: string } } }
+      }
+      const expectedModel = config.modelId || DEFAULT_MODELS[effectiveProvider]
+      const actualModel = patchedConfig.agents?.defaults?.model?.primary
+      if (actualModel !== expectedModel) {
+        throw new Error(
+          `Windows model patch did not persist (expected ${expectedModel}, got ${actualModel || 'unset'})`
+        )
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error)
+      if (msg.includes('did not persist')) throw error
       /* config not found — skip patch */
     }
   } else {
@@ -450,10 +471,10 @@ export const runOnboard = async (
 
     if (isWindows) {
       try {
-        const raw = await readWslFile('/root/.openclaw/openclaw.json')
+        const raw = await readWslFile(wslConfigPath!)
         const ocConfig = JSON.parse(raw)
         ocConfig.channels = { ...ocConfig.channels, telegram: telegramChannel }
-        await writeWslFile('/root/.openclaw/openclaw.json', JSON.stringify(ocConfig, null, 2))
+        await writeWslFile(wslConfigPath!, JSON.stringify(ocConfig, null, 2))
         log(t('onboarder.telegramDone'))
       } catch {
         log(t('onboarder.configNotFound'))
@@ -542,7 +563,7 @@ export const readCurrentConfig = async (): Promise<CurrentConfig | null> => {
   try {
     let raw: string
     if (isWindows) {
-      raw = await readWslFile('/root/.openclaw/openclaw.json')
+      raw = await readWslFile(await resolveWslOpenClawConfigPath())
     } else {
       const configPath = join(homedir(), '.openclaw', 'openclaw.json')
       if (!existsSync(configPath)) return null
@@ -578,6 +599,8 @@ export const switchProvider = async (
   const isMac = platform() === 'darwin'
   const ocBin = isWindows ? 'openclaw' : findBin('openclaw')
   const runCmd = createRunCmd()
+  const wslConfigPath = isWindows ? await resolveWslOpenClawConfigPath() : null
+  const wslStateDir = isWindows ? await resolveWslOpenClawStateDir() : null
 
   log(t('onboarder.switchStarting'))
 
@@ -586,7 +609,7 @@ export const switchProvider = async (
   try {
     let raw: string
     if (isWindows) {
-      raw = await readWslFile('/root/.openclaw/openclaw.json')
+      raw = await readWslFile(wslConfigPath!)
     } else {
       raw = readFileSync(join(homedir(), '.openclaw', 'openclaw.json'), 'utf-8')
     }
@@ -625,13 +648,13 @@ export const switchProvider = async (
   const preserveAuthProfiles = config.authMethod === 'oauth'
   if (isWindows) {
     try {
-      await runInWsl('rm -f /root/.openclaw/openclaw.json')
+      await runInWsl(`rm -f '${wslConfigPath}'`)
     } catch {
       /* ignore */
     }
     const wslAuthClean = preserveAuthProfiles
-      ? 'rm -f /root/.openclaw/agents/main/agent/auth.json'
-      : 'rm -f /root/.openclaw/agents/main/agent/auth.json /root/.openclaw/agents/main/agent/auth-profiles.json'
+      ? `rm -f '${wslStateDir}/agents/main/agent/auth.json'`
+      : `rm -f '${wslStateDir}/agents/main/agent/auth.json' '${wslStateDir}/agents/main/agent/auth-profiles.json'`
     try {
       await runInWsl(wslAuthClean)
     } catch {
@@ -694,7 +717,7 @@ export const switchProvider = async (
   } catch (e) {
     if (isWindows) {
       try {
-        await readWslFile('/root/.openclaw/openclaw.json')
+        await readWslFile(wslConfigPath!)
       } catch {
         throw e
       }
@@ -750,11 +773,24 @@ export const switchProvider = async (
 
   if (isWindows) {
     try {
-      const raw = await readWslFile('/root/.openclaw/openclaw.json')
+      const raw = await readWslFile(wslConfigPath!)
       const ocConfig = JSON.parse(raw)
       patchSwitchConfig(ocConfig, savedTelegram)
-      await writeWslFile('/root/.openclaw/openclaw.json', JSON.stringify(ocConfig, null, 2))
-    } catch {
+      await writeWslFile(wslConfigPath!, JSON.stringify(ocConfig, null, 2))
+      const patchedRaw = await readWslFile(wslConfigPath!)
+      const patchedConfig = JSON.parse(patchedRaw) as {
+        agents?: { defaults?: { model?: { primary?: string } } }
+      }
+      const expectedModel = config.modelId || DEFAULT_MODELS[effectiveProvider]
+      const actualModel = patchedConfig.agents?.defaults?.model?.primary
+      if (actualModel !== expectedModel) {
+        throw new Error(
+          `Windows model patch did not persist (expected ${expectedModel}, got ${actualModel || 'unset'})`
+        )
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error)
+      if (msg.includes('did not persist')) throw error
       /* config not found */
     }
   } else {

@@ -1,4 +1,5 @@
 import { spawn } from 'child_process'
+import { posix as pathPosix } from 'path'
 
 export type WslState =
   | 'not_available'
@@ -10,6 +11,8 @@ export type WslState =
 
 const WSL_DISTRO = 'Ubuntu'
 const WSL_USER = 'root'
+const DEFAULT_WSL_OPENCLAW_STATE_DIR = '/root/.openclaw'
+const DEFAULT_WSL_OPENCLAW_CONFIG_PATH = `${DEFAULT_WSL_OPENCLAW_STATE_DIR}/openclaw.json`
 
 const runCmd = (cmd: string, args: string[], timeout = 15000): Promise<string> =>
   new Promise((resolve, reject) => {
@@ -145,3 +148,18 @@ export const writeWslFile = (path: string, content: string): Promise<void> =>
       reject(err)
     })
   })
+
+export const resolveWslOpenClawConfigPath = async (): Promise<string> => {
+  try {
+    const resolved = await runInWsl('openclaw config file', 15000)
+    const trimmed = resolved.trim()
+    return trimmed || DEFAULT_WSL_OPENCLAW_CONFIG_PATH
+  } catch {
+    return DEFAULT_WSL_OPENCLAW_CONFIG_PATH
+  }
+}
+
+export const resolveWslOpenClawStateDir = async (): Promise<string> => {
+  const configPath = await resolveWslOpenClawConfigPath()
+  return pathPosix.dirname(configPath)
+}

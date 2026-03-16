@@ -4,7 +4,7 @@ import { createServer, type Server } from 'http'
 import { join } from 'path'
 import { readFileSync, writeFileSync, mkdirSync } from 'fs'
 import { platform, homedir } from 'os'
-import { readWslFile, writeWslFile } from './wsl-utils'
+import { readWslFile, writeWslFile, resolveWslOpenClawStateDir } from './wsl-utils'
 
 // OpenAI OAuth constants (from OpenClaw's pi-ai)
 const CLIENT_ID = 'app_EMoamEEZ73f0CkXaXp7hrann'
@@ -169,7 +169,7 @@ const saveCredentials = async (creds: {
   }
   if (isWindows) {
     // WSL: read/write via wsl-utils
-    const wslPath = '/root/.openclaw/agents/main/agent/' + AUTH_PROFILE_FILENAME
+    const wslPath = `${await resolveWslOpenClawStateDir()}/agents/main/agent/${AUTH_PROFILE_FILENAME}`
     let store: Record<string, unknown>
     try {
       const raw = await readWslFile(wslPath)
