@@ -31,11 +31,13 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
         run: npm run build:mac-local
       - name: Verify macOS app version matches release tag
-        run: node scripts/verify-mac-artifact.mjs "${GITHUB_REF_NAME#v}" dist/clawlite.dmg
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag || github.ref_name }}
+        run: node scripts/verify-mac-artifact.mjs "${RELEASE_TAG#v}" dist/clawlite.dmg
       - name: Upload to release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag }}
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag || github.ref_name }}
         run: gh release upload "$RELEASE_TAG" dist/clawlite.dmg --clobber
 
   build-win:
