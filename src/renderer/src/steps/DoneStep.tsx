@@ -175,7 +175,11 @@ export default function DoneStep({
       setShowLogs(true)
     }
 
-    const url = `${base}?token=${encodeURIComponent(token)}`
+    // OpenClaw Control UI currently consumes gateway tokens from the URL hash
+    // (`#token=...`) during boot. Passing `?token=...` looks valid, but the UI
+    // strips the query param before persisting it, which leaves the token blank
+    // and can trigger repeated unauthorized reconnects.
+    const url = `${base}#token=${encodeURIComponent(token)}`
     window.electronAPI.system.openExternal(url)
   }
 
