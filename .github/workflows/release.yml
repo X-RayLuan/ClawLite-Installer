@@ -6,9 +6,9 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: 'Existing release tag to upload assets to (for example v1.3.87)'
+        description: 'Existing release tag to upload assets to (for example v1.3.88)'
         required: true
-        default: 'v1.3.87'
+        default: 'v1.3.88'
 
 permissions:
   contents: write
