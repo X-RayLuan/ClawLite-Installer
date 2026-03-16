@@ -562,7 +562,7 @@ const authFlags: Record<string, string[]> = {
   anthropic: ['--auth-choice', 'apiKey', '--anthropic-api-key', config.apiKey!],
   google: ['--auth-choice', 'gemini-api-key', '--gemini-api-key', config.apiKey!],
   openai: ['--auth-choice', 'openai-api-key', '--openai-api-key', config.apiKey!],
-  minimax: ['--auth-choice', 'minimax-api', '--minimax-api-key', config.apiKey!],
+  minimax: ['--auth-choice', 'minimax-global-api', '--minimax-api-key', config.apiKey!],
   glm: ['--auth-choice', 'zai-api-key', '--zai-api-key', config.apiKey!]
 }
 
