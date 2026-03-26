@@ -1,13 +1,13 @@
 {
   "name": "clawlite",
   "version": "1.3.88",
-  "description": "One-click installer for OpenClaw AI agent",
+  "description": "One-click desktop installer for ClawLite AI agent",
   "license": "MIT",
   "main": "./out/main/index.js",
   "author": "ClawLite",
   "homepage": "https://clawlite.ai",
   "keywords": [
-    "openclaw",
+    "clawlite",
     "ai-agent",
     "telegram",
     "installer",
@@ -69,6 +69,6 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/X-RayLuan/ClawLite-Installer.git"
+    "url": "https://github.com/ClawLite/ClawLite-Installer.git"
   }
 }

@@ -5,7 +5,7 @@
     "gatewayStopped": "Gateway停止中",
     "aiModel": "AIモデル:",
     "changeModel": "変更",
-    "ocUpdateAvailable": "OpenClaw v{{latest}} アップデート可能",
+    "ocUpdateAvailable": "ClawLite v{{latest}} アップデート可能",
     "ocCurrentVersion": "現在 v{{current}}",
     "openTelegram": "Telegramを開く",
     "restartBtn": "再起動",
@@ -25,8 +25,8 @@
     "settingsBackup": "設定のバックアップ"
   },
   "uninstall": {
-    "title": "OpenClawの削除",
-    "desc": "OpenClawパッケージを削除します。この操作は元に戻せません。",
+    "title": "ClawLiteの削除",
+    "desc": "ClawLiteパッケージを削除します。この操作は元に戻せません。",
     "removeConfig": "設定ファイルも一緒に削除 (~/.openclaw)",
     "preparing": "削除の準備中...",
     "completed": "削除が完了しました。",

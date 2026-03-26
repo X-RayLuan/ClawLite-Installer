@@ -6,13 +6,13 @@
 
 **Tweet 1 (Hook)**
 
-I built a one-click installer for OpenClaw AI agent.
+I built a one-click installer for AI agents.
 
 No terminal. No npm. No config files.
 
 Download → Run → Enter API key. Done.
 
-🔗 github.com/X-RayLuan/ClawLite-Installer
+🔗 github.com/ClawLite/ClawLite-Installer
 
 🧵 Here's why I built it and what I learned ↓
 
@@ -20,7 +20,7 @@ Download → Run → Enter API key. Done.
 
 **Tweet 2 (Problem)**
 
-OpenClaw is an amazing open-source AI agent that runs on Telegram.
+Running your own AI agent on Telegram is powerful.
 
 But setting it up means:
 
@@ -47,7 +47,7 @@ Works on macOS and Windows.
 
 The hardest part? Windows support.
 
-OpenClaw runs inside WSL, which has 6 possible states and requires a system reboot mid-install.
+The AI agent runs inside WSL, which has 6 possible states and requires a system reboot mid-install.
 
 I built a state machine that saves your progress and resumes after reboot. IPv6 DNS issues? Fixed those too.
 
@@ -61,7 +61,7 @@ Tech stack:
 • TypeScript
 • GitHub Actions CI/CD
 • Apple Notarization for macOS
-• i18n (EN/KO/JA/ZH)
+• i18n (EN/ZH/JA)
 
 MIT licensed. Fully open source.
 
@@ -71,17 +71,17 @@ MIT licensed. Fully open source.
 
 Try it out:
 
-🍎 macOS: clawlite.kr
-🪟 Windows: clawlite.kr
+🍎 macOS: clawlite.ai
+🪟 Windows: clawlite.ai
 
-⭐ Star on GitHub: github.com/X-RayLuan/ClawLite-Installer
+⭐ Star on GitHub: github.com/ClawLite/ClawLite-Installer
 
 Feedback, issues, PRs — all welcome!
 
-#OpenClaw #AIAgent #OpenSource #Telegram #Electron
+#AIAgent #OpenSource #Telegram #Electron
 
 ---
 
 ## Hashtags
 
-#OpenClaw #AIAgent #OpenSource #Telegram #Electron #React #TypeScript #DesktopApp #DevTools
+#AIAgent #OpenSource #Telegram #Electron #React #TypeScript #DesktopApp #DevTools

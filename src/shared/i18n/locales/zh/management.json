@@ -5,7 +5,7 @@
     "gatewayStopped": "Gateway 已停止",
     "aiModel": "AI 模型：",
     "changeModel": "更改",
-    "ocUpdateAvailable": "OpenClaw v{{latest}} 可更新",
+    "ocUpdateAvailable": "ClawLite v{{latest}} 可更新",
     "ocCurrentVersion": "当前 v{{current}}",
     "openTelegram": "打开 Telegram",
     "restartBtn": "重启",
@@ -25,8 +25,8 @@
     "settingsBackup": "配置备份"
   },
   "uninstall": {
-    "title": "删除 OpenClaw",
-    "desc": "将删除 OpenClaw 软件包。此操作不可撤销。",
+    "title": "删除 ClawLite",
+    "desc": "将删除 ClawLite 软件包。此操作不可撤销。",
     "removeConfig": "同时删除配置文件（~/.openclaw）",
     "preparing": "准备删除中...",
     "completed": "删除已完成。",

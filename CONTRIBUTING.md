@@ -14,7 +14,7 @@ Thank you for your interest in contributing to ClawLite! This guide will help yo
 
 ```bash
 # Clone the repository
-git clone https://github.com/X-RayLuan/ClawLite-Installer.git
+git clone https://github.com/ClawLite/ClawLite-Installer.git
 cd clawlite
 
 # Install dependencies
@@ -55,7 +55,7 @@ When adding a new IPC channel, you must update three files:
 
 ### Reporting Bugs
 
-Use the [bug report template](https://github.com/X-RayLuan/ClawLite-Installer/issues/new?template=bug_report.md) to file a bug. Include:
+Use the [bug report template](https://github.com/ClawLite/ClawLite-Installer/issues/new?template=bug_report.md) to file a bug. Include:
 
 - Steps to reproduce
 - Expected vs actual behavior
@@ -63,7 +63,7 @@ Use the [bug report template](https://github.com/X-RayLuan/ClawLite-Installer/is
 
 ### Suggesting Features
 
-Use the [feature request template](https://github.com/X-RayLuan/ClawLite-Installer/issues/new?template=feature_request.md).
+Use the [feature request template](https://github.com/ClawLite/ClawLite-Installer/issues/new?template=feature_request.md).
 
 ### Submitting Pull Requests
 
@@ -90,8 +90,8 @@ Use the [feature request template](https://github.com/X-RayLuan/ClawLite-Install
 
 ## Need Help?
 
-- Open a [GitHub Discussion](https://github.com/X-RayLuan/ClawLite-Installer/discussions)
-- Check existing [issues](https://github.com/X-RayLuan/ClawLite-Installer/issues)
+- Open a [GitHub Discussion](https://github.com/ClawLite/ClawLite-Installer/discussions)
+- Check existing [issues](https://github.com/ClawLite/ClawLite-Installer/issues)
 
 ## License
 

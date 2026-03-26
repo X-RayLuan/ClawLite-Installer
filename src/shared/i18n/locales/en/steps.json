@@ -5,7 +5,7 @@
   },
   "welcome": {
     "title": "Your Own AI Agent, One Click Away",
-    "desc": "Install OpenClaw quickly and easily,\nthen chat with AI on Telegram",
+    "desc": "Install ClawLite quickly and easily,\nthen chat with AI on Telegram",
     "start": "Get Started",
     "language": "Language"
   },
@@ -29,7 +29,7 @@
       "checking": "Checking"
     },
     "nodejs": "Node.js",
-    "openclaw": "OpenClaw",
+    "openclaw": "ClawLite",
     "updateAvailable": "Update Available",
     "checkBtn": "Checking",
     "nextBtn": "Next Step",
@@ -39,7 +39,7 @@
     "title": "WSL Setup",
     "notAvailable": "This feature requires Windows 10 version 2004 or later.",
     "checkVersion": "Run winver to check your Windows version.",
-    "wslRequired": "WSL (Windows Subsystem for Linux) is required to run OpenClaw.",
+    "wslRequired": "WSL (Windows Subsystem for Linux) is required to run ClawLite.",
     "autoInstall": "It will be installed automatically with administrator privileges.",
     "wslInstalling": "Installing WSL...",
     "wslInstall": "Install WSL",
@@ -68,7 +68,7 @@
     "checkLog": "Please check the log",
     "desc": "The following items will be installed",
     "nodejs": "Node.js 22 LTS",
-    "openclaw": "OpenClaw",
+    "openclaw": "ClawLite",
     "retryBtn": "Retry",
     "startBtn": "Start Installation",
     "nextBtn": "Next Step"
@@ -153,9 +153,9 @@
     "showLog": "Show Log",
     "hideLog": "Hide Log",
     "envStatus": {
-      "notInstalled": "OpenClaw Not Installed",
+      "notInstalled": "ClawLite Not Installed",
       "nodeUpdateNeeded": "Node.js {{version}} -- Update Required",
-      "ok": "Node {{nodeVersion}} / OpenClaw {{ocVersion}}",
+      "ok": "Node {{nodeVersion}} / ClawLite {{ocVersion}}",
       "failed": "Environment check failed"
     },
     "gwStatus": {

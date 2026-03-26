@@ -5,7 +5,7 @@
   },
   "welcome": {
     "title": "专属 AI 智能体，一键搞定",
-    "desc": "轻松快速安装 OpenClaw\n通过 Telegram 与 AI 对话",
+    "desc": "轻松快速安装 ClawLite\n通过 Telegram 与 AI 对话",
     "start": "开始",
     "language": "语言"
   },
@@ -29,7 +29,7 @@
       "checking": "检查中"
     },
     "nodejs": "Node.js",
-    "openclaw": "OpenClaw",
+    "openclaw": "ClawLite",
     "updateAvailable": "可更新",
     "checkBtn": "检查中",
     "nextBtn": "下一步",
@@ -39,7 +39,7 @@
     "title": "WSL 设置",
     "notAvailable": "此功能需要 Windows 10 2004 或更高版本。",
     "checkVersion": "请运行 winver 检查 Windows 版本。",
-    "wslRequired": "运行 OpenClaw 需要 WSL（Windows Subsystem for Linux）。",
+    "wslRequired": "运行 ClawLite 需要 WSL（Windows Subsystem for Linux）。",
     "autoInstall": "将以管理员权限自动安装。",
     "wslInstalling": "正在安装 WSL...",
     "wslInstall": "安装 WSL",
@@ -68,7 +68,7 @@
     "checkLog": "请查看日志",
     "desc": "将安装以下组件",
     "nodejs": "Node.js 22 LTS",
-    "openclaw": "OpenClaw",
+    "openclaw": "ClawLite",
     "retryBtn": "重试",
     "startBtn": "开始安装",
     "nextBtn": "下一步"
@@ -153,9 +153,9 @@
     "showLog": "▶ 查看日志",
     "hideLog": "▼ 隐藏日志",
     "envStatus": {
-      "notInstalled": "OpenClaw 未安装",
+      "notInstalled": "ClawLite 未安装",
       "nodeUpdateNeeded": "Node.js {{version}} — 需要更新",
-      "ok": "Node {{nodeVersion}} / OpenClaw {{ocVersion}}",
+      "ok": "Node {{nodeVersion}} / ClawLite {{ocVersion}}",
       "failed": "环境检查失败"
     },
     "gwStatus": {

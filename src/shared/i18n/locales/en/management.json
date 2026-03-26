@@ -5,7 +5,7 @@
     "gatewayStopped": "Gateway Stopped",
     "aiModel": "AI Model:",
     "changeModel": "Change",
-    "ocUpdateAvailable": "OpenClaw v{{latest}} update available",
+    "ocUpdateAvailable": "ClawLite v{{latest}} update available",
     "ocCurrentVersion": "Currently v{{current}}",
     "openTelegram": "Open Telegram",
     "restartBtn": "Restart",
@@ -25,8 +25,8 @@
     "settingsBackup": "Settings Backup"
   },
   "uninstall": {
-    "title": "Uninstall OpenClaw",
-    "desc": "This will remove the OpenClaw package. This action cannot be undone.",
+    "title": "Uninstall ClawLite",
+    "desc": "This will remove the ClawLite package. This action cannot be undone.",
     "removeConfig": "Also delete configuration files (~/.openclaw)",
     "preparing": "Preparing to uninstall...",
     "completed": "Uninstallation complete.",

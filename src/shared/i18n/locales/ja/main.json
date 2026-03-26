@@ -12,8 +12,8 @@
     "aptFailed": "apt-getが失敗しました — 必須パッケージは既にインストールされている可能性があります",
     "nodeWslInstalling": "Node.js 22 LTSをインストール中...",
     "nodeWslDone": "Node.jsのインストールが完了しました!",
-    "ocWslInstalling": "WSL内部にOpenClawをインストール中...",
-    "ocWslDone": "OpenClawのインストールが完了しました!",
+    "ocWslInstalling": "WSL内部にClawLiteをインストール中...",
+    "ocWslDone": "ClawLiteのインストールが完了しました!",
     "nodeDownloading": "Node.js 22をダウンロード中...",
     "nodeInstallerOpening": "Node.jsインストーラーを開いています...",
     "nodeDone": "Node.jsのインストールが完了しました!",
@@ -21,16 +21,16 @@
     "xcodePrompt": "インストールポップアップで「インストール」をクリックしてください。完了までお待ちください...",
     "xcodeDone": "Xcode Command Line Toolsのインストールが完了しました!",
     "xcodeTimeout": "Xcode Command Line Toolsのインストールがタイムアウトしました。ターミナルでxcode-select --installを実行してください。",
-    "ocInstalling": "OpenClawをインストール中...",
-    "ocDone": "OpenClawのインストールが完了しました!"
+    "ocInstalling": "ClawLiteをインストール中...",
+    "ocDone": "ClawLiteのインストールが完了しました!"
   },
   "onboarder": {
-    "starting": "OpenClawの初期設定を開始します...",
+    "starting": "ClawLiteの初期設定を開始します...",
     "configCreatedSkipGw": "設定ファイルの作成が完了しました (Gateway検証をスキップ)",
     "basicDone": "基本設定が完了しました!",
     "addingTelegram": "Telegramチャンネルを追加中...",
     "telegramDone": "Telegramチャンネルの追加が完了しました!",
-    "configNotFound": "OpenClawの設定ファイルが見つかりません",
+    "configNotFound": "ClawLiteの設定ファイルが見つかりません",
     "checkingTelegram": "Telegram接続状態を確認中...",
     "cleaningGateway": "既存のGatewayをクリーンアップ中...",
     "startingGateway": "Gatewayを起動中...",
@@ -60,13 +60,13 @@
   },
   "uninstaller": {
     "stoppingGw": "Gatewayを停止中...",
-    "removing": "OpenClawパッケージを削除中...",
+    "removing": "ClawLiteパッケージを削除中...",
     "removingConfig": "設定ファイルを削除中...",
     "done": "削除が完了しました!"
   },
   "backup": {
-    "noConfig": "バックアップするOpenClaw設定がありません。",
-    "saveTitle": "OpenClawバックアップの保存",
-    "selectTitle": "OpenClawバックアップファイルの選択"
+    "noConfig": "バックアップするClawLite設定がありません。",
+    "saveTitle": "ClawLiteバックアップの保存",
+    "selectTitle": "ClawLiteバックアップファイルの選択"
   }
 }

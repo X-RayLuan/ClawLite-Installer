@@ -33,7 +33,7 @@ export default function DoneStep({
   const [hasTelegram, setHasTelegram] = useState(false)
   const [installerVersion, setInstallerVersion] = useState<string>('')
 
-  // OpenClaw update state
+  // ClawLite update state
   const [openclawUpdate, setOpenclawUpdate] = useState<{
     current: string
     latest: string
@@ -49,7 +49,7 @@ export default function DoneStep({
 
   const { uninstall, backup } = useManagement(setStatus)
 
-  // Check for OpenClaw updates
+  // Check for ClawLite updates
   const checkOpenclawUpdate = useCallback(async () => {
     try {
       const info = await window.electronAPI.openclaw.checkUpdate()
@@ -76,7 +76,7 @@ export default function DoneStep({
     return () => clearInterval(timer)
   }, [status, checkOpenclawUpdate])
 
-  // Execute OpenClaw update
+  // Execute ClawLite update
   const handleOpenclawUpdate = useCallback(async () => {
     setUpdating(true)
     setUpdateLogs([])
@@ -175,7 +175,7 @@ export default function DoneStep({
       setShowLogs(true)
     }
 
-    // OpenClaw Control UI currently consumes gateway tokens from the URL hash
+    // ClawLite Control UI currently consumes gateway tokens from the URL hash
     // (`#token=...`) during boot. Passing `?token=...` looks valid, but the UI
     // strips the query param before persisting it, which leaves the token blank
     // and can trigger repeated unauthorized reconnects.
@@ -396,7 +396,7 @@ export default function DoneStep({
         </div>
       </div>
 
-      {/* OpenClaw update banner */}
+      {/* ClawLite update banner */}
       <div className="w-full max-w-md min-h-14 shrink-0">
       {(openclawUpdate || updating) && (
         <div className="w-full max-w-md flex items-center gap-3 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-500/15 via-blue-500/10 to-blue-500/15 border border-blue-500/30">
@@ -497,7 +497,7 @@ export default function DoneStep({
           <span className="text-lg">🌐</span>
           <div className="flex-1 text-left">
             <span className="text-sm font-bold">Web Chat</span>
-            <p className="text-[11px] text-text-muted/70">Open local OpenClaw dashboard</p>
+            <p className="text-[11px] text-text-muted/70">Open local ClawLite dashboard</p>
           </div>
         </button>
       </div>

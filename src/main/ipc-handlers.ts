@@ -388,7 +388,7 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
     return { success: true }
   })
 
-  // Uninstall OpenClaw
+  // Uninstall ClawLite
   ipcMain.handle('uninstall:openclaw', async (_e, opts: { removeConfig: boolean }) => {
     try {
       await uninstallOpenClaw(win(), opts)

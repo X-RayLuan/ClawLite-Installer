@@ -12,8 +12,8 @@
     "aptFailed": "apt-get failed -- required packages may already be installed",
     "nodeWslInstalling": "Installing Node.js 22 LTS...",
     "nodeWslDone": "Node.js installation complete!",
-    "ocWslInstalling": "Installing OpenClaw inside WSL...",
-    "ocWslDone": "OpenClaw installation complete!",
+    "ocWslInstalling": "Installing ClawLite inside WSL...",
+    "ocWslDone": "ClawLite installation complete!",
     "nodeDownloading": "Downloading Node.js 22...",
     "nodeInstallerOpening": "Opening the Node.js installer...",
     "nodeDone": "Node.js installation complete!",
@@ -21,16 +21,16 @@
     "xcodePrompt": "Click \"Install\" on the popup. Waiting for completion...",
     "xcodeDone": "Xcode Command Line Tools installation complete!",
     "xcodeTimeout": "Xcode Command Line Tools installation timed out. Please run xcode-select --install in the terminal.",
-    "ocInstalling": "Installing OpenClaw...",
-    "ocDone": "OpenClaw installation complete!"
+    "ocInstalling": "Installing ClawLite...",
+    "ocDone": "ClawLite installation complete!"
   },
   "onboarder": {
-    "starting": "Starting OpenClaw initial setup...",
+    "starting": "Starting ClawLite initial setup...",
     "configCreatedSkipGw": "Configuration file created (skipping gateway verification)",
     "basicDone": "Basic setup complete!",
     "addingTelegram": "Adding Telegram channel...",
     "telegramDone": "Telegram channel added!",
-    "configNotFound": "OpenClaw configuration file not found",
+    "configNotFound": "ClawLite configuration file not found",
     "checkingTelegram": "Checking Telegram connection status...",
     "cleaningGateway": "Cleaning up existing Gateway...",
     "startingGateway": "Starting Gateway...",
@@ -60,13 +60,13 @@
   },
   "uninstaller": {
     "stoppingGw": "Stopping Gateway...",
-    "removing": "Removing OpenClaw package...",
+    "removing": "Removing ClawLite package...",
     "removingConfig": "Removing configuration files...",
     "done": "Uninstallation complete!"
   },
   "backup": {
-    "noConfig": "No OpenClaw configuration to back up.",
-    "saveTitle": "Save OpenClaw Backup",
-    "selectTitle": "Select OpenClaw Backup File"
+    "noConfig": "No ClawLite configuration to back up.",
+    "saveTitle": "Save ClawLite Backup",
+    "selectTitle": "Select ClawLite Backup File"
   }
 }

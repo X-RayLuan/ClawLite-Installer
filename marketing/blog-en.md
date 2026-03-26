@@ -1,10 +1,10 @@
-# I built a one-click installer for OpenClaw AI agent
+# I built a one-click installer for AI agents
 
 > Target: Reddit (r/selfhosted, r/opensource), Hacker News (Show HN), DEV.to
 
 ---
 
-If you've ever tried setting up [OpenClaw](https://github.com/openclaw/openclaw) — the open-source AI agent that runs on Telegram — you know the drill: install Node.js, run a bunch of npm commands, configure API keys in JSON files, set up a gateway process, figure out why it won't start...
+If you've ever tried setting up an AI agent that runs on Telegram, you know the drill: install Node.js, run a bunch of npm commands, configure API keys in JSON files, set up a gateway process, figure out why it won't start...
 
 I kept seeing people in the community give up halfway through the setup. So I built **ClawLite** — a desktop app that handles the entire installation in three clicks.
 
@@ -16,7 +16,7 @@ ClawLite automatically:
 
 - Detects your environment (Node.js version, WSL on Windows, etc.)
 - Installs missing dependencies
-- Configures OpenClaw with your AI provider (Anthropic, Google Gemini, OpenAI, MiniMax, or GLM)
+- Configures your AI provider (Anthropic, Google Gemini, OpenAI, MiniMax, or GLM)
 - Sets up a Telegram bot so you can chat with your AI agent from your phone
 - Runs the gateway process in the background with a system tray icon
 
@@ -24,7 +24,7 @@ ClawLite automatically:
 
 ### Cross-platform WSL automation (Windows)
 
-On macOS, the setup is fairly straightforward — install Node.js, run npm. But Windows doesn't have a native Unix environment, so OpenClaw runs inside WSL (Windows Subsystem for Linux).
+On macOS, the setup is fairly straightforward — install Node.js, run npm. But Windows doesn't have a native Unix environment, so the agent runs inside WSL (Windows Subsystem for Linux).
 
 Automating WSL installation from an Electron app turned out to be surprisingly tricky:
 
@@ -55,19 +55,19 @@ We built a custom `useWizard` hook with history tracking for back navigation and
 - **TypeScript** throughout
 - **electron-builder + GitHub Actions** for CI/CD
 - **Apple Notarization** for macOS code signing
-- **i18n** support for Korean, English, Japanese, and Chinese
+- **i18n** support for English, Japanese, and Chinese
 
 ## Screenshots
 
-![Welcome](https://raw.githubusercontent.com/X-RayLuan/ClawLite-Installer/main/docs/screenshots/welcome.png)
-![Environment Check](https://raw.githubusercontent.com/X-RayLuan/ClawLite-Installer/main/docs/screenshots/env-check.png)
-![Done](https://raw.githubusercontent.com/X-RayLuan/ClawLite-Installer/main/docs/screenshots/done.png)
+![Welcome](https://raw.githubusercontent.com/ClawLite/ClawLite-Installer/main/docs/screenshots/welcome.png)
+![Environment Check](https://raw.githubusercontent.com/ClawLite/ClawLite-Installer/main/docs/screenshots/env-check.png)
+![Done](https://raw.githubusercontent.com/ClawLite/ClawLite-Installer/main/docs/screenshots/done.png)
 
 ## Try it out
 
-- **Download**: [macOS (.dmg)](https://github.com/X-RayLuan/ClawLite-Installer/releases/latest/download/clawlite.dmg) | [Windows (.exe)](https://github.com/X-RayLuan/ClawLite-Installer/releases/latest/download/clawlite-setup.exe)
-- **GitHub**: [github.com/X-RayLuan/ClawLite-Installer](https://github.com/X-RayLuan/ClawLite-Installer)
-- **Website**: [clawlite.kr](https://clawlite.kr)
+- **Download**: [macOS (.dmg)](https://github.com/ClawLite/ClawLite-Installer/releases/latest/download/clawlite.dmg) | [Windows (.exe)](https://github.com/ClawLite/ClawLite-Installer/releases/latest/download/clawlite-setup.exe)
+- **GitHub**: [github.com/ClawLite/ClawLite-Installer](https://github.com/ClawLite/ClawLite-Installer)
+- **Website**: [clawlite.ai](https://clawlite.ai)
 
 It's MIT licensed and fully open source. Contributions welcome!
 

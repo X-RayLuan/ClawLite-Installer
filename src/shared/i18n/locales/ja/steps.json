@@ -5,7 +5,7 @@
   },
   "welcome": {
     "title": "自分だけのAIエージェントを、ワンクリックで",
-    "desc": "OpenClawを簡単・スピーディにインストールして\nTelegramでAIと会話しましょう",
+    "desc": "ClawLiteを簡単・スピーディにインストールして\nTelegramでAIと会話しましょう",
     "start": "開始する",
     "language": "言語"
   },
@@ -29,7 +29,7 @@
       "checking": "確認中"
     },
     "nodejs": "Node.js",
-    "openclaw": "OpenClaw",
+    "openclaw": "ClawLite",
     "updateAvailable": "アップデート可能",
     "checkBtn": "検査中",
     "nextBtn": "次のステップへ",
@@ -39,7 +39,7 @@
     "title": "WSLセットアップ",
     "notAvailable": "この機能にはWindows 10 2004以降が必要です。",
     "checkVersion": "Windowsのバージョンを確認するにはwinverを実行してください。",
-    "wslRequired": "OpenClawを実行するにはWSL(Windows Subsystem for Linux)が必要です。",
+    "wslRequired": "ClawLiteを実行するにはWSL(Windows Subsystem for Linux)が必要です。",
     "autoInstall": "管理者権限で自動インストールされます。",
     "wslInstalling": "WSLをインストール中...",
     "wslInstall": "WSLインストール",
@@ -68,7 +68,7 @@
     "checkLog": "ログを確認してください",
     "desc": "以下の項目をインストールします",
     "nodejs": "Node.js 22 LTS",
-    "openclaw": "OpenClaw",
+    "openclaw": "ClawLite",
     "retryBtn": "再試行",
     "startBtn": "インストール開始",
     "nextBtn": "次のステップへ"
@@ -153,9 +153,9 @@
     "showLog": "▶ ログを表示",
     "hideLog": "▼ ログを非表示",
     "envStatus": {
-      "notInstalled": "OpenClaw未インストール",
+      "notInstalled": "ClawLite未インストール",
       "nodeUpdateNeeded": "Node.js {{version}} — アップデートが必要",
-      "ok": "Node {{nodeVersion}} / OpenClaw {{ocVersion}}",
+      "ok": "Node {{nodeVersion}} / ClawLite {{ocVersion}}",
       "failed": "環境の確認に失敗しました"
     },
     "gwStatus": {

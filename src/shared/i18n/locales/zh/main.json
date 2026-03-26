@@ -12,8 +12,8 @@
     "aptFailed": "apt-get 失败 — 必要软件包可能已安装",
     "nodeWslInstalling": "正在安装 Node.js 22 LTS...",
     "nodeWslDone": "Node.js 安装完成！",
-    "ocWslInstalling": "正在 WSL 内部安装 OpenClaw...",
-    "ocWslDone": "OpenClaw 安装完成！",
+    "ocWslInstalling": "正在 WSL 内部安装 ClawLite...",
+    "ocWslDone": "ClawLite 安装完成！",
     "nodeDownloading": "正在下载 Node.js 22...",
     "nodeInstallerOpening": "正在打开 Node.js 安装窗口...",
     "nodeDone": "Node.js 安装完成！",
@@ -21,16 +21,16 @@
     "xcodePrompt": "请在安装弹窗中点击\"安装\"。等待安装完成...",
     "xcodeDone": "Xcode Command Line Tools 安装完成！",
     "xcodeTimeout": "Xcode Command Line Tools 安装超时。请在终端运行 xcode-select --install。",
-    "ocInstalling": "正在安装 OpenClaw...",
-    "ocDone": "OpenClaw 安装完成！"
+    "ocInstalling": "正在安装 ClawLite...",
+    "ocDone": "ClawLite 安装完成！"
   },
   "onboarder": {
-    "starting": "开始 OpenClaw 初始配置...",
+    "starting": "开始 ClawLite 初始配置...",
     "configCreatedSkipGw": "配置文件创建完成（跳过 gateway 验证）",
     "basicDone": "基本配置完成！",
     "addingTelegram": "正在添加 Telegram 频道...",
     "telegramDone": "Telegram 频道添加完成！",
-    "configNotFound": "找不到 OpenClaw 配置文件",
+    "configNotFound": "找不到 ClawLite 配置文件",
     "checkingTelegram": "正在检查 Telegram 连接状态...",
     "cleaningGateway": "正在清理现有 Gateway...",
     "startingGateway": "正在启动 Gateway...",
@@ -60,13 +60,13 @@
   },
   "uninstaller": {
     "stoppingGw": "正在停止 Gateway...",
-    "removing": "正在删除 OpenClaw 软件包...",
+    "removing": "正在删除 ClawLite 软件包...",
     "removingConfig": "正在删除配置文件...",
     "done": "删除完成！"
   },
   "backup": {
-    "noConfig": "没有可备份的 OpenClaw 配置。",
-    "saveTitle": "保存 OpenClaw 备份",
-    "selectTitle": "选择 OpenClaw 备份文件"
+    "noConfig": "没有可备份的 ClawLite 配置。",
+    "saveTitle": "保存 ClawLite 备份",
+    "selectTitle": "选择 ClawLite 备份文件"
   }
 }

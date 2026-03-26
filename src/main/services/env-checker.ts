@@ -182,7 +182,7 @@ export const checkEnvironment = async (): Promise<EnvCheckResult> => {
   let openclawVersion: string | null = null
 
   if (os === 'windows') {
-    // Windows: check WSL state, then check Node.js/OpenClaw inside WSL if ready
+    // Windows: check WSL state, then check Node.js/ClawLite inside WSL if ready
     wslState = await checkWslState()
 
     if (wslState === 'ready') {

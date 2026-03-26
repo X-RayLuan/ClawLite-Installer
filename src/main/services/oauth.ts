@@ -6,7 +6,7 @@ import { readFileSync, writeFileSync, mkdirSync } from 'fs'
 import { platform, homedir } from 'os'
 import { readWslFile, writeWslFile, resolveWslOpenClawStateDir } from './wsl-utils'
 
-// OpenAI OAuth constants (from OpenClaw's pi-ai)
+// OpenAI OAuth constants (from ClawLite's pi-ai)
 const CLIENT_ID = 'app_EMoamEEZ73f0CkXaXp7hrann'
 const AUTHORIZE_URL = 'https://auth.openai.com/oauth/authorize'
 const TOKEN_URL = 'https://auth.openai.com/oauth/token'
@@ -151,7 +151,7 @@ const startCallbackServer = (
   })
 }
 
-// Save OAuth credentials to OpenClaw auth-profiles.json
+// Save OAuth credentials to ClawLite auth-profiles.json
 const saveCredentials = async (creds: {
   access: string
   refresh: string
@@ -256,7 +256,7 @@ export const loginOpenAICodex = async (win: BrowserWindow): Promise<void> => {
       throw new Error('Failed to extract accountId from token')
     }
 
-    // Save to OpenClaw auth profile store
+    // Save to ClawLite auth profile store
     await saveCredentials({
       access: tokens.access,
       refresh: tokens.refresh,
