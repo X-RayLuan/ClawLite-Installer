@@ -8,6 +8,7 @@ import ManagementModal from '../components/ManagementModal'
 import ProviderSwitchModal from '../components/ProviderSwitchModal'
 import LanguageSwitcher from '../components/LanguageSwitcher'
 import { useManagement } from '../hooks/useManagement'
+import { buildWebChatUrl, describeWebChatLaunch, resolveLaunchToken } from './webchat-launch'
 
 const UPDATE_CHECK_INTERVAL = 30 * 60 * 1000 // 30 min
 
@@ -127,6 +128,9 @@ export default function DoneStep({
 
   const openWebChat = async (): Promise<void> => {
     const base = 'http://127.0.0.1:18789/'
+    const appendLog = (msg: string): void => {
+      setLogs((prev) => [...prev, msg])
+    }
 
     // Avoid stale UI state blocking WebChat: verify live gateway status once
     if (status !== 'running') {
@@ -134,26 +138,33 @@ export default function DoneStep({
       if (s === 'running') {
         setStatus('running')
       } else {
-        setLogs((prev) => [...prev, 'Gateway is still starting. Trying to open Web Chat anyway...'])
+        appendLog('Gateway is still starting. Trying to open Web Chat anyway...')
       }
     }
 
-    let token = gatewayToken
+    const configResult = await window.electronAPI.config.read()
+    const resolvedLaunchToken = resolveLaunchToken({
+      stateToken: gatewayToken,
+      configToken: configResult.success ? configResult.config?.gatewayToken ?? null : null
+    })
 
-    // Re-read config once to avoid race where token is written slightly later
-    if (!token) {
-      const r = await window.electronAPI.config.read()
-      if (r.success && r.config?.gatewayToken) {
-        token = r.config.gatewayToken
-        setGatewayToken(token)
-      }
+    if (resolvedLaunchToken.source === 'config' && resolvedLaunchToken.token) {
+      setGatewayToken(resolvedLaunchToken.token)
     }
 
-    if (!token) {
-      setLogs((prev) => [...prev, 'Web Chat token missing. Please re-run setup or switch provider.'])
+    appendLog('webchat click received')
+    appendLog(`webchat installer version: ${installerVersion || 'unknown'}`)
+    appendLog(`webchat gateway status at launch: ${statusRef.current}`)
+    appendLog(`webchat token source: ${resolvedLaunchToken.source}`)
+
+    if (!resolvedLaunchToken.token) {
+      appendLog('webchat launch aborted: missing token')
+      appendLog('Web Chat token missing. Please re-run setup or switch provider.')
       setShowLogs(true)
       return
     }
+
+    appendLog(`webchat token length: ${resolvedLaunchToken.token.length}`)
 
     // Preflight readiness retry (2~5s)
     let ready = false
@@ -171,16 +182,24 @@ export default function DoneStep({
     }
 
     if (!ready) {
-      setLogs((prev) => [...prev, 'Gateway health check is slow; opening Web Chat URL directly...'])
+      appendLog('Gateway health check is slow; opening Web Chat URL directly...')
       setShowLogs(true)
     }
 
-    // OpenClaw Control UI currently consumes gateway tokens from the URL hash
-    // (`#token=...`) during boot. Passing `?token=...` looks valid, but the UI
-    // strips the query param before persisting it, which leaves the token blank
-    // and can trigger repeated unauthorized reconnects.
-    const url = `${base}#token=${encodeURIComponent(token)}`
-    window.electronAPI.system.openExternal(url)
+    const url = buildWebChatUrl(resolvedLaunchToken.token)
+    const launchInfo = describeWebChatLaunch(url)
+    appendLog(`webchat url mode: ${launchInfo.mode}`)
+    appendLog(`webchat launch url: ${launchInfo.safeUrl}`)
+
+    const openResult = await window.electronAPI.system.openExternal(url)
+    appendLog(
+      openResult.success
+        ? 'webchat openExternal: success'
+        : `webchat openExternal: failed: ${openResult.error || 'unknown error'}`
+    )
+    if (!openResult.success) {
+      setShowLogs(true)
+    }
   }
 
   const toggleAutoLaunch = async (): Promise<void> => {
