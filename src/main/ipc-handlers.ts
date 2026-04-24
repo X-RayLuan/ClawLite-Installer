@@ -416,4 +416,57 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
     rebuildTrayMenu()
     return { success: true }
   })
+
+  // ─── Activation ───────────────────────────────────────────────────────────────
+  const getActivationPath = (): string => join(app.getPath('userData'), 'activation.json')
+
+  ipcMain.handle('activation:check', () => {
+    try {
+      const path = getActivationPath()
+      if (!existsSync(path)) return { activated: false }
+      const data = JSON.parse(readFileSync(path, 'utf-8'))
+      return {
+        activated: true,
+        activationInfo: {
+          email: data.email || '',
+          licenseType: data.licenseType || 'unknown',
+          expiresAt: data.expiresAt || null,
+          apiKey: data.apiKey || ''
+        }
+      }
+    } catch {
+      return { activated: false }
+    }
+  })
+
+  ipcMain.handle('activation:logout', () => {
+    try {
+      const path = getActivationPath()
+      if (existsSync(path)) unlinkSync(path)
+      return { success: true }
+    } catch {
+      return { success: false }
+    }
+  })
+
+  ipcMain.handle(
+    'activation:save',
+    (
+      _e,
+      info: {
+        email: string
+        licenseType: 'annual' | 'lifetime' | 'trial' | 'unknown'
+        expiresAt: string | null
+        apiKey: string
+      }
+    ) => {
+      try {
+        const path = getActivationPath()
+        writeFileSync(path, JSON.stringify(info, null, 2))
+        return { success: true }
+      } catch {
+        return { success: false }
+      }
+    }
+  )
 }

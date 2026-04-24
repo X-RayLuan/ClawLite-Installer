@@ -116,6 +116,24 @@ interface ElectronAPI {
     getLocale: () => Promise<string>
     setLanguage: (lng: string) => Promise<{ success: boolean; error?: string }>
   }
+  activation: {
+    check: () => Promise<{
+      activated: boolean
+      activationInfo?: {
+        email: string
+        licenseType: 'annual' | 'lifetime' | 'trial' | 'unknown'
+        expiresAt: string | null
+        apiKey: string
+      }
+    }>
+    logout: () => Promise<{ success: boolean }>
+    save: (info: {
+      email: string
+      licenseType: 'annual' | 'lifetime' | 'trial' | 'unknown'
+      expiresAt: string | null
+      apiKey: string
+    }) => Promise<{ success: boolean }>
+  }
 }
 
 declare global {

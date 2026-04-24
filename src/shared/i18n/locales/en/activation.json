@@ -1,0 +1,49 @@
+{
+  "email": {
+    "title": "Activate ClawLite",
+    "subtitle": "Enter your registered email to receive a verification code",
+    "placeholder": "your@email.com",
+    "sendCode": "Send Verification Code",
+    "invalid": "Please enter a valid email address",
+    "noAccount": "Don't have a license?",
+    "purchase": "Purchase now"
+  },
+  "verify": {
+    "title": "Enter Code",
+    "subtitle": "We sent a 6-digit code to {{email}}",
+    "changeEmail": "Change email",
+    "resend": "Resend code",
+    "resendCooldown": "Resend in {{secs}}s",
+    "verifying": "Verifying...",
+    "invalidCode": "Invalid verification code"
+  },
+  "purchase": {
+    "title": "Choose Your Plan",
+    "subtitle": "Unlock full access to ClawLite",
+    "annual": "Annual License",
+    "lifetime": "Lifetime License",
+    "perYear": "per year",
+    "oneTime": "one-time payment",
+    "f1": "Full feature access",
+    "f2": "Priority support",
+    "f3": "Regular updates",
+    "f4": "Lifetime access",
+    "recommended": "Recommended",
+    "buyNow": "Purchase Now",
+    "back": "Back"
+  },
+  "activated": {
+    "title": "Activated!",
+    "subtitle": "Your ClawLite is ready",
+    "email": "Account",
+    "license": "License",
+    "expires": "Expires",
+    "apiKey": "API Key",
+    "copyKey": "Copy API Key",
+    "launch": "Launch ClawLite",
+    "logout": "Sign out"
+  },
+  "footer": {
+    "secure": "Your data is encrypted and secure"
+  }
+}

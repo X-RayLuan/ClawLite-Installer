@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import StepIndicator from './components/StepIndicator'
 import UpdateBanner from './components/UpdateBanner'
+import ActivationModal from './components/ActivationModal'
 import { useWizard } from './hooks/useWizard'
 import WelcomeStep from './steps/WelcomeStep'
 import EnvCheckStep from './steps/EnvCheckStep'
@@ -73,8 +74,37 @@ function App(): React.JSX.Element {
   const [wslState, setWslState] = useState<WslState>('ready')
   const [version, setVersion] = useState('')
 
+  // ─── Activation gate ──────────────────────────────────────────────────────────
+  const [activationChecked, setActivationChecked] = useState(false)
+  const [showActivation, setShowActivation] = useState(false)
+
+  const checkActivationOnMount = useCallback(async (): Promise<void> => {
+    try {
+      const result = await window.electronAPI.activation.check()
+      if (result.activated) {
+        setShowActivation(false)
+      } else {
+        setShowActivation(true)
+      }
+    } catch {
+      // Network/server error → treat as unactivated, show modal
+      setShowActivation(true)
+    } finally {
+      setActivationChecked(true)
+    }
+  }, [])
+
+  useEffect(() => {
+    checkActivationOnMount()
+  }, [checkActivationOnMount])
+
+  const handleActivationSuccess = useCallback((): void => {
+    setShowActivation(false)
+  }, [])
+
   // Load version + OS check + reboot restoration on app start
   useEffect(() => {
+    if (!activationChecked) return
     window.electronAPI.version().then(setVersion)
 
     // Run loadState() after env.check() completes (prevent race condition)
@@ -88,7 +118,7 @@ function App(): React.JSX.Element {
         goTo(state.step as 'wslSetup' | 'envCheck')
       }
     })
-  }, [goTo])
+  }, [activationChecked, goTo])
 
   const handleEnvCheckDone = (env: {
     os: string
@@ -126,8 +156,23 @@ function App(): React.JSX.Element {
     [goTo]
   )
 
+  // Show spinner while checking activation
+  if (!activationChecked) {
+    return (
+      <div className="aurora-bg" />
+    )
+  }
+
   return (
     <>
+      {/* ─── Activation Modal (shown when not activated) ─── */}
+      {showActivation && (
+        <ActivationModal
+          onLaunchClawLite={handleActivationSuccess}
+          onClose={undefined}
+        />
+      )}
+
       <div className="aurora-bg" />
       <div className="grain-overlay" />
       <Bubbles />

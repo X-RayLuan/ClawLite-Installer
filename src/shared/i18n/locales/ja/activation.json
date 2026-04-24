@@ -1,0 +1,49 @@
+{
+  "email": {
+    "title": "ClawLite を有効化",
+    "subtitle": "確認コードを受け取るために登録したメールアドレスを入力してください",
+    "placeholder": "your@email.com",
+    "sendCode": "確認コードを送信",
+    "invalid": "有効なメールアドレスを入力してください",
+    "noAccount": "ライセンスをお持ちでない方？",
+    "purchase": "今すぐ購入"
+  },
+  "verify": {
+    "title": "コードを入力",
+    "subtitle": "{{email}} に6桁のコードを送信しました",
+    "changeEmail": "メールアドレスを変更",
+    "resend": "再送信",
+    "resendCooldown": "{{secs}}秒後に再送信可能",
+    "verifying": "確認中...",
+    "invalidCode": "確認コードが無効です"
+  },
+  "purchase": {
+    "title": "プランを選択",
+    "subtitle": "ClawLite の全機能を開放",
+    "annual": "年間ライセンス",
+    "lifetime": "生涯ライセンス",
+    "perYear": "年額",
+    "oneTime": "一回限り",
+    "f1": "全機能へのアクセス",
+    "f2": "優先サポート",
+    "f3": "定期的なアップデート",
+    "f4": "生涯アクセス",
+    "recommended": "おすすめ",
+    "buyNow": "今すぐ購入",
+    "back": "戻る"
+  },
+  "activated": {
+    "title": "有効化完了！",
+    "subtitle": "ClawLite の準備ができました",
+    "email": "アカウント",
+    "license": "ライセンス",
+    "expires": "有効期限",
+    "apiKey": "API Key",
+    "copyKey": "API Key をコピー",
+    "launch": "ClawLite を起動",
+    "logout": "ログアウト"
+  },
+  "footer": {
+    "secure": "データは暗号化され安全に保護されています"
+  }
+}

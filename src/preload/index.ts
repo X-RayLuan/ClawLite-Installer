@@ -169,6 +169,24 @@ const electronAPI = {
     getLocale: (): Promise<string> => ipcRenderer.invoke('i18n:get-locale'),
     setLanguage: (lng: string): Promise<{ success: boolean }> =>
       ipcRenderer.invoke('i18n:set-language', lng)
+  },
+  activation: {
+    check: (): Promise<{
+      activated: boolean
+      activationInfo?: {
+        email: string
+        licenseType: 'annual' | 'lifetime' | 'trial' | 'unknown'
+        expiresAt: string | null
+        apiKey: string
+      }
+    }> => ipcRenderer.invoke('activation:check'),
+    logout: (): Promise<{ success: boolean }> => ipcRenderer.invoke('activation:logout'),
+    save: (info: {
+      email: string
+      licenseType: 'annual' | 'lifetime' | 'trial' | 'unknown'
+      expiresAt: string | null
+      apiKey: string
+    }): Promise<{ success: boolean }> => ipcRenderer.invoke('activation:save', info)
   }
 }
 
