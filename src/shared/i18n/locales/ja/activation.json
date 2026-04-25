@@ -4,9 +4,7 @@
     "subtitle": "確認コードを受け取るために登録したメールアドレスを入力してください",
     "placeholder": "your@email.com",
     "sendCode": "確認コードを送信",
-    "invalid": "有効なメールアドレスを入力してください",
-    "noAccount": "ライセンスをお持ちでない方？",
-    "purchase": "今すぐ購入"
+    "invalid": "有効なメールアドレスを入力してください"
   },
   "verify": {
     "title": "コードを入力",
@@ -17,20 +15,21 @@
     "verifying": "確認中...",
     "invalidCode": "確認コードが無効です"
   },
-  "purchase": {
-    "title": "プランを選択",
-    "subtitle": "ClawLite の全機能を開放",
-    "annual": "年間ライセンス",
-    "lifetime": "生涯ライセンス",
-    "perYear": "年額",
-    "oneTime": "一回限り",
-    "f1": "全機能へのアクセス",
-    "f2": "優先サポート",
-    "f3": "定期的なアップデート",
-    "f4": "生涯アクセス",
-    "recommended": "おすすめ",
-    "buyNow": "今すぐ購入",
+  "topup": {
+    "title": "クレジットを追加",
+    "subtitle": "アカウントにクレジットがありません。ClawLite を有効化するにはクレジットを追加してください。",
+    "amount5": "$5",
+    "amount10": "$10",
+    "amount20": "$20",
+    "credits": "クレジット",
     "back": "戻る"
+  },
+  "pendingTopup": {
+    "title": "支払いを完了",
+    "subtitle": "開いたブラウザで支払いを完了してください。",
+    "hint": "支払い完了後、ここに戻ると有効化が自動的に続行されます。",
+    "checking": "支払い状況を確認中...",
+    "cancel": "キャンセル"
   },
   "activated": {
     "title": "有効化完了！",
@@ -42,12 +41,6 @@
     "copyKey": "API Key をコピー",
     "launch": "ClawLite を起動",
     "logout": "ログアウト"
-  },
-  "redirect": {
-    "title": "ログインを完了",
-    "subtitle": "{{email}} のログインを開いて完了してください",
-    "hint": "ログイン後、ここに戻って続行してください。",
-    "cancel": "キャンセルして戻る"
   },
   "footer": {
     "secure": "データは暗号化され安全に保護されています"

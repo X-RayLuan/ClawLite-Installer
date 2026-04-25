@@ -4,9 +4,7 @@
     "subtitle": "Enter your registered email to receive a verification code",
     "placeholder": "your@email.com",
     "sendCode": "Send Verification Code",
-    "invalid": "Please enter a valid email address",
-    "noAccount": "Don't have a license?",
-    "purchase": "Purchase now"
+    "invalid": "Please enter a valid email address"
   },
   "verify": {
     "title": "Enter Code",
@@ -17,20 +15,21 @@
     "verifying": "Verifying...",
     "invalidCode": "Invalid verification code"
   },
-  "purchase": {
-    "title": "Choose Your Plan",
-    "subtitle": "Unlock full access to ClawLite",
-    "annual": "Annual License",
-    "lifetime": "Lifetime License",
-    "perYear": "per year",
-    "oneTime": "one-time payment",
-    "f1": "Full feature access",
-    "f2": "Priority support",
-    "f3": "Regular updates",
-    "f4": "Lifetime access",
-    "recommended": "Recommended",
-    "buyNow": "Purchase Now",
-    "back": "Back"
+  "topup": {
+    "title": "Add Credits",
+    "subtitle": "Your account has no credits. Add credits to activate ClawLite.",
+    "amount5": "$5",
+    "amount10": "$10",
+    "amount20": "$20",
+    "credits": "credits",
+    "back": "Go back"
+  },
+  "pendingTopup": {
+    "title": "Complete Payment",
+    "subtitle": "Please complete the payment in the opened browser.",
+    "hint": "Return here after payment — activation will continue automatically.",
+    "checking": "Checking payment status...",
+    "cancel": "Cancel"
   },
   "activated": {
     "title": "Activated!",
@@ -42,12 +41,6 @@
     "copyKey": "Copy API Key",
     "launch": "Launch ClawLite",
     "logout": "Sign out"
-  },
-  "redirect": {
-    "title": "Complete Login",
-    "subtitle": "Please complete login in the opened browser for {{email}}",
-    "hint": "After logging in, return here to continue.",
-    "cancel": "Cancel and go back"
   },
   "footer": {
     "secure": "Your data is encrypted and secure"

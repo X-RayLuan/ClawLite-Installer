@@ -3,9 +3,6 @@ import { useTranslation } from 'react-i18next'
 import Button from './Button'
 import { useActivation, type LicenseType } from '../hooks/useActivation'
 
-// ─── API Base URL for external purchase links ──────────────────────────────────
-const PURCHASE_URL = 'https://clawlite.ai/pricing'
-
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function maskApiKey(key: string): string {
   if (key.length <= 8) return '*'.repeat(key.length)
@@ -32,53 +29,12 @@ function licenseLabel(type: LicenseType): string {
   }
 }
 
-// ─── Step: Pending Redirect (waiting for browser magiclink) ───────────────────
-function PendingRedirectStep({
-  email,
-  onCancel
-}: {
-  email: string
-  onCancel: () => void
-}): React.JSX.Element {
-  const { t } = useTranslation('activation')
-
-  return (
-    <div className="flex flex-col items-center gap-5 w-full max-w-sm mx-auto">
-      <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" className="animate-spin" style={{ animationDuration: '2s' }}>
-          <circle cx="12" cy="12" r="10" stroke="var(--color-primary)" strokeWidth="2" strokeDasharray="30 60" strokeLinecap="round" />
-        </svg>
-      </div>
-
-      <div className="text-center">
-        <h2 className="text-xl font-black tracking-tight">{t('redirect.title')}</h2>
-        <p className="text-text-muted text-sm mt-1">
-          {t('redirect.subtitle', { email })}
-        </p>
-      </div>
-
-      <p className="text-center text-xs text-text-muted/60 px-4">
-        {t('redirect.hint')}
-      </p>
-
-      <button
-        onClick={onCancel}
-        className="text-xs text-text-muted/60 hover:text-text-muted transition-colors cursor-pointer"
-      >
-        {t('redirect.cancel')}
-      </button>
-    </div>
-  )
-}
-
 // ─── Step: Email Input ────────────────────────────────────────────────────────
 function EmailStep({
-  onPurchase,
   onSendCode,
   loading,
   error
 }: {
-  onPurchase: () => void
   onSendCode: (email: string) => Promise<void>
   loading: boolean
   error: string | null
@@ -151,16 +107,6 @@ function EmailStep({
           {t('email.sendCode')}
         </Button>
       </div>
-
-      <p className="text-center text-xs text-text-muted/60">
-        {t('email.noAccount')}{' '}
-        <button
-          onClick={onPurchase}
-          className="text-primary hover:text-primary-light font-semibold transition-colors cursor-pointer"
-        >
-          {t('email.purchase')}
-        </button>
-      </p>
     </div>
   )
 }
@@ -297,41 +243,28 @@ function VerifyStep({
   )
 }
 
-// ─── Step: Purchase ───────────────────────────────────────────────────────────
-function PurchaseStep({
+// ─── Step: Topup Selection ────────────────────────────────────────────────────
+function TopupStep({
   onBack,
-  onPurchase
+  onSelectAmount
 }: {
   onBack: () => void
-  onPurchase: () => void
+  onSelectAmount: (amount: 5 | 10 | 20) => void
 }): React.JSX.Element {
   const { t } = useTranslation('activation')
 
-  const plans = [
-    {
-      id: 'annual',
-      label: t('purchase.annual'),
-      price: '¥299',
-      period: t('purchase.perYear'),
-      features: [t('purchase.f1'), t('purchase.f2'), t('purchase.f3')],
-      highlighted: false
-    },
-    {
-      id: 'lifetime',
-      label: t('purchase.lifetime'),
-      price: '¥799',
-      period: t('purchase.oneTime'),
-      features: [t('purchase.f1'), t('purchase.f2'), t('purchase.f3'), t('purchase.f4')],
-      highlighted: true
-    }
-  ] as const
+  const amounts = [
+    { amount: 5 as const, label: t('topup.amount5') },
+    { amount: 10 as const, label: t('topup.amount10') },
+    { amount: 20 as const, label: t('topup.amount20') }
+  ]
 
   return (
     <div className="flex flex-col items-center gap-5 w-full max-w-sm mx-auto">
       <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-success/20 to-success/5 border border-success/20 flex items-center justify-center">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
           <path
-            d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
+            d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"
             stroke="var(--color-success)"
             strokeWidth="2"
             strokeLinecap="round"
@@ -341,69 +274,69 @@ function PurchaseStep({
       </div>
 
       <div className="text-center">
-        <h2 className="text-xl font-black tracking-tight">{t('purchase.title')}</h2>
-        <p className="text-text-muted text-sm mt-1">{t('purchase.subtitle')}</p>
+        <h2 className="text-xl font-black tracking-tight">{t('topup.title')}</h2>
+        <p className="text-text-muted text-sm mt-1">{t('topup.subtitle')}</p>
       </div>
 
       <div className="w-full flex flex-col gap-3">
-        {plans.map((plan) => (
-          <div
-            key={plan.id}
-            className={`relative rounded-2xl p-4 border transition-all duration-200 ${
-              plan.highlighted
-                ? 'bg-primary/10 border-primary/40'
-                : 'bg-white/5 border-glass-border hover:border-white/20'
-            }`}
+        {amounts.map(({ amount, label }) => (
+          <button
+            key={amount}
+            onClick={() => onSelectAmount(amount)}
+            className="w-full flex items-center justify-between px-5 py-4 rounded-2xl bg-white/5 border border-glass-border hover:border-primary/50 hover:bg-primary/10 transition-all duration-200 cursor-pointer group"
           >
-            {plan.highlighted && (
-              <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-primary text-white text-[10px] font-black tracking-wide">
-                {t('purchase.recommended')}
-              </div>
-            )}
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                <p className="text-sm font-black">{plan.label}</p>
-                <p className="text-[11px] text-text-muted/60">{plan.period}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-xl font-black text-primary">{plan.price}</p>
-                <p className="text-[11px] text-text-muted/60">{plan.period}</p>
-              </div>
-            </div>
-            <ul className="space-y-1">
-              {plan.features.map((f, i) => (
-                <li key={i} className="flex items-center gap-1.5 text-xs text-text-muted/80">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className="shrink-0">
-                    <polyline
-                      points="20 6 9 17 4 12"
-                      stroke="var(--color-success)"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                  {f}
-                </li>
-              ))}
-            </ul>
-          </div>
+            <span className="text-base font-black">{label}</span>
+            <span className="text-xs text-text-muted/60 group-hover:text-primary">
+              {t('topup.credits')}
+            </span>
+          </button>
         ))}
       </div>
-
-      <Button
-        variant="primary"
-        size="lg"
-        onClick={onPurchase}
-        className="w-full"
-      >
-        {t('purchase.buyNow')}
-      </Button>
 
       <button
         onClick={onBack}
         className="text-xs text-text-muted/60 hover:text-text-muted transition-colors cursor-pointer"
       >
-        {t('purchase.back')}
+        {t('topup.back')}
+      </button>
+    </div>
+  )
+}
+
+// ─── Step: Pending Topup (polling) ────────────────────────────────────────────
+function PendingTopupStep({
+  onCancel
+}: {
+  onCancel: () => void
+}): React.JSX.Element {
+  const { t } = useTranslation('activation')
+
+  return (
+    <div className="flex flex-col items-center gap-5 w-full max-w-sm mx-auto">
+      <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" className="animate-spin" style={{ animationDuration: '2s' }}>
+          <circle cx="12" cy="12" r="10" stroke="var(--color-primary)" strokeWidth="2" strokeDasharray="30 60" strokeLinecap="round" />
+        </svg>
+      </div>
+
+      <div className="text-center">
+        <h2 className="text-xl font-black tracking-tight">{t('pendingTopup.title')}</h2>
+        <p className="text-text-muted text-sm mt-1">{t('pendingTopup.subtitle')}</p>
+      </div>
+
+      <p className="text-center text-xs text-text-muted/60 px-4">
+        {t('pendingTopup.hint')}
+      </p>
+
+      <p className="text-center text-xs text-text-muted/40">
+        {t('pendingTopup.checking')}
+      </p>
+
+      <button
+        onClick={onCancel}
+        className="text-xs text-text-muted/60 hover:text-text-muted transition-colors cursor-pointer"
+      >
+        {t('pendingTopup.cancel')}
       </button>
     </div>
   )
@@ -533,7 +466,7 @@ function ActivatedStep({
 }
 
 // ─── Main Modal ───────────────────────────────────────────────────────────────
-export type ActivationView = 'email' | 'verify' | 'purchase' | 'activated' | 'pending_redirect'
+export type ActivationView = 'email' | 'verify' | 'topup' | 'pending_topup' | 'activated'
 
 interface ActivationModalProps {
   onClose?: () => void
@@ -545,30 +478,39 @@ export default function ActivationModal({
   onLaunchClawLite
 }: ActivationModalProps): React.JSX.Element {
   const { t } = useTranslation('activation')
-  const { status, activationInfo, error, sendCode, verifyCode, checkActivation, logout } =
-    useActivation()
+  const {
+    status,
+    activationInfo,
+    error,
+    sendCode,
+    verifyCode,
+    checkActivation,
+    startTopup,
+    cancelTopup,
+    logout
+  } = useActivation()
 
   // Map hook status → modal view
-  // We manage view state ourselves, driven by the hook's status
   const [view, setView] = useState<ActivationView>('email')
   const [email, setEmail] = useState('')
   const [cooldownSecs, setCooldownSecs] = useState(0)
   const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
   // Sync view with hook status
   useEffect(() => {
     switch (status) {
       case 'idle':
-      case 'need_login':
+      case 'need_verify':
         setView('email')
         break
       case 'checking':
         // stay on current view while checking
         break
-      case 'pending_redirect':
-        setView('pending_redirect')
+      case 'need_topup':
+        setView('topup')
         break
-      case 'need_purchase':
-        setView('purchase')
+      case 'pending_topup':
+        setView('pending_topup')
         break
       case 'activated':
         setView('activated')
@@ -613,11 +555,7 @@ export default function ActivationModal({
 
   const handleVerify = useCallback(
     async (code: string): Promise<void> => {
-      const ok = await verifyCode(email, code)
-      if (ok) {
-        // status will move to 'pending_redirect' or 'activated'
-        // view sync is handled by the useEffect above
-      }
+      await verifyCode(email, code)
     },
     [email, verifyCode]
   )
@@ -627,9 +565,12 @@ export default function ActivationModal({
     await handleSendCode(email)
   }, [cooldownSecs, email, handleSendCode])
 
-  const handlePurchase = (): void => {
-    window.electronAPI.system.openExternal(PURCHASE_URL)
-  }
+  const handleSelectAmount = useCallback(
+    async (amount: 5 | 10 | 20): Promise<void> => {
+      await startTopup(amount)
+    },
+    [startTopup]
+  )
 
   const handleLogout = useCallback(async (): Promise<void> => {
     await logout()
@@ -642,11 +583,6 @@ export default function ActivationModal({
     onLaunchClawLite()
     onClose?.()
   }
-
-  const handlePendingCancel = useCallback((): void => {
-    setView('email')
-    setEmail('')
-  }, [])
 
   const isLoading = status === 'checking'
 
@@ -678,7 +614,6 @@ export default function ActivationModal({
             <div className="px-8 py-8">
               {view === 'email' && (
                 <EmailStep
-                  onPurchase={() => setView('purchase')}
                   onSendCode={handleSendCode}
                   loading={isLoading}
                   error={status === 'error' ? error : null}
@@ -695,17 +630,14 @@ export default function ActivationModal({
                   cooldownSecs={cooldownSecs}
                 />
               )}
-              {view === 'pending_redirect' && (
-                <PendingRedirectStep
-                  email={email}
-                  onCancel={handlePendingCancel}
+              {view === 'topup' && (
+                <TopupStep
+                  onBack={() => setView('email')}
+                  onSelectAmount={handleSelectAmount}
                 />
               )}
-              {view === 'purchase' && (
-                <PurchaseStep
-                  onBack={() => setView('email')}
-                  onPurchase={handlePurchase}
-                />
+              {view === 'pending_topup' && (
+                <PendingTopupStep onCancel={cancelTopup} />
               )}
               {view === 'activated' && activationInfo && (
                 <ActivatedStep

@@ -4,9 +4,7 @@
     "subtitle": "输入您注册的邮箱以接收验证码",
     "placeholder": "your@email.com",
     "sendCode": "发送验证码",
-    "invalid": "请输入有效的邮箱地址",
-    "noAccount": "还没有许可证？",
-    "purchase": "立即购买"
+    "invalid": "请输入有效的邮箱地址"
   },
   "verify": {
     "title": "输入验证码",
@@ -17,20 +15,21 @@
     "verifying": "验证中...",
     "invalidCode": "验证码无效"
   },
-  "purchase": {
-    "title": "选择您的方案",
-    "subtitle": "解锁 ClawLite 全部功能",
-    "annual": "年费许可证",
-    "lifetime": "终身许可证",
-    "perYear": "每年",
-    "oneTime": "一次性付款",
-    "f1": "完整功能访问",
-    "f2": "优先技术支持",
-    "f3": "定期更新",
-    "f4": "终身访问权限",
-    "recommended": "推荐",
-    "buyNow": "立即购买",
+  "topup": {
+    "title": "添加余额",
+    "subtitle": "您的账户暂无余额。请充值以激活 ClawLite。",
+    "amount5": "$5",
+    "amount10": "$10",
+    "amount20": "$20",
+    "credits": "余额",
     "back": "返回"
+  },
+  "pendingTopup": {
+    "title": "完成支付",
+    "subtitle": "请在打开的浏览器中完成支付。",
+    "hint": "支付完成后返回此处，激活将自动继续。",
+    "checking": "正在检查支付状态...",
+    "cancel": "取消"
   },
   "activated": {
     "title": "激活成功！",
@@ -42,12 +41,6 @@
     "copyKey": "复制 API Key",
     "launch": "启动 ClawLite",
     "logout": "退出登录"
-  },
-  "redirect": {
-    "title": "完成登录",
-    "subtitle": "请在打开的浏览器中完成 {{email}} 的登录",
-    "hint": "登录完成后，返回此处继续。",
-    "cancel": "取消并返回"
   },
   "footer": {
     "secure": "您的数据已加密保护"

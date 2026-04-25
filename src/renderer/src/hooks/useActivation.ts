@@ -1,13 +1,13 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef } from 'react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type ActivationStatus =
   | 'idle'
   | 'checking'
-  | 'need_login'
-  | 'need_purchase'
-  | 'pending_redirect'
+  | 'need_verify'
+  | 'need_topup'
+  | 'pending_topup'
   | 'activated'
   | 'error'
 
@@ -60,12 +60,13 @@ interface OtpSendResponse {
   error?: string
 }
 
-// OTP verify response
-interface OtpVerifyResponse {
+// Verify OTP response (new endpoint)
+interface VerifyOtpResponse {
   ok: boolean
-  verified?: boolean
+  accountId?: string
   email?: string
-  redirectUrl?: string
+  isActive?: boolean
+  balanceUsd?: number
   error?: string
 }
 
@@ -86,105 +87,141 @@ interface ProvisionResponse {
   credentialRef: string // API Key — only returned once
 }
 
+// Topup checkout response
+interface TopupCheckoutResponse {
+  ok: boolean
+  checkoutUrl?: string
+  error?: string
+}
+
+// Check topup status response
+interface TopupStatusResponse {
+  isActive: boolean
+  balanceUsd: number
+}
+
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useActivation() {
   const [status, setStatus] = useState<ActivationStatus>('idle')
   const [activationInfo, setActivationInfo] = useState<ActivationInfo | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [accountId, setAccountId] = useState<string | null>(null)
 
-  // Tracks the email being verified (used after redirect returns)
+  // Tracks the email being verified
   const pendingEmailRef = useRef<string | null>(null)
 
-  // After opening magiclink, listen for window focus to re-check bootstrap
-  useEffect(() => {
-    if (status !== 'pending_redirect') return
-
-    const handleFocus = (): void => {
-      const email = pendingEmailRef.current
-      if (email) {
-        pendingEmailRef.current = null
-        // Re-check bootstrap — this time accountId should be present
-        checkBootstrap(email).catch(() => {
-          // If still fails, return to login
-          setStatus('need_login')
-        })
-      }
-    }
-
-    window.addEventListener('focus', handleFocus)
-    return () => window.removeEventListener('focus', handleFocus)
-  }, [status])
+  // Polling interval ref for topup
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   /**
-   * Bootstrap + optional provision.
-   * Called on mount and after magiclink redirect returns.
+   * Bootstrap + provision — get API key and save.
    */
-  const checkBootstrap = useCallback(
-    async (email?: string): Promise<void> => {
-      setStatus('checking')
-      setError(null)
+  const provisionAndActivate = useCallback(
+    async (acctId: string, email: string): Promise<void> => {
       try {
         const instanceId = getInstallerInstanceId()
-        const params: { installerInstanceId: string; accountId?: string; platform?: string } = {
-          installerInstanceId: instanceId,
-          platform: 'installer'
-        }
-        if (email) params.accountId = email
-
-        const data = await apiFetch<BootstrapResponse>('/installer/activation/bootstrap', {
+        const bootstrapData = await apiFetch<BootstrapResponse>('/installer/activation/bootstrap', {
           method: 'POST',
-          body: JSON.stringify(params)
+          body: JSON.stringify({
+            installerInstanceId: instanceId,
+            accountId: acctId,
+            platform: 'installer'
+          })
         })
 
-        if (data.entitlement.status === 'active') {
-          // Already entitled — call provision to get the API key
-          const provisionData = await apiFetch<ProvisionResponse>(
-            '/installer/activation/provision',
-            {
-              method: 'POST',
-              body: JSON.stringify({
-                setupToken: data.setupToken,
-                accountId: data.accountId
-              })
-            }
-          )
-          const info: ActivationInfo = {
-            email: email || data.accountId || '',
-            licenseType: 'unknown', // backend doesn't expose type yet
-            expiresAt: null,
-            apiKey: provisionData.credentialRef
-          }
-          setActivationInfo(info)
-          // Persist for IPC check on next launch
-          try {
-            await window.electronAPI.activation.save(info)
-          } catch {
-            /* ignore */
-          }
-          setStatus('activated')
-        } else if (data.accountId) {
-          // Logged in but no entitlement
-          pendingEmailRef.current = data.accountId
-          setStatus('need_purchase')
-        } else {
-          // Not logged in
-          setStatus('need_login')
+        if (bootstrapData.entitlement.status !== 'active') {
+          throw new Error('Account is not active')
         }
+
+        const provisionData = await apiFetch<ProvisionResponse>(
+          '/installer/activation/provision',
+          {
+            method: 'POST',
+            body: JSON.stringify({
+              setupToken: bootstrapData.setupToken,
+              accountId: acctId
+            })
+          }
+        )
+
+        const info: ActivationInfo = {
+          email: email || acctId,
+          licenseType: 'unknown',
+          expiresAt: null,
+          apiKey: provisionData.credentialRef
+        }
+        setActivationInfo(info)
+        try {
+          await window.electronAPI.activation.save(info)
+        } catch {
+          /* ignore */
+        }
+        setStatus('activated')
       } catch (e) {
-        // Network / server unavailable — treat as not logged in
-        console.warn('[useActivation] bootstrap error:', e)
-        setStatus('need_login')
+        const msg = e instanceof Error ? e.message : 'Activation failed'
+        setError(msg)
+        setStatus('error')
       }
     },
     []
   )
 
-  /** Called on component mount to auto-check activation. */
+  /**
+   * Called on mount to auto-check activation.
+   */
   const checkActivation = useCallback(async (): Promise<boolean> => {
-    await checkBootstrap()
+    setStatus('checking')
+    setError(null)
+    try {
+      const instanceId = getInstallerInstanceId()
+      const data = await apiFetch<BootstrapResponse>('/installer/activation/bootstrap', {
+        method: 'POST',
+        body: JSON.stringify({
+          installerInstanceId: instanceId,
+          platform: 'installer'
+        })
+      })
+
+      if (data.entitlement.status === 'active') {
+        // Already entitled — call provision to get the API key
+        const provisionData = await apiFetch<ProvisionResponse>(
+          '/installer/activation/provision',
+          {
+            method: 'POST',
+            body: JSON.stringify({
+              setupToken: data.setupToken,
+              accountId: data.accountId
+            })
+          }
+        )
+        const info: ActivationInfo = {
+          email: data.accountId || '',
+          licenseType: 'unknown',
+          expiresAt: null,
+          apiKey: provisionData.credentialRef
+        }
+        setActivationInfo(info)
+        try {
+          await window.electronAPI.activation.save(info)
+        } catch {
+          /* ignore */
+        }
+        setStatus('activated')
+      } else if (data.accountId) {
+        // Logged in but no entitlement — prompt topup
+        setAccountId(data.accountId)
+        setStatus('need_topup')
+      } else {
+        // Not logged in
+        setStatus('need_verify')
+      }
+    } catch (e) {
+      console.warn('[useActivation] bootstrap error:', e)
+      setStatus('need_verify')
+    }
     return status === 'activated'
-  }, [checkBootstrap, status])
+  }, [status]) // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Send OTP code to email. */
   const sendCode = useCallback(async (email: string): Promise<boolean> => {
@@ -213,38 +250,36 @@ export function useActivation() {
   }, [])
 
   /**
-   * Verify OTP code.
-   * On success, `redirectUrl` is opened in the browser.
-   * The app listens for window focus and re-checks bootstrap on return.
+   * Verify OTP code via the new /installer/auth/verify-otp endpoint.
+   * Returns isActive + accountId directly — no browser redirect.
    */
   const verifyCode = useCallback(
     async (email: string, code: string): Promise<boolean> => {
       setStatus('checking')
       setError(null)
       try {
-        const data = await apiFetch<OtpVerifyResponse>('/auth/otp/verify', {
+        const data = await apiFetch<VerifyOtpResponse>('/installer/auth/verify-otp', {
           method: 'POST',
           body: JSON.stringify({ email, code })
         })
 
-        if (data.ok && data.verified) {
-          pendingEmailRef.current = data.email || email
-
-          if (data.redirectUrl) {
-            // Open magiclink in external browser
-            await window.electronAPI.system.openExternal(data.redirectUrl)
-            // Set pending — will re-check bootstrap on window focus
-            setStatus('pending_redirect')
-          } else {
-            // No redirect needed — directly re-check bootstrap
-            await checkBootstrap(data.email || email)
-          }
-          return true
-        } else {
+        if (!data.ok) {
           setError(data.error || 'Invalid code')
           setStatus('error')
           return false
         }
+
+        pendingEmailRef.current = data.email || email
+
+        if (data.isActive) {
+          // Has balance — provision and activate
+          await provisionAndActivate(data.accountId || email, data.email || email)
+        } else {
+          // No balance — show topup
+          setAccountId(data.accountId || email)
+          setStatus('need_topup')
+        }
+        return true
       } catch (e) {
         const msg = e instanceof Error ? e.message : 'Network error'
         setError(msg)
@@ -252,8 +287,82 @@ export function useActivation() {
         return false
       }
     },
-    [checkBootstrap]
+    [provisionAndActivate]
   )
+
+  /**
+   * Start topup: create Stripe checkout and open browser.
+   */
+  const startTopup = useCallback(
+    async (amount: 5 | 10 | 20): Promise<boolean> => {
+      if (!accountId) return false
+      setStatus('checking')
+      setError(null)
+      try {
+        const email = pendingEmailRef.current || ''
+        const data = await apiFetch<TopupCheckoutResponse>('/installer/topup/checkout', {
+          method: 'POST',
+          body: JSON.stringify({ accountId, email, amount })
+        })
+
+        if (!data.ok || !data.checkoutUrl) {
+          throw new Error(data.error || 'Failed to create checkout')
+        }
+
+        // Open Stripe checkout in browser
+        await window.electronAPI.system.openExternal(data.checkoutUrl)
+        setStatus('pending_topup')
+
+        // Start polling for topup completion
+        let attempts = 0
+        const maxAttempts = 60
+
+        pollingRef.current = setInterval(async () => {
+          attempts++
+          try {
+            const statusData = await apiFetch<TopupStatusResponse>(
+              `/installer/topup/check-status?accountId=${encodeURIComponent(accountId)}`
+            )
+            if (statusData.isActive) {
+              if (pollingRef.current) clearInterval(pollingRef.current)
+              pollingRef.current = null
+              await provisionAndActivate(accountId, email)
+            } else if (attempts >= maxAttempts) {
+              if (pollingRef.current) clearInterval(pollingRef.current)
+              pollingRef.current = null
+              setError('Payment is taking longer than expected. Please try again later.')
+              setStatus('need_topup')
+            }
+          } catch {
+            // Keep polling on individual poll failure
+            if (attempts >= maxAttempts) {
+              if (pollingRef.current) clearInterval(pollingRef.current)
+              pollingRef.current = null
+              setError('Failed to check payment status. Please try again later.')
+              setStatus('need_topup')
+            }
+          }
+        }, 3000)
+
+        return true
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Failed to start topup'
+        setError(msg)
+        setStatus('need_topup')
+        return false
+      }
+    },
+    [accountId, provisionAndActivate]
+  )
+
+  /** Cancel pending topup and return to topup selection. */
+  const cancelTopup = useCallback((): void => {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current)
+      pollingRef.current = null
+    }
+    setStatus('need_topup')
+  }, [])
 
   /** Logout — clear local activation data. */
   const logout = useCallback(async (): Promise<void> => {
@@ -264,16 +373,20 @@ export function useActivation() {
       /* ignore */
     }
     setActivationInfo(null)
-    setStatus('need_login')
+    setAccountId(null)
+    setStatus('need_verify')
   }, [])
 
   return {
     status,
     activationInfo,
     error,
+    accountId,
     sendCode,
     verifyCode,
     checkActivation,
+    startTopup,
+    cancelTopup,
     logout
   }
 }
