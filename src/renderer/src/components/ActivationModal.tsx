@@ -32,6 +32,45 @@ function licenseLabel(type: LicenseType): string {
   }
 }
 
+// ─── Step: Pending Redirect (waiting for browser magiclink) ───────────────────
+function PendingRedirectStep({
+  email,
+  onCancel
+}: {
+  email: string
+  onCancel: () => void
+}): React.JSX.Element {
+  const { t } = useTranslation('activation')
+
+  return (
+    <div className="flex flex-col items-center gap-5 w-full max-w-sm mx-auto">
+      <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" className="animate-spin" style={{ animationDuration: '2s' }}>
+          <circle cx="12" cy="12" r="10" stroke="var(--color-primary)" strokeWidth="2" strokeDasharray="30 60" strokeLinecap="round" />
+        </svg>
+      </div>
+
+      <div className="text-center">
+        <h2 className="text-xl font-black tracking-tight">{t('redirect.title')}</h2>
+        <p className="text-text-muted text-sm mt-1">
+          {t('redirect.subtitle', { email })}
+        </p>
+      </div>
+
+      <p className="text-center text-xs text-text-muted/60 px-4">
+        {t('redirect.hint')}
+      </p>
+
+      <button
+        onClick={onCancel}
+        className="text-xs text-text-muted/60 hover:text-text-muted transition-colors cursor-pointer"
+      >
+        {t('redirect.cancel')}
+      </button>
+    </div>
+  )
+}
+
 // ─── Step: Email Input ────────────────────────────────────────────────────────
 function EmailStep({
   onPurchase,
@@ -494,7 +533,7 @@ function ActivatedStep({
 }
 
 // ─── Main Modal ───────────────────────────────────────────────────────────────
-export type ActivationView = 'email' | 'verify' | 'purchase' | 'activated'
+export type ActivationView = 'email' | 'verify' | 'purchase' | 'activated' | 'pending_redirect'
 
 interface ActivationModalProps {
   onClose?: () => void
@@ -509,16 +548,40 @@ export default function ActivationModal({
   const { status, activationInfo, error, sendCode, verifyCode, checkActivation, logout } =
     useActivation()
 
+  // Map hook status → modal view
+  // We manage view state ourselves, driven by the hook's status
   const [view, setView] = useState<ActivationView>('email')
   const [email, setEmail] = useState('')
   const [cooldownSecs, setCooldownSecs] = useState(0)
   const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  // Sync view with hook status
+  useEffect(() => {
+    switch (status) {
+      case 'idle':
+      case 'need_login':
+        setView('email')
+        break
+      case 'checking':
+        // stay on current view while checking
+        break
+      case 'pending_redirect':
+        setView('pending_redirect')
+        break
+      case 'need_purchase':
+        setView('purchase')
+        break
+      case 'activated':
+        setView('activated')
+        break
+      case 'error':
+        // stay on current view — error message shown inline
+        break
+    }
+  }, [status])
 
   // On mount: check activation status
   useEffect(() => {
-    checkActivation().then((activated) => {
-      if (activated) setView('activated')
-    })
+    checkActivation()
   }, [checkActivation])
 
   // Cooldown timer
@@ -551,7 +614,10 @@ export default function ActivationModal({
   const handleVerify = useCallback(
     async (code: string): Promise<void> => {
       const ok = await verifyCode(email, code)
-      if (ok) setView('activated')
+      if (ok) {
+        // status will move to 'pending_redirect' or 'activated'
+        // view sync is handled by the useEffect above
+      }
     },
     [email, verifyCode]
   )
@@ -577,7 +643,12 @@ export default function ActivationModal({
     onClose?.()
   }
 
-  const isLoading = status === 'loading'
+  const handlePendingCancel = useCallback((): void => {
+    setView('email')
+    setEmail('')
+  }, [])
+
+  const isLoading = status === 'checking'
 
   return (
     <>
@@ -622,6 +693,12 @@ export default function ActivationModal({
                   loading={isLoading}
                   error={status === 'error' ? error : null}
                   cooldownSecs={cooldownSecs}
+                />
+              )}
+              {view === 'pending_redirect' && (
+                <PendingRedirectStep
+                  email={email}
+                  onCancel={handlePendingCancel}
                 />
               )}
               {view === 'purchase' && (

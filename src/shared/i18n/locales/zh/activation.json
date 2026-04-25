@@ -43,6 +43,12 @@
     "launch": "启动 ClawLite",
     "logout": "退出登录"
   },
+  "redirect": {
+    "title": "完成登录",
+    "subtitle": "请在打开的浏览器中完成 {{email}} 的登录",
+    "hint": "登录完成后，返回此处继续。",
+    "cancel": "取消并返回"
+  },
   "footer": {
     "secure": "您的数据已加密保护"
   }

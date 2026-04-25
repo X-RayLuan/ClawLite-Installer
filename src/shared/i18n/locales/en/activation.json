@@ -43,6 +43,12 @@
     "launch": "Launch ClawLite",
     "logout": "Sign out"
   },
+  "redirect": {
+    "title": "Complete Login",
+    "subtitle": "Please complete login in the opened browser for {{email}}",
+    "hint": "After logging in, return here to continue.",
+    "cancel": "Cancel and go back"
+  },
   "footer": {
     "secure": "Your data is encrypted and secure"
   }
