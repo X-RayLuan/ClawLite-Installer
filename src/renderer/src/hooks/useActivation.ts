@@ -20,7 +20,13 @@ export interface ActivationInfo {
   apiKey: string
 }
 
-const API_BASE = 'http://localhost:3000/api'
+const API_BASE = (() => {
+  // 渲染进程没有 localhost 服务器，改用生产地址
+  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+    return 'http://localhost:3000/api'
+  }
+  return 'https://clawlite.ai/api'
+})()
 
 // ─── Installer Instance ID ───────────────────────────────────────────────────
 
