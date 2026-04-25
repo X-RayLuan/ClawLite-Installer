@@ -97,12 +97,13 @@ function EmailStep({
         </div>
 
         <Button
+          type="button"
           variant="primary"
           size="lg"
           loading={loading}
           disabled={!isValidEmail(email) || loading}
           onClick={handleSend}
-          className="w-full"
+          className="w-full font-black text-[15px] shadow-lg shadow-primary/30"
         >
           {t('email.sendCode')}
         </Button>
@@ -223,7 +224,7 @@ function VerifyStep({
       <div className="w-full flex items-center justify-between text-xs text-text-muted/60">
         <button
           onClick={onBack}
-          className="hover:text-text transition-colors cursor-pointer"
+          className="text-xs text-text-muted/60 hover:text-text font-medium transition-colors cursor-pointer px-2 py-1 rounded-lg hover:bg-white/10"
         >
           {t('verify.changeEmail')}
         </button>
@@ -283,7 +284,7 @@ function TopupStep({
           <button
             key={amount}
             onClick={() => onSelectAmount(amount)}
-            className="w-full flex items-center justify-between px-5 py-4 rounded-2xl bg-white/5 border border-glass-border hover:border-primary/50 hover:bg-primary/10 transition-all duration-200 cursor-pointer group"
+            className="w-full flex items-center justify-between px-5 py-4 rounded-2xl bg-gradient-to-r from-success/10 to-success/5 border border-success/30 hover:border-success/60 hover:from-success/20 hover:to-success/10 transition-all duration-200 cursor-pointer group active:scale-[0.98]"
           >
             <span className="text-base font-black">{label}</span>
             <span className="text-xs text-text-muted/60 group-hover:text-primary">
