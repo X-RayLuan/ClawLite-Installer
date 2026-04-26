@@ -15,7 +15,7 @@ interface WizardPersistedState {
 interface ElectronAPI {
   version: () => Promise<string>
   env: {
-    check: () => Promise<{
+    check: (installerInstanceId?: string) => Promise<{
       os: 'macos' | 'windows' | 'linux'
       nodeInstalled: boolean
       nodeVersion: string | null
@@ -70,7 +70,7 @@ interface ElectronAPI {
     subscribe: (email: string) => Promise<{ success: boolean }>
   }
   update: {
-    check: () => Promise<{ success: boolean }>
+    check: (installerInstanceId?: string) => Promise<{ success: boolean }>
     download: () => Promise<{ success: boolean }>
     install: () => Promise<{ success: boolean }>
     onAvailable: (cb: (info: { version: string }) => void) => () => void
@@ -117,7 +117,7 @@ interface ElectronAPI {
     setLanguage: (lng: string) => Promise<{ success: boolean; error?: string }>
   }
   activation: {
-    check: () => Promise<{
+    check: (installerInstanceId?: string) => Promise<{
       activated: boolean
       activationInfo?: {
         email: string

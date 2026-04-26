@@ -42,18 +42,31 @@ function EmailStep({
   const { t } = useTranslation('activation')
   const [email, setEmail] = useState('')
   const [localError, setLocalError] = useState<string | null>(null)
+  const [inputActive, setInputActive] = useState(false)
+  const [debugMsg, setDebugMsg] = useState<string | null>(null)
 
   const isValidEmail = (v: string): boolean => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)
 
   const handleSend = async (): Promise<void> => {
+    console.log('[EmailStep] handleSend clicked, email:', email)
     if (!isValidEmail(email)) {
+      console.log('[EmailStep] Invalid email')
       setLocalError(t('email.invalid'))
       return
     }
     setLocalError(null)
-    await onSendCode(email)
+    setDebugMsg('Sending code...')
+    console.log('[EmailStep] Calling onSendCode...')
+    try {
+      await onSendCode(email)
+      console.log('[EmailStep] onSendCode returned')
+    } catch (e) {
+      console.error('[EmailStep] onSendCode threw:', e)
+      setDebugMsg('Error: ' + (e instanceof Error ? e.message : String(e)))
+    }
   }
 
+  // Show local validation error OR any error from the API (even after loading finishes)
   const displayError = localError || error
 
   return (
@@ -86,15 +99,30 @@ function EmailStep({
               setLocalError(null)
             }}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+            onFocus={() => setInputActive(true)}
+            onBlur={() => setInputActive(false)}
             placeholder={t('email.placeholder')}
             autoFocus
             disabled={loading}
-            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-glass-border text-sm text-text placeholder:text-text-muted/40 focus:outline-none focus:border-primary/60 focus:bg-white/[0.07] transition-all duration-200 disabled:opacity-50"
+            className={`w-full px-4 py-3 rounded-xl bg-white/5 border text-sm text-text placeholder:text-text-muted/40 transition-all duration-200 disabled:opacity-50 ${
+              displayError
+                ? 'border-error/60 focus:border-error/80 focus:bg-error/5'
+                : inputActive
+                ? 'border-primary/60 focus:border-primary/80 bg-white/[0.07]'
+                : 'border-glass-border focus:border-primary/60 focus:bg-white/[0.07]'
+            }`}
           />
           {displayError && (
             <p className="mt-1.5 text-xs text-error font-medium pl-1">{displayError}</p>
           )}
         </div>
+
+        {/* Debug message */}
+        {debugMsg && !displayError && (
+          <p className={`text-xs font-medium pl-1 text-center ${loading ? 'text-text-muted/60' : 'text-warning'}`}>
+            {debugMsg}
+          </p>
+        )}
 
         <Button
           type="button"
@@ -103,9 +131,9 @@ function EmailStep({
           loading={loading}
           disabled={!isValidEmail(email) || loading}
           onClick={handleSend}
-          className="w-full font-black text-[15px] shadow-lg shadow-primary/30"
+          className="w-full font-black text-[15px] shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/50 hover:brightness-110 active:scale-[0.97] transition-all duration-150"
         >
-          {t('email.sendCode')}
+          {loading ? 'Sending...' : t('email.sendCode')}
         </Button>
       </div>
     </div>
@@ -215,10 +243,25 @@ function VerifyStep({
         ))}
       </div>
 
-      {error && <p className="text-xs text-error font-medium text-center">{error}</p>}
+      {error && (
+        <p className="text-xs text-error font-medium text-center bg-error/10 px-3 py-2 rounded-xl border border-error/20">{error}</p>
+      )}
 
       {loading && (
-        <p className="text-xs text-text-muted/60">{t('verify.verifying')}</p>
+        <div className="flex flex-col items-center gap-2">
+          <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+          <p className="text-xs text-text-muted/60">{t('verify.verifying')}</p>
+        </div>
+      )}
+
+      {/* Manual verify button - appears when code is complete */}
+      {!loading && code.every((c) => c.length === 1) && (
+        <button
+          onClick={() => { console.log('[VerifyStep] manual submit'); onVerify(code.join('')) }}
+          className="w-full py-3 rounded-xl bg-primary text-white font-black text-[15px] shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/50 hover:brightness-110 active:scale-[0.97] transition-all duration-150"
+        >
+          Verify Code
+        </button>
       )}
 
       <div className="w-full flex items-center justify-between text-xs text-text-muted/60">
@@ -496,17 +539,25 @@ export default function ActivationModal({
   const [email, setEmail] = useState('')
   const [cooldownSecs, setCooldownSecs] = useState(0)
   const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [appVersion, setAppVersion] = useState<string>('')
 
-  // Sync view with hook status
+  // Fetch app version on mount
   useEffect(() => {
+    window.electronAPI.app.version().then(setAppVersion).catch(() => {})
+  }, [])
+
+  // Sync view with hook status — only drive navigation from 'checking' or 'error' states
+  // Do NOT reset view when status becomes 'idle' — that is the normal result of sendCode
+  // and handleSendCode already called setView('verify') before the status update.
+  useEffect(() => {
+    console.log('[ActivationModal] status-sync effect, status:', status, 'view:', view)
+    // Never auto-reset from 'verify' — user explicitly navigated there
+    if (view === 'verify') {
+      console.log('[ActivationModal] status-sync: view=verify, staying')
+      return
+    }
+    // Only auto-navigate TO these states (not away from verify)
     switch (status) {
-      case 'idle':
-      case 'need_verify':
-        setView('email')
-        break
-      case 'checking':
-        // stay on current view while checking
-        break
       case 'need_topup':
         setView('topup')
         break
@@ -514,13 +565,22 @@ export default function ActivationModal({
         setView('pending_topup')
         break
       case 'activated':
+        console.log('[ActivationModal] status-sync: received activated, setting view to activated')
         setView('activated')
         break
+      case 'idle':
+      case 'need_verify':
+        // Only set email if we're truly in the initial/idle state
+        // (not after a sendCode that we're waiting to complete)
+        break
       case 'error':
-        // stay on current view — error message shown inline
+        // Stay on current view, error shown inline
+        break
+      case 'checking':
+        // Stay on current view
         break
     }
-  }, [status])
+  }, [status, view])
 
   // On mount: check activation status
   useEffect(() => {
@@ -544,11 +604,18 @@ export default function ActivationModal({
 
   const handleSendCode = useCallback(
     async (inputEmail: string): Promise<void> => {
+      console.log('[ActivationModal] handleSendCode called, email:', inputEmail)
+      setEmail(inputEmail)
+      // Set view BEFORE awaiting — prevents race with status-sync useEffect
+      setView('verify')
+      setCooldownSecs(60)
+      console.log('[ActivationModal] handleSendCode: view set to verify, calling sendCode')
       const ok = await sendCode(inputEmail)
-      if (ok) {
-        setEmail(inputEmail)
-        setView('verify')
-        setCooldownSecs(60)
+      console.log('[ActivationModal] handleSendCode sendCode result:', ok, 'status:', status)
+      if (!ok) {
+        // sendCode failed — revert view if needed
+        console.log('[ActivationModal] handleSendCode: sendCode failed, reverting view')
+        setView('email')
       }
     },
     [sendCode]
@@ -556,7 +623,26 @@ export default function ActivationModal({
 
   const handleVerify = useCallback(
     async (code: string): Promise<void> => {
-      await verifyCode(email, code)
+      console.log('[ActivationModal] handleVerify called, code length:', code.length, 'email:', email)
+      // Do NOT set view here — let the status-sync useEffect drive view transitions.
+      // verifyCode -> provisionAndActivate -> status becomes 'activated' or 'need_topup' -> effect updates view.
+      // Setting view prematurely caused a blank 'activated' screen when provision failed.
+      try {
+        const ok = await verifyCode(email, code)
+        console.log('[ActivationModal] verifyCode returned:', ok, 'status after call:', status)
+        if (ok) {
+          // verifyCode already called provisionAndActivate which set status='activated'.
+          // Set view directly to avoid relying on the timing of the status-sync useEffect.
+          console.log('[ActivationModal] verifyCode ok, setting view to activated')
+          setView('activated')
+        } else {
+          console.log('[ActivationModal] handleVerify: verifyCode failed, reverting view')
+          setView('verify')
+        }
+      } catch (e) {
+        console.error('[ActivationModal] verifyCode threw:', e)
+        setView('verify')
+      }
     },
     [email, verifyCode]
   )
@@ -652,12 +738,18 @@ export default function ActivationModal({
 
             {/* Footer */}
             {view !== 'activated' && (
-              <div className="px-8 pb-5 flex items-center justify-center gap-1 text-[10px] text-text-muted/40">
+              <div className="px-8 pb-5 flex items-center justify-center gap-2 text-[10px] text-text-muted/40">
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
                   <rect x="3" y="11" width="18" height="11" rx="2" ry="2" stroke="currentColor" strokeWidth="2" />
                   <path d="M7 11V7a5 5 0 0 1 10 0v4" stroke="currentColor" strokeWidth="2" />
                 </svg>
-                {t('footer.secure')}
+                <span>{t('footer.secure')}</span>
+                {appVersion && (
+                  <>
+                    <span>·</span>
+                    <span>v{appVersion}</span>
+                  </>
+                )}
               </div>
             )}
           </div>

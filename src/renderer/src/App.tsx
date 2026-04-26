@@ -79,8 +79,22 @@ function App(): React.JSX.Element {
   const [showActivation, setShowActivation] = useState(false)
 
   const checkActivationOnMount = useCallback(async (): Promise<void> => {
+    // Get installer instance ID (same one used by useActivation for bootstrap)
+    const instanceId = (() => {
+      try {
+        let id = localStorage.getItem('clawlite_installer_instance_id')
+        if (!id) {
+          id = crypto.randomUUID()
+          localStorage.setItem('clawlite_installer_instance_id', id)
+        }
+        return id
+      } catch {
+        return undefined
+      }
+    })()
+
     try {
-      const result = await window.electronAPI.activation.check()
+      const result = await window.electronAPI.activation.check(instanceId)
       if (result.activated) {
         setShowActivation(false)
       } else {

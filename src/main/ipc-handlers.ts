@@ -420,22 +420,46 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
   // ─── Activation ───────────────────────────────────────────────────────────────
   const getActivationPath = (): string => join(app.getPath('userData'), 'activation.json')
 
-  ipcMain.handle('activation:check', () => {
+  ipcMain.handle('activation:check', async (_event, installerInstanceId?: string) => {
+    const path = getActivationPath()
+    if (!existsSync(path)) return { activated: false }
+
+    let data: any
     try {
-      const path = getActivationPath()
-      if (!existsSync(path)) return { activated: false }
-      const data = JSON.parse(readFileSync(path, 'utf-8'))
-      return {
-        activated: true,
-        activationInfo: {
-          email: data.email || '',
-          licenseType: data.licenseType || 'unknown',
-          expiresAt: data.expiresAt || null,
-          apiKey: data.apiKey || ''
-        }
-      }
+      data = JSON.parse(readFileSync(path, 'utf-8'))
     } catch {
       return { activated: false }
+    }
+
+    // Always verify entitlement with backend — local file alone is not sufficient
+    try {
+      const resp = await fetch('https://clawlite.ai/api/installer/activation/bootstrap', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ platform: 'installer', installerInstanceId: installerInstanceId || undefined }),
+        signal: AbortSignal.timeout(8000)
+      })
+      if (resp.ok) {
+        const bootstrap = await resp.json()
+        if (bootstrap.entitlement?.status !== 'active') {
+          // Backend says not active — revoke local activation file
+          try { unlinkSync(path) } catch { /* ignore */ }
+          return { activated: false }
+        }
+      }
+      // Network/server error — trust local file (graceful degradation)
+    } catch {
+      // Could not reach backend — trust local activation file
+    }
+
+    return {
+      activated: true,
+      activationInfo: {
+        email: data.email || '',
+        licenseType: data.licenseType || 'unknown',
+        expiresAt: data.expiresAt || null,
+        apiKey: data.apiKey || ''
+      }
     }
   })
 

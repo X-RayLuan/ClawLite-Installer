@@ -48,16 +48,28 @@ function getInstallerInstanceId(): string {
 // ─── API helpers ──────────────────────────────────────────────────────────────
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include', // ensure cookies are sent/received
-    ...options
-  })
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}))
-    throw new Error((body as { error?: string }).error || `HTTP ${res.status}`)
+  const url = `${API_BASE}${path}`
+  console.log('[apiFetch] START', (options as any)?.method || 'GET', url, 'signal:', options?.signal ? 'yes' : 'no')
+  try {
+    const res = await fetch(url, {
+      headers: { 'Content-Type': 'application/json' },
+      ...options
+    })
+    console.log('[apiFetch] RESPONSE', res.status, res.ok, 'signal:', options?.signal ? 'yes' : 'no')
+    const data = await res.json().catch(() => ({}))
+    console.log('[apiFetch] DATA', JSON.stringify(data))
+    if (!res.ok) {
+      // Include the parsed body so callers can inspect structured error fields (e.g. provisioningState)
+      const err: any = new Error((data as { error?: string }).error || `HTTP ${res.status}`)
+      err._body = data
+      err._status = res.status
+      throw err
+    }
+    return data as T
+  } catch (e) {
+    console.error('[apiFetch] ERROR', e instanceof Error ? e.message : String(e), 'name:', (e as Error).name)
+    throw e
   }
-  return res.json() as Promise<T>
 }
 
 // OTP send response
@@ -89,8 +101,12 @@ interface BootstrapResponse {
 
 // Provision response (PRD v1.1)
 interface ProvisionResponse {
-  provisioningState: 'bound' | 'unbound'
-  credentialRef: string // API Key — only returned once
+  provisioningState: 'bound' | 'unbound' | 'failed'
+  bindingId?: string | null
+  credentialRef?: string | null // API Key — only returned once
+  provider?: string
+  model?: string
+  error?: string
 }
 
 // Topup checkout response
@@ -137,7 +153,10 @@ export function useActivation() {
         })
 
         if (bootstrapData.entitlement.status !== 'active') {
-          throw new Error('Account is not active')
+          // Account has no active entitlement — throw so handleVerify can redirect to topup
+          const err = new Error('need_topup')
+          ;(err as any).needTopup = true
+          throw err
         }
 
         const provisionData = await apiFetch<ProvisionResponse>(
@@ -151,21 +170,39 @@ export function useActivation() {
           }
         )
 
+        if (provisionData.provisioningState === 'failed') {
+          const errMsg = provisionData.error || ''
+          if (errMsg.includes('not active') || errMsg.includes('no entitlement')) {
+            const err = new Error('need_topup')
+            ;(err as any).needTopup = true
+            throw err
+          }
+          throw new Error(errMsg || 'Activation failed')
+        }
+
         const info: ActivationInfo = {
           email: email || acctId,
           licenseType: 'unknown',
           expiresAt: null,
-          apiKey: provisionData.credentialRef
+          apiKey: provisionData.credentialRef!
         }
         setActivationInfo(info)
         try {
           await window.electronAPI.activation.save(info)
-        } catch {
-          /* ignore */
+                  } catch (e) {
+                    /* ignore */
         }
         setStatus('activated')
-      } catch (e) {
+              } catch (e) {
+        const err = e as any
+        if (err?.needTopup) {
+          // Redirect to topup
+          setAccountId(acctId)
+          setStatus('need_topup')
+          return
+        }
         const msg = e instanceof Error ? e.message : 'Activation failed'
+        console.warn('[provisionAndActivate] failed:', msg)
         setError(msg)
         setStatus('error')
       }
@@ -205,7 +242,7 @@ export function useActivation() {
           email: data.accountId || '',
           licenseType: 'unknown',
           expiresAt: null,
-          apiKey: provisionData.credentialRef
+          apiKey: provisionData.credentialRef!
         }
         setActivationInfo(info)
         try {
@@ -233,22 +270,32 @@ export function useActivation() {
   const sendCode = useCallback(async (email: string): Promise<boolean> => {
     setStatus('checking')
     setError(null)
+    console.log('[useActivation] sendCode called with:', email, 'API_BASE:', API_BASE)
     try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 15000)
+
       const data = await apiFetch<OtpSendResponse>('/auth/otp/send', {
         method: 'POST',
-        body: JSON.stringify({ email })
+        body: JSON.stringify({ email }),
+        signal: controller.signal
       })
+      clearTimeout(timeoutId)
+
+      console.log('[useActivation] sendCode response:', data)
       if (data.ok) {
         pendingEmailRef.current = email
         setStatus('idle') // caller will advance to verify step
         return true
       } else {
+        console.warn('[useActivation] sendCode API returned ok:false, error:', data.error)
         setError(data.error || 'Failed to send code')
         setStatus('error')
         return false
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Network error'
+      console.error('[useActivation] sendCode exception:', msg, e)
       setError(msg)
       setStatus('error')
       return false
@@ -276,17 +323,25 @@ export function useActivation() {
         }
 
         pendingEmailRef.current = data.email || email
+        const accountId = data.accountId || email
 
         if (data.isActive) {
           // Has balance — provision and activate
-          await provisionAndActivate(data.accountId || email, data.email || email)
+          await provisionAndActivate(accountId, data.email || email)
         } else {
           // No balance — show topup
-          setAccountId(data.accountId || email)
+          setAccountId(accountId)
           setStatus('need_topup')
         }
         return true
       } catch (e) {
+        const err = e as any
+        if (err?.needTopup) {
+          // provisionAndActivate detected no active entitlement — redirect to topup
+          setAccountId(pendingEmailRef.current || email)
+          setStatus('need_topup')
+          return false
+        }
         const msg = e instanceof Error ? e.message : 'Network error'
         setError(msg)
         setStatus('error')
