@@ -1,7 +1,7 @@
 {
   "indicator": {
-    "default": ["Start", "Env", "Install", "API Key", "Telegram", "Config", "Done"],
-    "windows": ["Start", "Env", "WSL", "Install", "API Key", "Telegram", "Config", "Done"]
+    "default": ["Start", "Env", "Install", "Telegram", "Config", "Done"],
+    "windows": ["Start", "Env", "WSL", "Install", "Telegram", "Config", "Done"]
   },
   "welcome": {
     "title": "Your Own AI Agent, One Click Away",

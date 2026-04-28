@@ -4,7 +4,6 @@ const defaultSteps = [
   'welcome',
   'envCheck',
   'install',
-  'apiKeyGuide',
   'telegramGuide',
   'config',
   'done'
@@ -15,7 +14,6 @@ const windowsSteps = [
   'envCheck',
   'wslSetup',
   'install',
-  'apiKeyGuide',
   'telegramGuide',
   'config',
   'done'
@@ -23,13 +21,16 @@ const windowsSteps = [
 
 export default function StepIndicator({
   currentStep,
-  isWindows = false
+  isWindows = false,
+  wizardSteps
 }: {
   currentStep: string
   isWindows?: boolean
+  /** Override the default step sequence (e.g. to skip the API Key step). */
+  wizardSteps?: string[]
 }): React.JSX.Element {
   const { t } = useTranslation('steps')
-  const steps = isWindows ? windowsSteps : defaultSteps
+  const steps = wizardSteps ?? (isWindows ? windowsSteps : defaultSteps)
   const labels = (
     isWindows
       ? t('indicator.windows', { returnObjects: true })

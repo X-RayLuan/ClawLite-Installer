@@ -40,11 +40,12 @@ mac:
     - target: dmg
       arch:
         - universal
+  artifactName: clawlite.dmg
   extendInfo:
     NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
     NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
 dmg:
-  artifactName: ${name}.${ext}
+  artifactName: clawlite.${ext}
   title: ${productName}
   background: build/background.png
   iconSize: 80

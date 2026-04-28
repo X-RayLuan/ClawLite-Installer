@@ -9,26 +9,6 @@ function maskApiKey(key: string): string {
   return key.slice(0, 4) + '*'.repeat(key.length - 8) + key.slice(-4)
 }
 
-function formatExpiry(licenseType: LicenseType, expiresAt: string | null): string {
-  if (licenseType === 'lifetime') return 'Never'
-  if (!expiresAt) return '—'
-  const d = new Date(expiresAt)
-  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
-}
-
-function licenseLabel(type: LicenseType): string {
-  switch (type) {
-    case 'annual':
-      return 'Annual'
-    case 'lifetime':
-      return 'Lifetime'
-    case 'trial':
-      return 'Trial'
-    default:
-      return '—'
-  }
-}
-
 // ─── Step: Email Input ────────────────────────────────────────────────────────
 function EmailStep({
   onSendCode,
@@ -43,7 +23,7 @@ function EmailStep({
   const [email, setEmail] = useState('')
   const [localError, setLocalError] = useState<string | null>(null)
   const [inputActive, setInputActive] = useState(false)
-  const [debugMsg, setDebugMsg] = useState<string | null>(null)
+  const [isSending, setIsSending] = useState(false)
 
   const isValidEmail = (v: string): boolean => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)
 
@@ -55,14 +35,15 @@ function EmailStep({
       return
     }
     setLocalError(null)
-    setDebugMsg('Sending code...')
     console.log('[EmailStep] Calling onSendCode...')
+    setIsSending(true)
     try {
       await onSendCode(email)
       console.log('[EmailStep] onSendCode returned')
     } catch (e) {
       console.error('[EmailStep] onSendCode threw:', e)
-      setDebugMsg('Error: ' + (e instanceof Error ? e.message : String(e)))
+    } finally {
+      setIsSending(false)
     }
   }
 
@@ -117,23 +98,15 @@ function EmailStep({
           )}
         </div>
 
-        {/* Debug message */}
-        {debugMsg && !displayError && (
-          <p className={`text-xs font-medium pl-1 text-center ${loading ? 'text-text-muted/60' : 'text-warning'}`}>
-            {debugMsg}
-          </p>
-        )}
-
         <Button
           type="button"
           variant="primary"
           size="lg"
-          loading={loading}
-          disabled={!isValidEmail(email) || loading}
+          disabled={!isValidEmail(email) || isSending}
           onClick={handleSend}
           className="w-full font-black text-[15px] shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/50 hover:brightness-110 active:scale-[0.97] transition-all duration-150"
         >
-          {loading ? 'Sending...' : t('email.sendCode')}
+          {isSending ? t('email.sending') || 'Sending...' : t('email.sendCode')}
         </Button>
       </div>
     </div>
@@ -398,23 +371,34 @@ function ActivatedStep({
     licenseType: LicenseType
     expiresAt: string | null
     apiKey: string
+    baseUrl: string
+    balanceUsd?: number
   }
   onLogout: () => void
   onLaunch: () => void
   loading: boolean
 }): React.JSX.Element {
   const { t } = useTranslation('activation')
-  const [copied, setCopied] = useState(false)
 
-  const handleCopy = (): void => {
+
+  const maskedKey = maskApiKey(info.apiKey)
+  const balance = typeof info.balanceUsd === 'number' ? `$${info.balanceUsd.toFixed(2)}` : '—'
+  const [copiedKey, setCopiedKey] = useState(false)
+  const [copiedUrl, setCopiedUrl] = useState(false)
+
+  const handleCopyKey = (): void => {
     navigator.clipboard.writeText(info.apiKey).then(() => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      setCopiedKey(true)
+      setTimeout(() => setCopiedKey(false), 2000)
     })
   }
 
-  const expiry = formatExpiry(info.licenseType, info.expiresAt)
-  const maskedKey = maskApiKey(info.apiKey)
+  const handleCopyUrl = (): void => {
+    navigator.clipboard.writeText(info.baseUrl).then(() => {
+      setCopiedUrl(true)
+      setTimeout(() => setCopiedUrl(false), 2000)
+    })
+  }
 
   return (
     <div className="flex flex-col items-center gap-5 w-full max-w-sm mx-auto">
@@ -455,24 +439,43 @@ function ActivatedStep({
         </div>
         <div className="h-px bg-glass-border" />
         <div className="flex items-center justify-between">
-          <span className="text-xs text-text-muted/60">{t('activated.license')}</span>
-          <span className="text-sm font-semibold text-primary">{licenseLabel(info.licenseType)}</span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-text-muted/60">{t('activated.expires')}</span>
-          <span className="text-sm font-semibold">{expiry}</span>
+          <span className="text-xs text-text-muted/60">{t('activated.balance')}</span>
+          <span className="text-sm font-semibold text-success">{balance}</span>
         </div>
         <div className="h-px bg-glass-border" />
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-xs text-text-muted/60">{t('activated.apiKey')}</span>
-          <div className="flex items-center gap-1.5">
-            <code className="text-xs font-mono text-text-muted/80">{maskedKey}</code>
+        <div className="flex items-start justify-between gap-2">
+          <span className="text-xs text-text-muted/60 shrink-0">{t('activated.apiKey')}</span>
+          <div className="flex items-start gap-1.5">
+            <code className="text-xs font-mono text-text-muted/80 break-all">{maskedKey}</code>
             <button
-              onClick={handleCopy}
-              className="p-1 rounded hover:bg-white/10 transition-colors cursor-pointer"
+              onClick={handleCopyKey}
+              className="p-1 rounded hover:bg-white/10 transition-colors cursor-pointer shrink-0 mt-px"
               title={t('activated.copyKey')}
             >
-              {copied ? (
+              {copiedKey ? (
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                  <polyline points="20 6 9 17 4 12" stroke="var(--color-success)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              ) : (
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                  <rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" strokeWidth="2" />
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" strokeWidth="2" />
+                </svg>
+              )}
+            </button>
+          </div>
+        </div>
+        <div className="h-px bg-glass-border" />
+        <div className="flex items-start justify-between gap-2">
+          <span className="text-xs text-text-muted/60 shrink-0">{t('activated.baseUrl')}</span>
+          <div className="flex items-start gap-1.5">
+            <code className="text-xs font-mono text-text-muted/80 break-all">{info.baseUrl}</code>
+            <button
+              onClick={handleCopyUrl}
+              className="p-1 rounded hover:bg-white/10 transition-colors cursor-pointer shrink-0 mt-px"
+              title={t('activated.copyUrl')}
+            >
+              {copiedUrl ? (
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
                   <polyline points="20 6 9 17 4 12" stroke="var(--color-success)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
@@ -515,11 +518,14 @@ export type ActivationView = 'email' | 'verify' | 'topup' | 'pending_topup' | 'a
 interface ActivationModalProps {
   onClose?: () => void
   onLaunchClawLite: () => void
+  /** Called when email verification completes. Boolean indicates whether to skip "Choose Provider" step. */
+  onComplete?: (skipProvider: boolean) => void
 }
 
 export default function ActivationModal({
   onClose,
-  onLaunchClawLite
+  onLaunchClawLite,
+  onComplete
 }: ActivationModalProps): React.JSX.Element {
   const { t } = useTranslation('activation')
   const {
@@ -564,6 +570,10 @@ export default function ActivationModal({
       case 'pending_topup':
         setView('pending_topup')
         break
+      case 'need_skip_provider':
+        // Email-verified activation: skip provider selection, go to activated view
+        setView('activated')
+        break
       case 'activated':
         console.log('[ActivationModal] status-sync: received activated, setting view to activated')
         setView('activated')
@@ -606,16 +616,17 @@ export default function ActivationModal({
     async (inputEmail: string): Promise<void> => {
       console.log('[ActivationModal] handleSendCode called, email:', inputEmail)
       setEmail(inputEmail)
-      // Set view BEFORE awaiting — prevents race with status-sync useEffect
-      setView('verify')
       setCooldownSecs(60)
-      console.log('[ActivationModal] handleSendCode: view set to verify, calling sendCode')
+      console.log('[ActivationModal] handleSendCode: calling sendCode')
       const ok = await sendCode(inputEmail)
       console.log('[ActivationModal] handleSendCode sendCode result:', ok, 'status:', status)
-      if (!ok) {
-        // sendCode failed — revert view if needed
-        console.log('[ActivationModal] handleSendCode: sendCode failed, reverting view')
-        setView('email')
+      if (ok) {
+        // sendCode succeeded — now switch to verify view
+        console.log('[ActivationModal] handleSendCode: success, setting view to verify')
+        setView('verify')
+      } else {
+        // sendCode failed — stay on email view, error shown inline
+        console.log('[ActivationModal] handleSendCode: sendCode failed')
       }
     },
     [sendCode]
@@ -667,6 +678,8 @@ export default function ActivationModal({
   }, [logout, onClose])
 
   const handleLaunch = (): void => {
+    const skipProvider = status === 'need_skip_provider'
+    onComplete?.(skipProvider)
     onLaunchClawLite()
     onClose?.()
   }

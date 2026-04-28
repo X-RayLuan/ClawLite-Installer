@@ -1,7 +1,7 @@
 {
   "indicator": {
-    "default": ["开始", "环境", "安装", "API密钥", "Telegram", "配置", "完成"],
-    "windows": ["开始", "环境", "WSL", "安装", "API密钥", "Telegram", "配置", "完成"]
+    "default": ["开始", "环境", "安装", "Telegram", "配置", "完成"],
+    "windows": ["开始", "环境", "WSL", "安装", "Telegram", "配置", "完成"]
   },
   "welcome": {
     "title": "专属 AI 智能体，一键搞定",

@@ -1,7 +1,7 @@
 {
   "indicator": {
-    "default": ["開始", "環境", "インストール", "APIキー", "Telegram", "設定", "完了"],
-    "windows": ["開始", "環境", "WSL", "インストール", "APIキー", "Telegram", "設定", "完了"]
+    "default": ["開始", "環境", "インストール", "Telegram", "設定", "完了"],
+    "windows": ["開始", "環境", "WSL", "インストール", "Telegram", "設定", "完了"]
   },
   "welcome": {
     "title": "自分だけのAIエージェントを、ワンクリックで",

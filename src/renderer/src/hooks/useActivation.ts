@@ -9,6 +9,7 @@ export type ActivationStatus =
   | 'need_topup'
   | 'pending_topup'
   | 'activated'
+  | 'need_skip_provider'
   | 'error'
 
 export type LicenseType = 'annual' | 'lifetime' | 'trial' | 'unknown'
@@ -18,6 +19,8 @@ export interface ActivationInfo {
   licenseType: LicenseType
   expiresAt: string | null // ISO date string, null for lifetime
   apiKey: string
+  baseUrl: string
+  balanceUsd?: number
 }
 
 const API_BASE = (() => {
@@ -140,7 +143,7 @@ export function useActivation() {
    * Bootstrap + provision — get API key and save.
    */
   const provisionAndActivate = useCallback(
-    async (acctId: string, email: string): Promise<void> => {
+    async (acctId: string, email: string, balanceUsd?: number): Promise<void> => {
       try {
         const instanceId = getInstallerInstanceId()
         const bootstrapData = await apiFetch<BootstrapResponse>('/installer/activation/bootstrap', {
@@ -184,7 +187,9 @@ export function useActivation() {
           email: email || acctId,
           licenseType: 'unknown',
           expiresAt: null,
-          apiKey: provisionData.credentialRef!
+          apiKey: provisionData.credentialRef!,
+          baseUrl: 'https://clawlite.ai/api/openai',
+          balanceUsd
         }
         setActivationInfo(info)
         try {
@@ -192,7 +197,8 @@ export function useActivation() {
                   } catch (e) {
                     /* ignore */
         }
-        setStatus('activated')
+        // Skip Choose Provider step — clawlite is pre-configured via activation:save
+        setStatus('need_skip_provider')
               } catch (e) {
         const err = e as any
         if (err?.needTopup) {
@@ -242,7 +248,8 @@ export function useActivation() {
           email: data.accountId || '',
           licenseType: 'unknown',
           expiresAt: null,
-          apiKey: provisionData.credentialRef!
+          apiKey: provisionData.credentialRef!,
+          baseUrl: 'https://clawlite.ai/api/openai',
         }
         setActivationInfo(info)
         try {
@@ -250,7 +257,8 @@ export function useActivation() {
         } catch {
           /* ignore */
         }
-        setStatus('activated')
+        // Skip Choose Provider step — clawlite is pre-configured via activation:save
+        setStatus('need_skip_provider')
       } else if (data.accountId) {
         // Logged in but no entitlement — prompt topup
         setAccountId(data.accountId)
@@ -327,7 +335,7 @@ export function useActivation() {
 
         if (data.isActive) {
           // Has balance — provision and activate
-          await provisionAndActivate(accountId, data.email || email)
+          await provisionAndActivate(accountId, data.email || email, data.balanceUsd)
         } else {
           // No balance — show topup
           setAccountId(accountId)

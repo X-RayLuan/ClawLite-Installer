@@ -38,7 +38,9 @@
     "license": "许可证",
     "expires": "到期时间",
     "apiKey": "API Key",
+    "baseUrl": "接口地址",
     "copyKey": "复制 API Key",
+    "copyUrl": "复制接口地址",
     "launch": "启动 ClawLite",
     "logout": "退出登录"
   },

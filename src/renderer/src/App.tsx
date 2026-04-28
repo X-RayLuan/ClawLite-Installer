@@ -4,6 +4,7 @@ import StepIndicator from './components/StepIndicator'
 import UpdateBanner from './components/UpdateBanner'
 import ActivationModal from './components/ActivationModal'
 import { useWizard } from './hooks/useWizard'
+import { useActivation } from './hooks/useActivation'
 import WelcomeStep from './steps/WelcomeStep'
 import EnvCheckStep from './steps/EnvCheckStep'
 import WslSetupStep from './steps/WslSetupStep'
@@ -60,6 +61,9 @@ const Bubbles = (): React.JSX.Element => {
 function App(): React.JSX.Element {
   const { t } = useTranslation('common')
   const { currentStep, next, prev, canGoBack, goTo } = useWizard()
+  // Track activation status to detect email-verified flow that skips provider selection
+  const { status: activationStatus } = useActivation()
+
   const [installNeeds, setInstallNeeds] = useState<InstallNeeds>({
     needNode: false,
     needOpenclaw: false
@@ -112,9 +116,13 @@ function App(): React.JSX.Element {
     checkActivationOnMount()
   }, [checkActivationOnMount])
 
-  const handleActivationSuccess = useCallback((): void => {
+  const handleActivationSuccess = useCallback((skipProvider: boolean = false): void => {
     setShowActivation(false)
-  }, [])
+    if (skipProvider) {
+      // After email verification, skip "Choose Provider" (apiKeyGuide) and go to Telegram config
+      goTo('telegramGuide')
+    }
+  }, [goTo])
 
   // Load version + OS check + reboot restoration on app start
   useEffect(() => {
@@ -182,7 +190,8 @@ function App(): React.JSX.Element {
       {/* ─── Activation Modal (shown when not activated) ─── */}
       {showActivation && (
         <ActivationModal
-          onLaunchClawLite={handleActivationSuccess}
+          onLaunchClawLite={() => handleActivationSuccess(false)}
+          onComplete={handleActivationSuccess}
           onClose={undefined}
         />
       )}
@@ -193,7 +202,17 @@ function App(): React.JSX.Element {
 
       <div className="flex flex-col h-full relative z-10">
         {currentStep !== 'welcome' && currentStep !== 'troubleshoot' && (
-          <StepIndicator currentStep={currentStep} isWindows={isWindows} />
+          <StepIndicator
+            currentStep={currentStep}
+            isWindows={isWindows}
+            wizardSteps={
+              activationStatus === 'need_skip_provider'
+                ? isWindows
+                  ? ['welcome', 'envCheck', 'wslSetup', 'install', 'telegramGuide', 'config', 'done']
+                  : ['welcome', 'envCheck', 'install', 'telegramGuide', 'config', 'done']
+                : undefined
+            }
+          />
         )}
 
         <div className="flex-1 flex flex-col min-h-0 pb-10 step-enter" key={currentStep}>
@@ -257,7 +276,7 @@ function App(): React.JSX.Element {
           )}
           {version && (
             <span className="text-[10px] text-text-muted/30 font-medium select-none">
-              v{version}
+              {version}
             </span>
           )}
         </div>

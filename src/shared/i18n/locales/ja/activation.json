@@ -38,7 +38,9 @@
     "license": "ライセンス",
     "expires": "有効期限",
     "apiKey": "API Key",
+    "baseUrl": "ベースURL",
     "copyKey": "API Key をコピー",
+    "copyUrl": "ベースURL をコピー",
     "launch": "ClawLite を起動",
     "logout": "ログアウト"
   },
