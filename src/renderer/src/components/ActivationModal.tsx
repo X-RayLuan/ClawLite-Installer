@@ -517,8 +517,12 @@ export type ActivationView = 'email' | 'verify' | 'topup' | 'pending_topup' | 'a
 
 interface ActivationModalProps {
   onClose?: () => void
-  /** Called when email verification completes. Boolean indicates whether to skip "Choose Provider" step. */
-  onComplete?: (skipProvider: boolean) => void
+  /**
+   * Called when the user clicks Launch.
+   * - skipProvider: whether to skip the "Choose Provider" (apiKeyGuide) step
+   * - status: the current activation status — pass to App so StepIndicator stays in sync
+   */
+  onComplete?: (skipProvider: boolean, status: string) => void
 }
 
 export default function ActivationModal({
@@ -682,7 +686,8 @@ export default function ActivationModal({
     // onComplete already handles the navigation — calling both caused a double
     // invocation where onLaunchClawLite always passed skipProvider=false, making
     // the user land on "Choose AI Provider" even when they should skip it.
-    onComplete?.(skipProvider)
+    // Pass status so App.tsx can keep its activationStatus in sync with the modal.
+    onComplete?.(skipProvider, status)
     onClose?.()
   }
 

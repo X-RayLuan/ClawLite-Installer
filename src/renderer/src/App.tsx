@@ -4,7 +4,6 @@ import StepIndicator from './components/StepIndicator'
 import UpdateBanner from './components/UpdateBanner'
 import ActivationModal from './components/ActivationModal'
 import { useWizard } from './hooks/useWizard'
-import { useActivation } from './hooks/useActivation'
 import WelcomeStep from './steps/WelcomeStep'
 import EnvCheckStep from './steps/EnvCheckStep'
 import WslSetupStep from './steps/WslSetupStep'
@@ -62,7 +61,11 @@ function App(): React.JSX.Element {
   const { t } = useTranslation('common')
   const { currentStep, next, prev, canGoBack, goTo } = useWizard()
   // Track activation status to detect email-verified flow that skips provider selection
-  const { status: activationStatus } = useActivation()
+  // NOTE: App's useActivation instance is separate from ActivationModal's instance.
+  // It is NOT automatically updated when the modal completes. We sync it via
+  // handleActivationSuccess -> activationStatusState below.
+  const [activationStatusState, setActivationStatusState] = useState<string>('idle')
+  const activationStatus = activationStatusState
 
   const [installNeeds, setInstallNeeds] = useState<InstallNeeds>({
     needNode: false,
@@ -116,11 +119,21 @@ function App(): React.JSX.Element {
     checkActivationOnMount()
   }, [checkActivationOnMount])
 
-  const handleActivationSuccess = useCallback((skipProvider: boolean = false): void => {
+  const handleActivationSuccess = useCallback((skipProvider: boolean, status: string): void => {
     setShowActivation(false)
+    // Sync App's activationStatus so StepIndicator shows the correct step path.
+    // App.tsx's useActivation instance is separate from the modal's — this is the
+    // only mechanism to keep them in sync.
+    setActivationStatusState(status)
+    // Always call goTo — skipProvider only determines the destination step.
+    // Without goTo, the user stays on the previous step (e.g. welcome) and
+    // appears stuck even though the modal is closed.
     if (skipProvider) {
-      // After email verification, skip "Choose Provider" (apiKeyGuide) and go to Telegram config
+      // Email-verified + balance: skip "Choose Provider" (apiKeyGuide) → go to Telegram config
       goTo('telegramGuide')
+    } else {
+      // No skip: go to apiKeyGuide as normal
+      goTo('apiKeyGuide')
     }
   }, [goTo])
 
