@@ -82,12 +82,12 @@ interface OtpSendResponse {
 }
 
 // Verify OTP response (new endpoint)
+// NOTE: backend returns "balance" not "balanceUsd" — access via (data as any).balance
 interface VerifyOtpResponse {
   ok: boolean
   accountId?: string
   email?: string
   isActive?: boolean
-  balanceUsd?: number
   error?: string
 }
 
@@ -135,6 +135,9 @@ export function useActivation() {
 
   // Tracks the email being verified
   const pendingEmailRef = useRef<string | null>(null)
+
+  // Stores the balance captured from API responses (backend uses "balance" field)
+  const pendingBalanceRef = useRef<number | undefined>(undefined)
 
   // Polling interval ref for topup
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -195,7 +198,7 @@ export function useActivation() {
           expiresAt: null,
           apiKey: provisionData.credentialRef,
           baseUrl: 'https://clawlite.ai/api/openai',
-          balanceUsd
+          balanceUsd: balanceUsd ?? pendingBalanceRef.current,
         }
         setActivationInfo(info)
         try {
@@ -255,12 +258,25 @@ export function useActivation() {
         if (provisionData.credentialRef === null || provisionData.credentialRef === undefined) {
           throw new Error('No API key returned from provision endpoint')
         }
+        // Fetch current balance after provisioning (provision API doesn't return balance)
+        let balanceUsd: number | undefined
+        try {
+          const statusData = await apiFetch<{ isActive: boolean; balanceUsd: number }>(
+            `/installer/topup/check-status?accountId=${encodeURIComponent(data.accountId || '')}`
+          )
+          balanceUsd = statusData.balanceUsd
+          pendingBalanceRef.current = balanceUsd
+        } catch {
+          // Non-fatal: balance will show as '—'
+        }
+
         const info: ActivationInfo = {
           email: data.accountId || '',
           licenseType: 'unknown',
           expiresAt: null,
           apiKey: provisionData.credentialRef,
           baseUrl: 'https://clawlite.ai/api/openai',
+          balanceUsd,
         }
         setActivationInfo(info)
         try {
@@ -345,8 +361,10 @@ export function useActivation() {
         const accountId = data.accountId || email
 
         if (data.isActive) {
-          // Has balance — provision and activate
-          await provisionAndActivate(accountId, data.email || email, data.balanceUsd)
+          // Has balance — provision and activate (backend field is "balance")
+          const balance = (data as any).balance as number | undefined
+          pendingBalanceRef.current = balance
+          await provisionAndActivate(accountId, data.email || email, balance)
         } else {
           // No balance — show topup
           setAccountId(accountId)
@@ -375,7 +393,11 @@ export function useActivation() {
    */
   const startTopup = useCallback(
     async (amount: 5 | 10 | 20): Promise<boolean> => {
-      if (!accountId) return false
+      if (!accountId) {
+        setError('Account not ready. Please verify your email first.')
+        setStatus('need_topup')
+        return false
+      }
       setStatus('checking')
       setError(null)
       try {
@@ -406,7 +428,9 @@ export function useActivation() {
             if (statusData.isActive) {
               if (pollingRef.current) clearInterval(pollingRef.current)
               pollingRef.current = null
-              await provisionAndActivate(accountId, email)
+              // Capture balance from check-status and pass it through
+              pendingBalanceRef.current = statusData.balanceUsd
+              await provisionAndActivate(accountId, email, statusData.balanceUsd)
             } else if (attempts >= maxAttempts) {
               if (pollingRef.current) clearInterval(pollingRef.current)
               pollingRef.current = null
