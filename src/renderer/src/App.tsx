@@ -104,6 +104,24 @@ function App(): React.JSX.Element {
       const result = await window.electronAPI.activation.check(instanceId)
       if (result.activated) {
         setShowActivation(false)
+        // User is already activated — restore saved wizard state.
+        // Load state HERE (not in the mount effect) so we only restore
+        // when we KNOW the modal won't appear. Loading after the async
+        // checkActivationOnMount() returned would race with the modal's
+        // handleActivationSuccess -> goTo('telegramGuide') call.
+        try {
+          const state = await window.electronAPI.wizard.loadState()
+          if (state) {
+            goTo(state.step as 'wslSetup' | 'envCheck')
+          } else {
+            // No wizard state = user completed activation but app was restarted.
+            // Skip the full wizard and go straight to Telegram guide.
+            goTo('telegramGuide')
+          }
+        } catch {
+          // Error loading state — treat as no saved state, go to telegramGuide.
+          goTo('telegramGuide')
+        }
       } else {
         setShowActivation(true)
       }
@@ -113,7 +131,7 @@ function App(): React.JSX.Element {
     } finally {
       setActivationChecked(true)
     }
-  }, [])
+  }, [goTo])
 
   useEffect(() => {
     checkActivationOnMount()
@@ -137,23 +155,17 @@ function App(): React.JSX.Element {
     }
   }, [goTo])
 
-  // Load version + OS check + reboot restoration on app start
+  // Load version + OS check on app start
   useEffect(() => {
     if (!activationChecked) return
     window.electronAPI.version().then(setVersion)
 
-    // Run loadState() after env.check() completes (prevent race condition)
+    // Run env check after activation check completes
     window.electronAPI.env.check().then(async (env) => {
       setIsWindows(env.os === 'windows')
       if (env.wslState) setWslState(env.wslState)
-
-      // Restore state after reboot — run after wslState is correctly set
-      const state = await window.electronAPI.wizard.loadState()
-      if (state) {
-        goTo(state.step as 'wslSetup' | 'envCheck')
-      }
     })
-  }, [activationChecked, goTo])
+  }, [activationChecked])
 
   const handleEnvCheckDone = (env: {
     os: string
