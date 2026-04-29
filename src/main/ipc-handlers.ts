@@ -458,7 +458,8 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
         email: data.email || '',
         licenseType: data.licenseType || 'unknown',
         expiresAt: data.expiresAt || null,
-        apiKey: data.apiKey || ''
+        apiKey: data.apiKey || '',
+        baseUrl: data.baseUrl || ''
       }
     }
   })
