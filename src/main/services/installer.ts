@@ -1,6 +1,6 @@
 import { spawn } from 'child_process'
 import { StringDecoder } from 'string_decoder'
-import { createWriteStream, existsSync, mkdirSync } from 'fs'
+import { createWriteStream, existsSync, mkdirSync, symlink, readFileSync } from 'fs'
 import { tmpdir, homedir } from 'os'
 import { join } from 'path'
 import https from 'https'
@@ -292,6 +292,60 @@ const ensureXcodeCli = async (log: ProgressCallback): Promise<void> => {
   throw new Error(t('installer.xcodeTimeout'))
 }
 
+/**
+ * Manually create global bin symlinks for a package.
+ *
+ * This replaces `npm link` which is broken when cwd is inside a package
+ * directory (npm 7+ workspace resolution adds the package name to the path
+ * a second time, producing a phantom `openclaw/openclaw/` nested path).
+ *
+ * With npm 7+ `npm install -g` already creates these symlinks automatically,
+ * so this is a fallback — it will overwrite any pre-existing symlinks.
+ */
+const createGlobalBinLinks = async (
+  npmGlobalDir: string,
+  pkgDir: string,
+  log: ProgressCallback
+): Promise<void> => {
+  const pkgJsonPath = join(pkgDir, 'package.json')
+  if (!existsSync(pkgJsonPath)) {
+    log(`createGlobalBinLinks: package.json not found at ${pkgJsonPath}, skipping bin links`)
+    return
+  }
+
+  let binField: Record<string, string> | undefined
+  try {
+    binField = JSON.parse(readFileSync(pkgJsonPath, 'utf8')).bin as Record<string, string> | undefined
+  } catch {
+    log('createGlobalBinLinks: could not read package.json bin field, skipping')
+    return
+  }
+
+  if (!binField || typeof binField !== 'object') return
+
+  const binDir = join(npmGlobalDir, 'bin')
+  if (!existsSync(binDir)) mkdirSync(binDir, { recursive: true })
+
+  for (const [binName, binTarget] of Object.entries(binField)) {
+    const symlinkPath = join(binDir, binName)
+    // Symlink target is relative from the bin directory to the package bin file
+    const relativeTarget = join('..', 'lib', 'node_modules', 'openclaw', binTarget)
+    try {
+      await new Promise<void>((resolve, reject) => {
+        symlink(relativeTarget, symlinkPath, 'file', (err) => (err ? reject(err) : resolve()))
+      })
+      log(`Created bin symlink: ${binName} -> ${relativeTarget}`)
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code
+      if (code === 'EEXIST') {
+        log(`Bin symlink already exists: ${binName}`)
+      } else {
+        log(`Failed to create bin symlink ${binName}: ${(err as Error).message}`)
+      }
+    }
+  }
+}
+
 export const installOpenClaw = async (win: BrowserWindow): Promise<void> => {
   const log = (msg: string): void => sendProgress(win, msg)
   log(t('installer.ocInstalling'))
@@ -311,8 +365,10 @@ export const installOpenClaw = async (win: BrowserWindow): Promise<void> => {
   await runWithLog('npm', ['install', '-g', OPENCLAW_PACKAGE_SPEC], log, {
     env: getPathEnv()
   })
-  // npm may install to a nested directory: openclaw/openclaw/
-  // Find the actual package directory that contains package.json
+
+  // Find the openclaw package directory
+  // npm installs to: <prefix>/lib/node_modules/openclaw/
+  // Some npm versions may nest it as: <prefix>/lib/node_modules/openclaw/openclaw/
   const modulesDir = join(npmGlobalDir, 'lib', 'node_modules')
   let pkgDir = join(modulesDir, 'openclaw')
   if (!existsSync(join(pkgDir, 'package.json'))) {
@@ -321,11 +377,21 @@ export const installOpenClaw = async (win: BrowserWindow): Promise<void> => {
       pkgDir = nested
     }
   }
-  // Create global bin symlinks so openclaw CLI is discoverable
-  await runWithLog('npm', ['link'], log, {
-    cwd: pkgDir,
-    env: getPathEnv()
-  })
+
+  // Create global bin symlinks manually.
+  //
+  // NOTE: `npm link` is deliberately avoided here. Running `npm link` with `cwd`
+  // set to the openclaw package directory triggers npm 7+ internal workspace
+  // resolution (npm treats the cwd as a workspace root), which causes it to
+  // interpret `file:openclaw` as a dependency reference and look for a phantom
+  // nested path `openclaw/openclaw/package.json` — resulting in:
+  //   ENOENT: no such file or directory, open
+  //   '/Users/evey/.npm-global/lib/node_modules/openclaw/openclaw/package.json'
+  //
+  // With npm 7+ (2020+), `npm install -g` already creates bin symlinks
+  // automatically, so `npm link` is unnecessary. We also create them manually
+  // here as a fallback for environments where the install step didn't.
+  await createGlobalBinLinks(npmGlobalDir, pkgDir, log)
 
   log(t('installer.ocDone'))
 }
