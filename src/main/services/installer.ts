@@ -311,15 +311,35 @@ export const installOpenClaw = async (win: BrowserWindow): Promise<void> => {
   await runWithLog('npm', ['install', '-g', OPENCLAW_PACKAGE_SPEC], log, {
     env: getPathEnv()
   })
-  // Create a proper npm global bin symlink so openclaw is discoverable
-  // npm install -g to a custom prefix creates bin links in (prefix)/bin/
-  // but they may not be in the expected location, so we use npm link to create
-  // the correct global symlinks
-  const pkgDir = join(npmGlobalDir, 'lib', 'node_modules', 'openclaw')
-  await runWithLog('npm', ['link'], log, {
-    cwd: pkgDir,
-    env: getPathEnv()
-  })
+  // Find the actual openclaw package directory (npm may nest it)
+  const modulesDir = join(npmGlobalDir, 'lib', 'node_modules')
+  let pkgDir = join(modulesDir, 'openclaw')
+  // If package.json doesn't exist at expected location, look for nested openclaw/
+  if (!existsSync(join(pkgDir, 'package.json'))) {
+    const nested = join(modulesDir, 'openclaw', 'openclaw')
+    if (existsSync(join(nested, 'package.json'))) {
+      pkgDir = nested
+    }
+  }
+  // Create bin symlink manually — more reliable than npm link across npm versions
+  const { readFileSync, writeFileSync, chmodSync, symlinkSync } = await import('fs')
+  const binDir = join(npmGlobalDir, 'bin')
+  if (!existsSync(binDir)) mkdirSync(binDir, { recursive: true })
+  const pkgJson = JSON.parse(readFileSync(join(pkgDir, 'package.json'), 'utf-8'))
+  if (pkgJson.bin) {
+    const binName = typeof pkgJson.bin === 'string' ? pkgJson.bin : pkgJson.bin[pkgJson.bin]
+    const srcBin = join(pkgDir, binName)
+    const dstBin = join(binDir, 'openclaw')
+    if (!existsSync(dstBin)) {
+      try {
+        symlinkSync(srcBin, dstBin)
+      } catch {
+        // Fallback: write a shell wrapper if symlink fails
+        writeFileSync(dstBin, `#!/bin/sh\nexec "${srcBin}" "$@"\n`)
+        chmodSync(dstBin, 0o755)
+      }
+    }
+  }
 
   log(t('installer.ocDone'))
 }
