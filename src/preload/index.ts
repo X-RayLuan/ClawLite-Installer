@@ -171,7 +171,7 @@ const electronAPI = {
       ipcRenderer.invoke('i18n:set-language', lng)
   },
   activation: {
-    check: (): Promise<{
+    check: (installerInstanceId?: string): Promise<{
       activated: boolean
       activationInfo?: {
         email: string
@@ -180,7 +180,7 @@ const electronAPI = {
         apiKey: string
         baseUrl?: string
       }
-    }> => ipcRenderer.invoke('activation:check'),
+    }> => ipcRenderer.invoke('activation:check', installerInstanceId),
     logout: (): Promise<{ success: boolean }> => ipcRenderer.invoke('activation:logout'),
     save: (info: {
       email: string

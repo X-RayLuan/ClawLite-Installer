@@ -1,6 +1,6 @@
 {
   "name": "clawlite",
-  "version": "v1.5.162",
+  "version": "v1.5.163",
   "description": "One-click desktop installer for OpenClaw AI agent",
   "license": "MIT",
   "main": "./out/main/index.js",
