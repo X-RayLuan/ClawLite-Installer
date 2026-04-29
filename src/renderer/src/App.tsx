@@ -190,7 +190,6 @@ function App(): React.JSX.Element {
       {/* ─── Activation Modal (shown when not activated) ─── */}
       {showActivation && (
         <ActivationModal
-          onLaunchClawLite={() => handleActivationSuccess(false)}
           onComplete={handleActivationSuccess}
           onClose={undefined}
         />

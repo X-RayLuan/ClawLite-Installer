@@ -517,14 +517,12 @@ export type ActivationView = 'email' | 'verify' | 'topup' | 'pending_topup' | 'a
 
 interface ActivationModalProps {
   onClose?: () => void
-  onLaunchClawLite: () => void
   /** Called when email verification completes. Boolean indicates whether to skip "Choose Provider" step. */
   onComplete?: (skipProvider: boolean) => void
 }
 
 export default function ActivationModal({
   onClose,
-  onLaunchClawLite,
   onComplete
 }: ActivationModalProps): React.JSX.Element {
   const { t } = useTranslation('activation')
@@ -679,8 +677,12 @@ export default function ActivationModal({
 
   const handleLaunch = (): void => {
     const skipProvider = status === 'need_skip_provider'
+    // Call onComplete to handle navigation (skipProvider determines if we go to
+    // apiKeyGuide or skip it). onLaunchClawLite is NOT called here because
+    // onComplete already handles the navigation — calling both caused a double
+    // invocation where onLaunchClawLite always passed skipProvider=false, making
+    // the user land on "Choose AI Provider" even when they should skip it.
     onComplete?.(skipProvider)
-    onLaunchClawLite()
     onClose?.()
   }
 
