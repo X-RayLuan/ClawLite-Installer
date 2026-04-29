@@ -309,11 +309,17 @@ export const stopGateway = (): Promise<string> => {
 }
 
 export const restartGateway = async (): Promise<GatewayResult> => {
-  try {
-    await stopGateway()
-  } catch {
-    /* already stopped */
-  }
+  // Guard stopGateway with a timeout to prevent indefinite hangs
+  await Promise.race([
+    (async () => {
+      try {
+        await stopGateway()
+      } catch {
+        /* already stopped */
+      }
+    })(),
+    new Promise<void>((resolve) => setTimeout(resolve, 10000))
+  ])
   await waitUntilStopped()
   return startGateway()
 }

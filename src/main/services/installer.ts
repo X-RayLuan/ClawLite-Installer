@@ -311,6 +311,15 @@ export const installOpenClaw = async (win: BrowserWindow): Promise<void> => {
   await runWithLog('npm', ['install', '-g', OPENCLAW_PACKAGE_SPEC], log, {
     env: getPathEnv()
   })
+  // Create a proper npm global bin symlink so openclaw is discoverable
+  // npm install -g to a custom prefix creates bin links in (prefix)/bin/
+  // but they may not be in the expected location, so we use npm link to create
+  // the correct global symlinks
+  const pkgDir = join(npmGlobalDir, 'lib', 'node_modules', 'openclaw')
+  await runWithLog('npm', ['link'], log, {
+    cwd: pkgDir,
+    env: getPathEnv()
+  })
 
   log(t('installer.ocDone'))
 }

@@ -505,7 +505,6 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
           ocConfig.models.providers.clawlite = {
             baseUrl: info.baseUrl,
             apiKey: info.apiKey,
-            api: 'openai-compat',
             models: [
               {
                 id: 'gpt-5.4',
