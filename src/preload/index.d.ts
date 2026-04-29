@@ -124,6 +124,7 @@ interface ElectronAPI {
         licenseType: 'annual' | 'lifetime' | 'trial' | 'unknown'
         expiresAt: string | null
         apiKey: string
+        baseUrl?: string
       }
     }>
     logout: () => Promise<{ success: boolean }>
@@ -132,6 +133,7 @@ interface ElectronAPI {
       licenseType: 'annual' | 'lifetime' | 'trial' | 'unknown'
       expiresAt: string | null
       apiKey: string
+      baseUrl?: string
     }) => Promise<{ success: boolean }>
   }
 }

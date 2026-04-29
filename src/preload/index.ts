@@ -178,6 +178,7 @@ const electronAPI = {
         licenseType: 'annual' | 'lifetime' | 'trial' | 'unknown'
         expiresAt: string | null
         apiKey: string
+        baseUrl?: string
       }
     }> => ipcRenderer.invoke('activation:check'),
     logout: (): Promise<{ success: boolean }> => ipcRenderer.invoke('activation:logout'),
@@ -186,6 +187,7 @@ const electronAPI = {
       licenseType: 'annual' | 'lifetime' | 'trial' | 'unknown'
       expiresAt: string | null
       apiKey: string
+      baseUrl?: string
     }): Promise<{ success: boolean }> => ipcRenderer.invoke('activation:save', info)
   }
 }

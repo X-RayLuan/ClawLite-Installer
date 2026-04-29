@@ -112,7 +112,7 @@ function App(): React.JSX.Element {
             licenseType: result.activationInfo.licenseType || 'unknown',
             expiresAt: result.activationInfo.expiresAt || null,
             apiKey: result.activationInfo.apiKey,
-            baseUrl: (result.activationInfo as any).baseUrl || 'https://clawlite.ai/api/openai'
+            baseUrl: result.activationInfo.baseUrl || 'https://clawlite.ai/api/openai'
           }).catch(() => {/* ignore */})
         }
         goTo('telegramGuide')
@@ -220,7 +220,7 @@ function App(): React.JSX.Element {
             <WslSetupStep wslState={wslState} onReady={handleWslReady} />
           )}
           {currentStep === 'install' && (
-            <InstallStep needs={installNeeds} onActivationCheck={handleInstallDone} />
+            <InstallStep needs={installNeeds} onDone={handleInstallDone} onActivationCheck={handleInstallDone} />
           )}
           {currentStep === 'apiKeyGuide' && (
             <ApiKeyGuideStep
