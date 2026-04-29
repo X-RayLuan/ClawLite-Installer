@@ -760,7 +760,7 @@ export default function ActivationModal({
                 {appVersion && (
                   <>
                     <span>·</span>
-                    <span>v{appVersion}</span>
+                    <span>{appVersion}</span>
                   </>
                 )}
               </div>
