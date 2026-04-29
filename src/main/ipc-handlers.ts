@@ -3,6 +3,7 @@ import { spawn, spawnSync } from 'child_process'
 import { platform } from 'os'
 import { join } from 'path'
 import { existsSync, readFileSync, writeFileSync, unlinkSync, mkdirSync } from 'fs'
+import { randomBytes } from 'crypto'
 import i18nMain, { initI18nMain } from '../shared/i18n/main'
 import { rebuildTrayMenu } from './services/tray-manager'
 import { checkEnvironment, checkOpenclawUpdate } from './services/env-checker'
@@ -522,6 +523,12 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
           ocConfig.agents.default = ocConfig.agents.default || {}
           ocConfig.agents.default.provider = 'clawlite'
           ocConfig.agents.default.model = 'gpt-5.4'
+          // Generate and write gateway token if not already present
+          if (!ocConfig.gateway) ocConfig.gateway = {}
+          if (!ocConfig.gateway.auth) ocConfig.gateway.auth = {}
+          if (!ocConfig.gateway.auth.token) {
+            ocConfig.gateway.auth.token = randomBytes(32).toString('hex')
+          }
           if (!existsSync(openClawDir)) {
             mkdirSync(openClawDir, { recursive: true })
           }

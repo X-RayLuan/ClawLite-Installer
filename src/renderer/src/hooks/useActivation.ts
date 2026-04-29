@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -152,7 +152,8 @@ export function useActivation() {
             installerInstanceId: instanceId,
             accountId: acctId,
             platform: 'installer'
-          })
+          }),
+          signal: AbortSignal.timeout(15000)
         })
 
         if (bootstrapData.entitlement.status !== 'active') {
@@ -169,7 +170,8 @@ export function useActivation() {
             body: JSON.stringify({
               setupToken: bootstrapData.setupToken,
               accountId: acctId
-            })
+            }),
+            signal: AbortSignal.timeout(15000)
           }
         )
 
@@ -183,11 +185,15 @@ export function useActivation() {
           throw new Error(errMsg || 'Activation failed')
         }
 
+        if (provisionData.credentialRef === null || provisionData.credentialRef === undefined) {
+          throw new Error('No API key returned from provision endpoint')
+        }
+
         const info: ActivationInfo = {
           email: email || acctId,
           licenseType: 'unknown',
           expiresAt: null,
-          apiKey: provisionData.credentialRef!,
+          apiKey: provisionData.credentialRef,
           baseUrl: 'https://clawlite.ai/api/openai',
           balanceUsd
         }
@@ -229,7 +235,8 @@ export function useActivation() {
         body: JSON.stringify({
           installerInstanceId: instanceId,
           platform: 'installer'
-        })
+        }),
+        signal: AbortSignal.timeout(15000)
       })
 
       if (data.entitlement.status === 'active') {
@@ -241,14 +248,18 @@ export function useActivation() {
             body: JSON.stringify({
               setupToken: data.setupToken,
               accountId: data.accountId
-            })
+            }),
+            signal: AbortSignal.timeout(15000)
           }
         )
+        if (provisionData.credentialRef === null || provisionData.credentialRef === undefined) {
+          throw new Error('No API key returned from provision endpoint')
+        }
         const info: ActivationInfo = {
           email: data.accountId || '',
           licenseType: 'unknown',
           expiresAt: null,
-          apiKey: provisionData.credentialRef!,
+          apiKey: provisionData.credentialRef,
           baseUrl: 'https://clawlite.ai/api/openai',
         }
         setActivationInfo(info)
@@ -444,6 +455,16 @@ export function useActivation() {
     setActivationInfo(null)
     setAccountId(null)
     setStatus('need_verify')
+  }, [])
+
+  // Clean up polling interval on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current)
+        pollingRef.current = null
+      }
+    }
   }, [])
 
   return {
