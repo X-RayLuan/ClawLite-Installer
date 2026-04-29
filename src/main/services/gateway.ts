@@ -286,6 +286,34 @@ export const startGateway = async (): Promise<GatewayResult> => {
     const msg = err instanceof Error ? err.message : String(err)
     const isServiceMissing =
       msg.includes('not loaded') || msg.includes('not installed') || msg.includes('bootstrap')
+    const isMissingGatewayMode =
+      msg.includes('missing gateway.mode') || msg.includes('gateway.mode')
+
+    // Fix missing gateway.mode first, then retry
+    if (isMissingGatewayMode) {
+      emitLog('Config missing gateway.mode — applying fix...')
+      try {
+        // Use findBin directly — runGateway would incorrectly prefix 'gateway'
+        await new Promise<void>((resolve, reject) => {
+          const child = spawn(findBin('openclaw'), ['config', 'set', 'gateway.mode', 'local'], {
+            env: isWin ? process.env : getPathEnv()
+          })
+          let stderr = ''
+          child.stderr.on('data', (d) => (stderr += d.toString()))
+          child.on('close', (code) =>
+            code === 0 ? resolve() : reject(new Error(stderr || `exit code ${code}`))
+          )
+          child.on('error', reject)
+        })
+        await runGateway(['start'])
+        await runDoctorFix()
+        return { status: 'started' }
+      } catch (fixErr) {
+        const fixMsg = fixErr instanceof Error ? fixErr.message : String(fixErr)
+        return { status: 'error', error: fixMsg }
+      }
+    }
+
     if (!isServiceMissing) return { status: 'error', error: msg }
 
     // Auto-install and retry when launchd service is not installed

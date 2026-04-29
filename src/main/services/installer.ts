@@ -6,7 +6,7 @@ import { join } from 'path'
 import https from 'https'
 import { BrowserWindow } from 'electron'
 import { runInWsl } from './wsl-utils'
-import { getPathEnv } from './path-utils'
+import { getPathEnv, findBin } from './path-utils'
 import { t } from '../../shared/i18n/main'
 
 type ProgressCallback = (msg: string) => void
@@ -248,7 +248,18 @@ export const installOpenClawWsl = async (win: BrowserWindow): Promise<void> => {
     log('Retrying with official npm registry...')
     await runInWsl(`npm install -g ${OPENCLAW_PACKAGE_SPEC} --verbose`, 300000)
   }
-  
+
+  // Initialize OpenClaw config so that gateway.mode is present.
+  // Without this, `openclaw gateway start` fails with:
+  //   "existing config is missing gateway.mode"
+  log('Initializing OpenClaw configuration in WSL...')
+  try {
+    await runInWsl('openclaw onboard --mode local', 60000)
+  } catch {
+    log('onboard failed in WSL, applying gateway.mode fix directly')
+    await runInWsl('openclaw config set gateway.mode local', 30000)
+  }
+
   log(t('installer.ocWslDone'))
 }
 
@@ -372,7 +383,7 @@ export const installOpenClaw = async (win: BrowserWindow): Promise<void> => {
   const modulesDir = join(npmGlobalDir, 'lib', 'node_modules')
   let pkgDir = join(modulesDir, 'openclaw')
   if (!existsSync(join(pkgDir, 'package.json'))) {
-    const nested = join(modulesDir, 'openclaw', 'openclaw')
+    const nested = join(modulesDir, 'openclaw')
     if (existsSync(join(nested, 'package.json'))) {
       pkgDir = nested
     }
@@ -392,6 +403,27 @@ export const installOpenClaw = async (win: BrowserWindow): Promise<void> => {
   // automatically, so `npm link` is unnecessary. We also create them manually
   // here as a fallback for environments where the install step didn't.
   await createGlobalBinLinks(npmGlobalDir, pkgDir, log)
+
+  // Initialize OpenClaw config so that gateway.mode is present.
+  // Without this, `openclaw gateway start` fails with:
+  //   "existing config is missing gateway.mode"
+  log('Initializing OpenClaw configuration...')
+  await runWithLog(
+    findBin('openclaw'),
+    ['onboard', '--mode', 'local'],
+    log,
+    { env: getPathEnv() }
+  ).catch((err) => {
+    // If onboard fails (e.g. non-interactive constraints), fall back to
+    // directly ensuring gateway.mode is set in the config file.
+    log(`onboard failed (${err instanceof Error ? err.message : err}), applying gateway.mode fix directly`)
+    return runWithLog(
+      findBin('openclaw'),
+      ['config', 'set', 'gateway.mode', 'local'],
+      log,
+      { env: getPathEnv() }
+    )
+  })
 
   log(t('installer.ocDone'))
 }
