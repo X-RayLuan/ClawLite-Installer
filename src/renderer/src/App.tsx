@@ -60,10 +60,6 @@ const Bubbles = (): React.JSX.Element => {
 function App(): React.JSX.Element {
   const { t } = useTranslation('common')
   const { currentStep, next, prev, canGoBack, goTo } = useWizard()
-  // Track activation status to detect email-verified flow that skips provider selection
-  // NOTE: App's useActivation instance is separate from ActivationModal's instance.
-  // It is NOT automatically updated when the modal completes. We sync it via
-  // handleActivationSuccess -> activationStatusState below.
   const [activationStatusState, setActivationStatusState] = useState<string>('idle')
   const activationStatus = activationStatusState
 
@@ -82,90 +78,71 @@ function App(): React.JSX.Element {
   const [version, setVersion] = useState('')
 
   // ─── Activation gate ──────────────────────────────────────────────────────────
-  const [activationChecked, setActivationChecked] = useState(false)
   const [showActivation, setShowActivation] = useState(false)
 
-  const checkActivationOnMount = useCallback(async (): Promise<void> => {
-    // Get installer instance ID (same one used by useActivation for bootstrap)
-    const instanceId = (() => {
-      try {
-        let id = localStorage.getItem('clawlite_installer_instance_id')
-        if (!id) {
-          id = crypto.randomUUID()
-          localStorage.setItem('clawlite_installer_instance_id', id)
-        }
-        return id
-      } catch {
-        return undefined
-      }
-    })()
-
+  // Get installer instance ID (stable per installation session)
+  const getInstanceId = (): string | undefined => {
     try {
-      const result = await window.electronAPI.activation.check(instanceId)
-      if (result.activated) {
-        setShowActivation(false)
-        // User is already activated — restore saved wizard state.
-        // Load state HERE (not in the mount effect) so we only restore
-        // when we KNOW the modal won't appear. Loading after the async
-        // checkActivationOnMount() returned would race with the modal's
-        // handleActivationSuccess -> goTo('telegramGuide') call.
-        try {
-          const state = await window.electronAPI.wizard.loadState()
-          if (state) {
-            goTo(state.step as 'wslSetup' | 'envCheck')
-          } else {
-            // No wizard state = user completed activation but app was restarted.
-            // Skip the full wizard and go straight to Telegram guide.
-            goTo('telegramGuide')
-          }
-        } catch {
-          // Error loading state — treat as no saved state, go to telegramGuide.
-          goTo('telegramGuide')
+      let id = localStorage.getItem('clawlite_installer_instance_id')
+      if (!id) {
+        id = crypto.randomUUID()
+        localStorage.setItem('clawlite_installer_instance_id', id)
+      }
+      return id
+    } catch {
+      return undefined
+    }
+  }
+
+  /**
+   * Activation Gate — called after install step completes.
+   * Checks activation.json for existing credentials:
+   * - Has credentials (apiKey + baseUrl) → configure clawlite → go to telegramGuide
+   * - No credentials → show ActivationModal
+   */
+  const handleInstallDone = useCallback((): void => {
+    const instanceId = getInstanceId()
+    window.electronAPI.activation.check(instanceId).then((result) => {
+      if (result.activated && result.activationInfo?.apiKey) {
+        // Already activated with credentials — re-write clawlite config
+        // (harmless idempotent write) then go to telegramGuide.
+        if (result.activationInfo) {
+          window.electronAPI.activation.save({
+            email: result.activationInfo.email || '',
+            licenseType: result.activationInfo.licenseType || 'unknown',
+            expiresAt: result.activationInfo.expiresAt || null,
+            apiKey: result.activationInfo.apiKey,
+            baseUrl: (result.activationInfo as any).baseUrl || 'https://clawlite.ai/api/openai'
+          }).catch(() => {/* ignore */})
         }
+        goTo('telegramGuide')
       } else {
+        // Not yet activated — show ActivationModal
         setShowActivation(true)
       }
-    } catch {
-      // Network/server error → treat as unactivated, show modal
+    }).catch(() => {
+      // Network error — show modal as fallback
       setShowActivation(true)
-    } finally {
-      setActivationChecked(true)
-    }
+    })
   }, [goTo])
 
-  useEffect(() => {
-    checkActivationOnMount()
-  }, [checkActivationOnMount])
-
-  const handleActivationSuccess = useCallback((skipProvider: boolean, status: string): void => {
+  const handleActivationSuccess = useCallback((_skipProvider: boolean, status: string): void => {
     setShowActivation(false)
-    // Sync App's activationStatus so StepIndicator shows the correct step path.
-    // App.tsx's useActivation instance is separate from the modal's — this is the
-    // only mechanism to keep them in sync.
     setActivationStatusState(status)
-    // Always call goTo — skipProvider only determines the destination step.
-    // Without goTo, the user stays on the previous step (e.g. welcome) and
-    // appears stuck even though the modal is closed.
-    if (skipProvider) {
-      // Email-verified + balance: skip "Choose Provider" (apiKeyGuide) → go to Telegram config
-      goTo('telegramGuide')
-    } else {
-      // No skip: go to apiKeyGuide as normal
-      goTo('apiKeyGuide')
-    }
+    // After ActivationModal completes, always go to telegramGuide.
+    // (apiKeyGuide is only for users who explicitly want custom provider —
+    // handled by ActivationModal's skip vs continue flow)
+    goTo('telegramGuide')
   }, [goTo])
 
   // Load version + OS check on app start
   useEffect(() => {
-    if (!activationChecked) return
     window.electronAPI.version().then(setVersion)
-
-    // Run env check after activation check completes
     window.electronAPI.env.check().then(async (env) => {
       setIsWindows(env.os === 'windows')
       if (env.wslState) setWslState(env.wslState)
     })
-  }, [activationChecked])
+  }, [])
 
   const handleEnvCheckDone = (env: {
     os: string
@@ -203,12 +180,7 @@ function App(): React.JSX.Element {
     [goTo]
   )
 
-  // Show spinner while checking activation
-  if (!activationChecked) {
-    return (
-      <div className="aurora-bg" />
-    )
-  }
+  // ─── Render ───────────────────────────────────────────────────────────────────
 
   return (
     <>
@@ -248,7 +220,7 @@ function App(): React.JSX.Element {
             <WslSetupStep wslState={wslState} onReady={handleWslReady} />
           )}
           {currentStep === 'install' && (
-            <InstallStep needs={installNeeds} onDone={() => goTo('apiKeyGuide')} />
+            <InstallStep needs={installNeeds} onActivationCheck={handleInstallDone} />
           )}
           {currentStep === 'apiKeyGuide' && (
             <ApiKeyGuideStep

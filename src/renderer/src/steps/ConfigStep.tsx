@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import LobsterLogo from '../components/LobsterLogo'
 import Button from '../components/Button'
@@ -48,6 +48,20 @@ export default function ConfigStep({
   const [oauthLoading, setOauthLoading] = useState(false)
   const { logs, clearLogs } = useInstallLogs()
   const isOAuth = authMethod === 'oauth'
+
+  // ─── Skip if clawlite is already configured ────────────────────────────────
+  // After Activation Gate, clawlite is pre-configured via activation:save.
+  // Detect this by reading the OpenClaw config and skip to done.
+  useEffect(() => {
+    window.electronAPI.config.read().then((result) => {
+      if (result.success && result.config?.provider === 'clawlite') {
+        // clawlite already configured (via activation:save) — skip to done
+        onDone()
+      }
+    }).catch(() => {
+      // Config read failed — show the config form as usual
+    })
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const pattern = providerPatterns[provider]
   const label = t(`config.apiKeyLabel.${provider}`)

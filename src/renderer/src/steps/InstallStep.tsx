@@ -12,10 +12,13 @@ interface InstallNeeds {
 
 export default function InstallStep({
   needs,
-  onDone
+  onDone,
+  onActivationCheck
 }: {
   needs: InstallNeeds
   onDone: () => void
+  /** Called when installation completes. Triggers the Activation Gate. */
+  onActivationCheck?: (done: () => void) => void
 }): React.JSX.Element {
   const { t } = useTranslation('steps')
   const { logs, error, clearLogs } = useInstallLogs()
@@ -103,7 +106,7 @@ export default function InstallStep({
           </Button>
         )}
         {done && (
-          <Button variant="primary" size="lg" onClick={onDone}>
+          <Button variant="primary" size="lg" onClick={onActivationCheck ? () => onActivationCheck(onDone) : onDone}>
             {t('install.nextBtn')}
           </Button>
         )}

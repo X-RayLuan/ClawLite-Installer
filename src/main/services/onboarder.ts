@@ -575,7 +575,8 @@ export const readCurrentConfig = async (): Promise<CurrentConfig | null> => {
     const hasTelegram = !!cfg?.channels?.telegram?.botToken
     const gatewayToken = cfg?.gateway?.auth?.token as string | undefined
     // Extract provider from model ID (e.g. "anthropic/claude-sonnet-4-6" → "anthropic")
-    const provider = model?.split('/')[0]
+    // Also check agents.default.provider (set by activation:save for clawlite)
+    const provider = model?.split('/')[0] ?? (cfg?.agents?.default?.provider as string | undefined)
     return { provider, model, hasTelegram, gatewayToken }
   } catch {
     return null
