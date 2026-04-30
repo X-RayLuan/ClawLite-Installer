@@ -15,7 +15,7 @@ interface RunError extends Error {
   lines?: string[]
 }
 
-const OPENCLAW_PACKAGE_SPEC = 'openclaw@latest'
+const OPENCLAW_PACKAGE_SPEC = 'openclaw@2026.3.13'
 
 const sendProgress = (win: BrowserWindow, msg: string): void => {
   win.webContents.send('install:progress', msg)
