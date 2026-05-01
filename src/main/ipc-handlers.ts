@@ -505,13 +505,14 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
           ocConfig.models.providers.clawlite = {
             baseUrl: info.baseUrl,
             apiKey: info.apiKey,
+            api: 'openai-completions',
             models: [
               {
                 id: 'gpt-5.4',
                 name: 'GPT-5.4',
                 input: ['text', 'image'],
                 cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-                contextWindow: 1050000,
+                contextWindow: 200000,
                 maxTokens: 32000,
                 reasoning: true
               }
