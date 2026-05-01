@@ -254,7 +254,7 @@ export const installOpenClawWsl = async (win: BrowserWindow): Promise<void> => {
   //   "existing config is missing gateway.mode"
   log('Initializing OpenClaw configuration in WSL...')
   try {
-    await runInWsl('openclaw onboard --mode local', 60000)
+    await runInWsl('openclaw onboard --mode local --yes --non-interactive', 60000)
   } catch {
     log('onboard failed in WSL, applying gateway.mode fix directly')
     await runInWsl('openclaw config set gateway.mode local', 30000)
@@ -410,7 +410,7 @@ export const installOpenClaw = async (win: BrowserWindow): Promise<void> => {
   log('Initializing OpenClaw configuration...')
   await runWithLog(
     findBin('openclaw'),
-    ['onboard', '--mode', 'local'],
+    ['onboard', '--mode', 'local', '--yes', '--non-interactive'],
     log,
     { env: getPathEnv() }
   ).catch((err) => {
