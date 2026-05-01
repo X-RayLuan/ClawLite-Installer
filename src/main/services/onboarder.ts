@@ -129,8 +129,12 @@ const getProviderFromModelId = (modelId?: string): string | undefined => modelId
 const normalizeModelRouting = (
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   cfg: any,
-  primaryModel: string
+  primaryModel: string | undefined
 ): void => {
+  // Skip if no primary model is specified — preserves existing model config
+  // (e.g., clawlite is pre-configured via activation:save as a plain string)
+  if (!primaryModel) return
+
   cfg.agents = cfg.agents ?? {}
   cfg.agents.defaults = cfg.agents.defaults ?? {}
 
