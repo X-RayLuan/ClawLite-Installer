@@ -502,9 +502,11 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
           // Ensure models.providers.clawlite entry
           ocConfig.models = ocConfig.models || {}
           ocConfig.models.providers = ocConfig.models.providers || {}
+          // Guard against placeholder apiKey from backend (e.g. "{apikey}")
+          const resolvedApiKey = info.apiKey && !info.apiKey.startsWith('{') ? info.apiKey : ''
           ocConfig.models.providers.clawlite = {
             baseUrl: info.baseUrl,
-            apiKey: info.apiKey,
+            apiKey: resolvedApiKey,
             api: 'openai-completions',
             models: [
               {
@@ -518,11 +520,12 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
               }
             ]
           }
-          // Set default agent to clawlite
+          // Set default agent to clawlite — use agents.defaults.model (OpenClaw format)
           ocConfig.agents = ocConfig.agents || {}
+          ocConfig.agents.defaults = ocConfig.agents.defaults || {}
+          ocConfig.agents.defaults.model = 'clawlite/gpt-5.4'
           ocConfig.agents.default = ocConfig.agents.default || {}
           ocConfig.agents.default.provider = 'clawlite'
-          ocConfig.agents.default.model = 'gpt-5.4'
           // Generate and write gateway token if not already present
           if (!ocConfig.gateway) ocConfig.gateway = {}
           if (!ocConfig.gateway.auth) ocConfig.gateway.auth = {}

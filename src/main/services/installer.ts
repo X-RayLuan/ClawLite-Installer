@@ -240,13 +240,13 @@ export const installOpenClawWsl = async (win: BrowserWindow): Promise<void> => {
   try {
     log(`Installing ${OPENCLAW_PACKAGE_SPEC} from ${fastestRegistry}...`)
     await runInWsl(
-      `npm install -g ${OPENCLAW_PACKAGE_SPEC} --registry=${fastestRegistry} --verbose`,
+      `npm install -g --yes ${OPENCLAW_PACKAGE_SPEC} --registry=${fastestRegistry} --verbose`,
       300000
     )
   } catch (err) {
     // Fallback to official registry
     log('Retrying with official npm registry...')
-    await runInWsl(`npm install -g ${OPENCLAW_PACKAGE_SPEC} --verbose`, 300000)
+    await runInWsl(`npm install -g --yes ${OPENCLAW_PACKAGE_SPEC} --verbose`, 300000)
   }
 
   // Initialize OpenClaw config so that gateway.mode is present.
@@ -373,7 +373,7 @@ export const installOpenClaw = async (win: BrowserWindow): Promise<void> => {
   await runWithLog('npm', ['config', 'set', 'prefix', npmGlobalDir], log, {
     env: getPathEnv()
   })
-  await runWithLog('npm', ['install', '-g', OPENCLAW_PACKAGE_SPEC], log, {
+  await runWithLog('npm', ['install', '-g', '--yes', OPENCLAW_PACKAGE_SPEC], log, {
     env: getPathEnv()
   })
 
