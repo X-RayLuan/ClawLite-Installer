@@ -10,7 +10,14 @@ interface ActivateData {
   baseUrl: string
 }
 
-const BASE_URL = 'https://clawlite.ai/api'
+// baseUrl for installer API endpoints (send-otp, verify-otp)
+// The /installer/* endpoints live at the same origin as the website.
+const INSTALLER_BASE = (() => {
+  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+    return 'http://localhost:3000/api'
+  }
+  return 'https://clawlite.ai/api'
+})()
 
 // ─── Step: Email Input ────────────────────────────────────────────────────────
 function EmailStep({
@@ -311,7 +318,7 @@ export default function ActivateStep({ onNext }: Props): React.JSX.Element {
       setCooldownSecs(60)
       setLoading(true)
       try {
-        const resp = await fetch(`${BASE_URL}/installer/auth/send-otp`, {
+        const resp = await fetch(`${INSTALLER_BASE}/installer/auth/send-otp`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email: inputEmail })
@@ -338,7 +345,7 @@ export default function ActivateStep({ onNext }: Props): React.JSX.Element {
       setError(null)
       setLoading(true)
       try {
-        const resp = await fetch(`${BASE_URL}/installer/auth/verify-otp`, {
+        const resp = await fetch(`${INSTALLER_BASE}/installer/auth/verify-otp`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, code })
@@ -355,7 +362,7 @@ export default function ActivateStep({ onNext }: Props): React.JSX.Element {
           accountId: data.accountId || '',
           email,
           apiKey: data.apiKey,
-          baseUrl: data.baseUrl
+          baseUrl: (data as any).baseUrl || 'https://clawlite.ai/api/openai/v1'
         }
         await window.electronAPI.installer.saveActivate(saveData)
         onNext()
