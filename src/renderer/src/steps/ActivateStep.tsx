@@ -392,6 +392,8 @@ export default function ActivateStep({ onNext }: Props): React.JSX.Element {
   const [view, setView] = useState<View>('checking')
   const [email, setEmail] = useState('')
   const [topupAccountId, setTopupAccountId] = useState('')
+  const [topupApiKey, setTopupApiKey] = useState('')
+  const [topupBaseUrl, setTopupBaseUrl] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [cooldownSecs, setCooldownSecs] = useState(0)
@@ -493,8 +495,10 @@ export default function ActivateStep({ onNext }: Props): React.JSX.Element {
           return
         }
 
-        // Otherwise redirect to topup
+        // Otherwise redirect to topup — preserve apiKey and baseUrl from verify-otp response
         setTopupAccountId(accountId)
+        setTopupApiKey(data.apiKey || '')
+        setTopupBaseUrl((data as any).baseUrl || 'https://clawlite.ai/api/openai/v1')
         setView('topup')
         setLoading(false)
       } catch (e) {
@@ -514,6 +518,10 @@ export default function ActivateStep({ onNext }: Props): React.JSX.Element {
     setView('email')
     setEmail('')
     setError(null)
+    // Reset topup state so a fresh verify-otp flow starts clean
+    setTopupAccountId('')
+    setTopupApiKey('')
+    setTopupBaseUrl('')
   }
 
   const handleTopupCheckout = useCallback(
@@ -547,8 +555,8 @@ export default function ActivateStep({ onNext }: Props): React.JSX.Element {
     const saveData: ActivateData = {
       accountId: topupAccountId,
       email,
-      apiKey: '',
-      baseUrl: 'https://clawlite.ai/api/openai/v1'
+      apiKey: topupApiKey,
+      baseUrl: topupBaseUrl
     }
     try {
       await window.electronAPI.installer.saveActivate(saveData)
@@ -556,7 +564,7 @@ export default function ActivateStep({ onNext }: Props): React.JSX.Element {
       // best effort
     }
     onNext()
-  }, [topupAccountId, email, onNext])
+  }, [topupAccountId, email, topupApiKey, topupBaseUrl, onNext])
 
   if (view === 'checking') {
     return (
