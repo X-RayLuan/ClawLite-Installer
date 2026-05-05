@@ -262,8 +262,126 @@ function VerifyStep({
   )
 }
 
+// ─── Step: Topup ─────────────────────────────────────────────────────────────
+function TopupStep({
+  onBack,
+  onCheckout,
+  loading,
+  error,
+}: {
+  onBack: () => void
+  onCheckout: (amount: number) => Promise<void>
+  loading: boolean
+  error: string | null
+}): React.JSX.Element {
+  const { t } = useTranslation('activation')
+
+  return (
+    <div className="flex flex-col items-center gap-5 w-full max-w-sm mx-auto">
+      <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500/20 to-amber-500/5 border border-amber-500/20 flex items-center justify-center">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="10" stroke="#f59e0b" strokeWidth="2" />
+          <path d="M12 6v6l4 2" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+      </div>
+
+      <div className="text-center">
+        <h2 className="text-xl font-black tracking-tight">{t('topup.title')}</h2>
+        <p className="text-text-muted text-sm mt-1">{t('topup.subtitle')}</p>
+      </div>
+
+      <div className="w-full space-y-3">
+        {[5, 10, 20].map((amount) => (
+          <button
+            key={amount}
+            onClick={() => onCheckout(amount)}
+            disabled={loading}
+            className="w-full py-4 rounded-xl bg-white/5 border border-glass-border hover:border-primary/60 hover:bg-white/[0.08] active:scale-[0.98] transition-all duration-150 disabled:opacity-50 flex items-center justify-between px-5"
+          >
+            <span className="text-lg font-black text-text">${amount}</span>
+            <span className="text-xs text-text-muted/60 font-medium">{t('topup.addFunds')}</span>
+          </button>
+        ))}
+      </div>
+
+      {error && (
+        <p className="text-xs text-error font-medium text-center bg-error/10 px-3 py-2 rounded-xl border border-error/20">
+          {error}
+        </p>
+      )}
+
+      <button
+        onClick={onBack}
+        className="text-xs text-text-muted/60 hover:text-text font-medium transition-colors cursor-pointer px-2 py-1 rounded-lg hover:bg-white/10"
+      >
+        {t('topup.back')}
+      </button>
+    </div>
+  )
+}
+
+// ─── Step: Pending Topup (Stripe Checkout Polling) ─────────────────────────────
+function PendingTopupStep({
+  accountId,
+  onCancel,
+  onComplete,
+}: {
+  accountId: string
+  onCancel: () => void
+  onComplete: () => void
+}): React.JSX.Element {
+  const { t } = useTranslation('activation')
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const startPolling = useCallback(async (): Promise<void> => {
+    const poll = async (): Promise<void> => {
+      try {
+        const resp = await fetch(`${INSTALLER_BASE}/installer/topup/check-status?accountId=${encodeURIComponent(accountId)}`)
+        const data = await resp.json()
+        if (data.isActive) {
+          if (pollingRef.current) clearInterval(pollingRef.current)
+          onComplete()
+          return
+        }
+      } catch {
+        // keep polling
+      }
+    }
+    pollingRef.current = setInterval(poll, 3000)
+    // initial check
+    poll()
+  }, [accountId, onComplete])
+
+  useEffect(() => {
+    startPolling()
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current)
+    }
+  }, [startPolling])
+
+  return (
+    <div className="flex flex-col items-center gap-5 w-full max-w-sm mx-auto">
+      <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500/20 to-amber-500/5 border border-amber-500/20 flex items-center justify-center">
+        <div className="w-7 h-7 border-2 border-amber-500/30 border-t-amber-500 rounded-full animate-spin" />
+      </div>
+
+      <div className="text-center">
+        <h2 className="text-xl font-black tracking-tight">{t('pendingTopup.title')}</h2>
+        <p className="text-text-muted text-sm mt-1">{t('pendingTopup.subtitle')}</p>
+      </div>
+
+      <button
+        onClick={onCancel}
+        className="text-xs text-text-muted/60 hover:text-text font-medium transition-colors cursor-pointer px-2 py-1 rounded-lg hover:bg-white/10"
+      >
+        {t('pendingTopup.cancel')}
+      </button>
+    </div>
+  )
+}
+
 // ─── Main ActivateStep ────────────────────────────────────────────────────────
-type View = 'checking' | 'email' | 'verify' | 'error'
+type View = 'checking' | 'email' | 'verify' | 'topup' | 'pending_topup' | 'error'
 
 interface Props {
   onNext: () => void
@@ -273,6 +391,7 @@ export default function ActivateStep({ onNext }: Props): React.JSX.Element {
   const { t } = useTranslation('activation')
   const [view, setView] = useState<View>('checking')
   const [email, setEmail] = useState('')
+  const [topupAccountId, setTopupAccountId] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [cooldownSecs, setCooldownSecs] = useState(0)
@@ -357,15 +476,27 @@ export default function ActivateStep({ onNext }: Props): React.JSX.Element {
           return
         }
 
-        // Save to activate.json AND openclaw.json
-        const saveData: ActivateData = {
-          accountId: data.accountId || '',
-          email,
-          apiKey: data.apiKey,
-          baseUrl: (data as any).baseUrl || 'https://clawlite.ai/api/openai/v1'
+        const accountId = data.accountId || ''
+        const isActive = data.isActive === true
+        const balance = (data as any).balance ?? 0
+
+        // If account is active and has balance, proceed directly
+        if (isActive && balance > 0) {
+          const saveData: ActivateData = {
+            accountId,
+            email,
+            apiKey: data.apiKey,
+            baseUrl: (data as any).baseUrl || 'https://clawlite.ai/api/openai/v1'
+          }
+          await window.electronAPI.installer.saveActivate(saveData)
+          onNext()
+          return
         }
-        await window.electronAPI.installer.saveActivate(saveData)
-        onNext()
+
+        // Otherwise redirect to topup
+        setTopupAccountId(accountId)
+        setView('topup')
+        setLoading(false)
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Verification failed')
         setLoading(false)
@@ -384,6 +515,48 @@ export default function ActivateStep({ onNext }: Props): React.JSX.Element {
     setEmail('')
     setError(null)
   }
+
+  const handleTopupCheckout = useCallback(
+    async (amount: number): Promise<void> => {
+      setError(null)
+      setLoading(true)
+      try {
+        const resp = await fetch(`${INSTALLER_BASE}/installer/topup/checkout`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ accountId: topupAccountId, email, amount })
+        })
+        const data = await resp.json()
+        if (!resp.ok || !data.checkoutUrl) {
+          setError(data.error || 'Failed to start checkout')
+          setLoading(false)
+          return
+        }
+        // Open Stripe checkout in browser
+        window.electronAPI.system.openExternal(data.checkoutUrl)
+        setView('pending_topup')
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Checkout failed')
+        setLoading(false)
+      }
+    },
+    [topupAccountId, email]
+  )
+
+  const handleTopupComplete = useCallback(async (): Promise<void> => {
+    const saveData: ActivateData = {
+      accountId: topupAccountId,
+      email,
+      apiKey: '',
+      baseUrl: 'https://clawlite.ai/api/openai/v1'
+    }
+    try {
+      await window.electronAPI.installer.saveActivate(saveData)
+    } catch {
+      // best effort
+    }
+    onNext()
+  }, [topupAccountId, email, onNext])
 
   if (view === 'checking') {
     return (
@@ -412,6 +585,21 @@ export default function ActivateStep({ onNext }: Props): React.JSX.Element {
             loading={loading}
             error={error}
             cooldownSecs={cooldownSecs}
+          />
+        )}
+        {view === 'topup' && (
+          <TopupStep
+            onBack={handleBack}
+            onCheckout={handleTopupCheckout}
+            loading={loading}
+            error={error}
+          />
+        )}
+        {view === 'pending_topup' && (
+          <PendingTopupStep
+            accountId={topupAccountId}
+            onCancel={handleBack}
+            onComplete={handleTopupComplete}
           />
         )}
         {view === 'error' && (
