@@ -1,6 +1,6 @@
 import { spawn } from 'child_process'
 import { StringDecoder } from 'string_decoder'
-import { createWriteStream, existsSync, mkdirSync, symlink, readFileSync } from 'fs'
+import { createWriteStream, existsSync, mkdirSync, symlink, readFileSync, writeFileSync } from 'fs'
 import { tmpdir, homedir } from 'os'
 import { join } from 'path'
 import https from 'https'
@@ -357,6 +357,31 @@ const createGlobalBinLinks = async (
   }
 }
 
+// Append ~/.npm-global/bin to shell PATH so `openclaw` is found in new terminals.
+const ensureNpmGlobalBinInPath = (npmGlobalDir: string, log: ProgressCallback): void => {
+  const binDir = join(npmGlobalDir, 'bin')
+  const marker = `# added by ClawLite installer — ~/.npm-global/bin for openclaw`
+  const exportLine = `export PATH="$HOME/.npm-global/bin:$PATH"  # ${marker}`
+
+  // Pick the right profile file (zsh → .zshrc, bash → .bash_profile)
+  const home = homedir()
+  const isZsh = existsSync(join(home, '.zshrc'))
+  const profile = isZsh ? join(home, '.zshrc') : join(home, '.bash_profile')
+
+  try {
+    const content = existsSync(profile) ? readFileSync(profile, 'utf-8') : ''
+    if (content.includes(marker) || content.includes(binDir)) {
+      log(`PATH already configured in ${profile}`)
+      return
+    }
+    const updated = content.trimEnd() + '\n' + exportLine + '\n'
+    writeFileSync(profile, updated, { mode: 0o644 })
+    log(`Added ${binDir} to PATH in ${profile}`)
+  } catch (err) {
+    log(`Warning: could not update ${profile}: ${(err as Error).message}`)
+  }
+}
+
 export const installOpenClaw = async (win: BrowserWindow): Promise<void> => {
   const log = (msg: string): void => sendProgress(win, msg)
   log(t('installer.ocInstalling'))
@@ -403,6 +428,9 @@ export const installOpenClaw = async (win: BrowserWindow): Promise<void> => {
   // automatically, so `npm link` is unnecessary. We also create them manually
   // here as a fallback for environments where the install step didn't.
   await createGlobalBinLinks(npmGlobalDir, pkgDir, log)
+
+  // Ensure ~/.npm-global/bin is in PATH for new terminal sessions
+  ensureNpmGlobalBinInPath(npmGlobalDir, log)
 
   // Initialize OpenClaw config so that gateway.mode is present.
   // Without this, `openclaw gateway start` fails with:
