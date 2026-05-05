@@ -80,66 +80,18 @@ function App(): React.JSX.Element {
   // ─── Activation gate ──────────────────────────────────────────────────────────
   const [showActivation, setShowActivation] = useState(false)
 
-  // Get installer instance ID (stable per installation session)
-  const getInstanceId = (): string | undefined => {
-    try {
-      let id = localStorage.getItem('clawlite_installer_instance_id')
-      if (!id) {
-        id = crypto.randomUUID()
-        localStorage.setItem('clawlite_installer_instance_id', id)
-      }
-      return id
-    } catch {
-      return undefined
-    }
-  }
-
-  /**
-   * Configure clawlite provider using saved activation credentials.
-   * Called when activation gate detects already-activated users (per PRD).
-   */
-  const configureClawliteProvider = useCallback(async (activationInfo: {
-    email?: string
-    licenseType?: string
-    expiresAt?: string | null
-    apiKey: string
-    baseUrl?: string
-  }): Promise<void> => {
-    await window.electronAPI.activation.save({
-      email: activationInfo.email || '',
-      licenseType: (activationInfo.licenseType || 'unknown') as 'annual' | 'lifetime' | 'trial' | 'unknown',
-      expiresAt: activationInfo.expiresAt ?? null,
-      apiKey: activationInfo.apiKey,
-      baseUrl: activationInfo.baseUrl || 'https://clawlite.ai/api/openai'
-    })
-  }, [])
-
   /**
    * Activation Gate — called after install step completes.
-   * Checks activation.json for existing credentials:
-   * - Has credentials (apiKey + baseUrl) → configureClawliteProvider → go to telegramGuide
-   * - No credentials → show ActivationModal
+   * For fresh users (no prior activation): show ActivationModal immediately.
+   * The modal's own checkActivation() will determine the right sub-view (email/verify/topup/activated).
+   * For already-activated users: the modal's onMount check sees need_skip_provider and shows
+   * the Launch button directly, then onComplete handles navigation to telegramGuide.
    */
   const handleInstallDone = useCallback((): void => {
-    const instanceId = getInstanceId()
-    window.electronAPI.activation.check(instanceId).then((result) => {
-      if (result.activated && result.activationInfo?.apiKey) {
-        // Already activated with credentials — configure clawlite and go to telegramGuide.
-        // Skip apiKeyGuide for verified users (per PRD activation gate).
-        if (result.activationInfo) {
-          configureClawliteProvider(result.activationInfo).catch(() => {/* ignore */})
-        }
-        setActivationStatusState('need_skip_provider')
-        goTo('telegramGuide')
-      } else {
-        // Not yet activated — show ActivationModal
-        setShowActivation(true)
-      }
-    }).catch(() => {
-      // Network error — show modal as fallback
-      setShowActivation(true)
-    })
-  }, [goTo, configureClawliteProvider])
+    // Always show modal immediately — no async wait needed.
+    // The modal checks activation status internally on mount.
+    setShowActivation(true)
+  }, [])
 
   const handleActivationSuccess = useCallback((skipProvider: boolean, status: string): void => {
     setShowActivation(false)
