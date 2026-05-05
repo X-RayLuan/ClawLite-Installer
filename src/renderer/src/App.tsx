@@ -95,26 +95,41 @@ function App(): React.JSX.Element {
   }
 
   /**
+   * Configure clawlite provider using saved activation credentials.
+   * Called when activation gate detects already-activated users (per PRD).
+   */
+  const configureClawliteProvider = useCallback(async (activationInfo: {
+    email?: string
+    licenseType?: string
+    expiresAt?: string | null
+    apiKey: string
+    baseUrl?: string
+  }): Promise<void> => {
+    await window.electronAPI.activation.save({
+      email: activationInfo.email || '',
+      licenseType: (activationInfo.licenseType || 'unknown') as 'annual' | 'lifetime' | 'trial' | 'unknown',
+      expiresAt: activationInfo.expiresAt ?? null,
+      apiKey: activationInfo.apiKey,
+      baseUrl: activationInfo.baseUrl || 'https://clawlite.ai/api/openai'
+    })
+  }, [])
+
+  /**
    * Activation Gate — called after install step completes.
    * Checks activation.json for existing credentials:
-   * - Has credentials (apiKey + baseUrl) → configure clawlite → go to telegramGuide
+   * - Has credentials (apiKey + baseUrl) → configureClawliteProvider → go to telegramGuide
    * - No credentials → show ActivationModal
    */
   const handleInstallDone = useCallback((): void => {
     const instanceId = getInstanceId()
     window.electronAPI.activation.check(instanceId).then((result) => {
       if (result.activated && result.activationInfo?.apiKey) {
-        // Already activated with credentials — re-write clawlite config
-        // (harmless idempotent write) then go to telegramGuide.
+        // Already activated with credentials — configure clawlite and go to telegramGuide.
+        // Skip apiKeyGuide for verified users (per PRD activation gate).
         if (result.activationInfo) {
-          window.electronAPI.activation.save({
-            email: result.activationInfo.email || '',
-            licenseType: result.activationInfo.licenseType || 'unknown',
-            expiresAt: result.activationInfo.expiresAt || null,
-            apiKey: result.activationInfo.apiKey,
-            baseUrl: result.activationInfo.baseUrl || 'https://clawlite.ai/api/openai'
-          }).catch(() => {/* ignore */})
+          configureClawliteProvider(result.activationInfo).catch(() => {/* ignore */})
         }
+        setActivationStatusState('need_skip_provider')
         goTo('telegramGuide')
       } else {
         // Not yet activated — show ActivationModal
@@ -124,7 +139,7 @@ function App(): React.JSX.Element {
       // Network error — show modal as fallback
       setShowActivation(true)
     })
-  }, [goTo])
+  }, [goTo, configureClawliteProvider])
 
   const handleActivationSuccess = useCallback((_skipProvider: boolean, status: string): void => {
     setShowActivation(false)
