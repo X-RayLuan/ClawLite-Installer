@@ -89,6 +89,10 @@ interface VerifyOtpResponse {
   email?: string
   isActive?: boolean
   error?: string
+  apiKey?: string       // plaintext API key returned directly after OTP verify
+  baseUrl?: string      // e.g. "https://clawlite.ai/api/openai"
+  balance?: number      // account balance in USD
+  currency?: string     // e.g. "USD"
 }
 
 // Bootstrap response (PRD v1.1)
@@ -361,10 +365,26 @@ export function useActivation() {
         const accountId = data.accountId || email
 
         if (data.isActive) {
-          // Has balance — provision and activate (backend field is "balance")
-          const balance = (data as any).balance as number | undefined
+          // OTP verified + account is active.
+          // Backend already returns apiKey/baseUrl/balance — use them directly.
+          // No need to call provisionAndActivate (bootstrap + provision).
+          const balance = data.balance
           pendingBalanceRef.current = balance
-          await provisionAndActivate(accountId, data.email || email, balance)
+          const info: ActivationInfo = {
+            email: data.email || email,
+            licenseType: 'unknown',
+            expiresAt: null,
+            apiKey: data.apiKey || '',
+            baseUrl: data.baseUrl || 'https://clawlite.ai/api/openai',
+            balanceUsd: balance,
+          }
+          setActivationInfo(info)
+          try {
+            await window.electronAPI.activation.save(info)
+          } catch {
+            /* ignore — IPC failure is non-fatal */
+          }
+          setStatus('activated')
         } else {
           // No balance — show topup
           setAccountId(accountId)
