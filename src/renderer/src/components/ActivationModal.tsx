@@ -559,12 +559,6 @@ export default function ActivationModal({
   // and handleSendCode already called setView('verify') before the status update.
   useEffect(() => {
     console.log('[ActivationModal] status-sync effect, status:', status, 'view:', view)
-    // Never auto-reset from 'verify' — user explicitly navigated there
-    if (view === 'verify') {
-      console.log('[ActivationModal] status-sync: view=verify, staying')
-      return
-    }
-    // Only auto-navigate TO these states (not away from verify)
     switch (status) {
       case 'need_topup':
         setView('topup')

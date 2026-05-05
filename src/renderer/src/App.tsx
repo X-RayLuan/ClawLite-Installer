@@ -141,12 +141,12 @@ function App(): React.JSX.Element {
     })
   }, [goTo, configureClawliteProvider])
 
-  const handleActivationSuccess = useCallback((_skipProvider: boolean, _status: string): void => {
+  const handleActivationSuccess = useCallback((skipProvider: boolean, status: string): void => {
     setShowActivation(false)
     // ActivationModal completed successfully — user went through email+OTP.
-    // Set status to 'need_skip_provider' so StepIndicator hides apiKeyGuide.
+    // Pass the actual status so StepIndicator stays in sync with the modal's state.
     // (The actual credentials were already saved by ActivationModal internally.)
-    setActivationStatusState('need_skip_provider')
+    setActivationStatusState(skipProvider ? 'need_skip_provider' : status)
     goTo('telegramGuide')
   }, [goTo])
 
