@@ -141,12 +141,12 @@ function App(): React.JSX.Element {
     })
   }, [goTo, configureClawliteProvider])
 
-  const handleActivationSuccess = useCallback((_skipProvider: boolean, status: string): void => {
+  const handleActivationSuccess = useCallback((_skipProvider: boolean, _status: string): void => {
     setShowActivation(false)
-    setActivationStatusState(status)
-    // After ActivationModal completes, always go to telegramGuide.
-    // (apiKeyGuide is only for users who explicitly want custom provider —
-    // handled by ActivationModal's skip vs continue flow)
+    // ActivationModal completed successfully — user went through email+OTP.
+    // Set status to 'need_skip_provider' so StepIndicator hides apiKeyGuide.
+    // (The actual credentials were already saved by ActivationModal internally.)
+    setActivationStatusState('need_skip_provider')
     goTo('telegramGuide')
   }, [goTo])
 
