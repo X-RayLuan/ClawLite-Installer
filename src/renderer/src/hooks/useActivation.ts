@@ -23,13 +23,7 @@ export interface ActivationInfo {
   balanceUsd?: number
 }
 
-const API_BASE = (() => {
-  // 渲染进程没有 localhost 服务器，改用生产地址
-  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-    return 'http://localhost:3000/api'
-  }
-  return 'https://clawlite.ai/api'
-})()
+const API_BASE = 'https://clawlite.ai/api'
 
 // ─── Installer Instance ID ───────────────────────────────────────────────────
 

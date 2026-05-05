@@ -10,14 +10,8 @@ interface ActivateData {
   baseUrl: string
 }
 
-// baseUrl for installer API endpoints (send-otp, verify-otp)
-// The /installer/* endpoints live at the same origin as the website.
-const INSTALLER_BASE = (() => {
-  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-    return 'http://localhost:3000/api'
-  }
-  return 'https://clawlite.ai/api'
-})()
+// baseUrl for installer API endpoints — always points to clawlite.ai
+const INSTALLER_BASE = 'https://clawlite.ai/api'
 
 // ─── Step: Email Input ────────────────────────────────────────────────────────
 function EmailStep({
