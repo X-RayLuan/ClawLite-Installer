@@ -4,6 +4,7 @@ const defaultSteps = [
   'welcome',
   'envCheck',
   'install',
+  'activate',
   'telegramGuide',
   'config',
   'done'
@@ -14,6 +15,7 @@ const windowsSteps = [
   'envCheck',
   'wslSetup',
   'install',
+  'activate',
   'telegramGuide',
   'config',
   'done'

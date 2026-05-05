@@ -520,9 +520,8 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
           }
           // Set default agent to clawlite
           ocConfig.agents = ocConfig.agents || {}
-          ocConfig.agents.default = ocConfig.agents.default || {}
-          ocConfig.agents.default.provider = 'clawlite'
-          ocConfig.agents.default.model = 'gpt-5.4'
+          ocConfig.agents.defaults = ocConfig.agents.defaults || {}
+          ocConfig.agents.defaults.model = 'clawlite/gpt-5.4'
           // Generate and write gateway token if not already present
           if (!ocConfig.gateway) ocConfig.gateway = {}
           if (!ocConfig.gateway.auth) ocConfig.gateway.auth = {}
@@ -600,9 +599,8 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
             ]
           }
           ocConfig.agents = ocConfig.agents || {}
-          ocConfig.agents.default = ocConfig.agents.default || {}
-          ocConfig.agents.default.provider = 'clawlite'
-          ocConfig.agents.default.model = 'gpt-5.4'
+          ocConfig.agents.defaults = ocConfig.agents.defaults || {}
+          ocConfig.agents.defaults.model = 'clawlite/gpt-5.4'
           if (!ocConfig.gateway) ocConfig.gateway = {}
           if (!ocConfig.gateway.auth) ocConfig.gateway.auth = {}
           if (!ocConfig.gateway.auth.token) {
