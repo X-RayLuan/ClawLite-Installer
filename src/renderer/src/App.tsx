@@ -2,13 +2,12 @@ import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import StepIndicator from './components/StepIndicator'
 import UpdateBanner from './components/UpdateBanner'
-import ActivationModal from './components/ActivationModal'
 import { useWizard } from './hooks/useWizard'
 import WelcomeStep from './steps/WelcomeStep'
 import EnvCheckStep from './steps/EnvCheckStep'
 import WslSetupStep from './steps/WslSetupStep'
 import InstallStep from './steps/InstallStep'
-import ApiKeyGuideStep from './steps/ApiKeyGuideStep'
+import ActivateStep from './steps/ActivateStep'
 import TelegramGuideStep from './steps/TelegramGuideStep'
 import ConfigStep from './steps/ConfigStep'
 import DoneStep from './steps/DoneStep'
@@ -60,47 +59,20 @@ const Bubbles = (): React.JSX.Element => {
 function App(): React.JSX.Element {
   const { t } = useTranslation('common')
   const { currentStep, next, prev, canGoBack, goTo } = useWizard()
-  const [activationStatusState, setActivationStatusState] = useState<string>('idle')
-  const activationStatus = activationStatusState
 
   const [installNeeds, setInstallNeeds] = useState<InstallNeeds>({
     needNode: false,
     needOpenclaw: false
   })
-  const [provider, setProvider] = useState<'anthropic' | 'google' | 'openai' | 'minimax' | 'glm'>(
+  const [provider] = useState<'anthropic' | 'google' | 'openai' | 'minimax' | 'glm'>(
     'anthropic'
   )
-  const [modelId, setModelId] = useState<string | undefined>()
-  const [authMethod, setAuthMethod] = useState<'api-key' | 'oauth'>('api-key')
+  const [modelId] = useState<string | undefined>()
+  const [authMethod] = useState<'api-key' | 'oauth'>('api-key')
   const [botUsername, setBotUsername] = useState<string | undefined>()
   const [isWindows, setIsWindows] = useState(false)
   const [wslState, setWslState] = useState<WslState>('ready')
   const [version, setVersion] = useState('')
-
-  // ─── Activation gate ──────────────────────────────────────────────────────────
-  const [showActivation, setShowActivation] = useState(false)
-
-  /**
-   * Activation Gate — called after install step completes.
-   * For fresh users (no prior activation): show ActivationModal immediately.
-   * The modal's own checkActivation() will determine the right sub-view (email/verify/topup/activated).
-   * For already-activated users: the modal's onMount check sees need_skip_provider and shows
-   * the Launch button directly, then onComplete handles navigation to telegramGuide.
-   */
-  const handleInstallDone = useCallback((): void => {
-    // Always show modal immediately — no async wait needed.
-    // The modal checks activation status internally on mount.
-    setShowActivation(true)
-  }, [])
-
-  const handleActivationSuccess = useCallback((skipProvider: boolean, status: string): void => {
-    setShowActivation(false)
-    // ActivationModal completed successfully — user went through email+OTP.
-    // Pass the actual status so StepIndicator stays in sync with the modal's state.
-    // (The actual credentials were already saved by ActivationModal internally.)
-    setActivationStatusState(skipProvider ? 'need_skip_provider' : status)
-    goTo('telegramGuide')
-  }, [goTo])
 
   // Load version + OS check on app start
   useEffect(() => {
@@ -151,14 +123,6 @@ function App(): React.JSX.Element {
 
   return (
     <>
-      {/* ─── Activation Modal (shown when not activated) ─── */}
-      {showActivation && (
-        <ActivationModal
-          onComplete={handleActivationSuccess}
-          onClose={undefined}
-        />
-      )}
-
       <div className="aurora-bg" />
       <div className="grain-overlay" />
       <Bubbles />
@@ -168,41 +132,26 @@ function App(): React.JSX.Element {
           <StepIndicator
             currentStep={currentStep}
             isWindows={isWindows}
-            wizardSteps={
-              activationStatus === 'need_skip_provider'
-                ? isWindows
-                  ? ['welcome', 'envCheck', 'wslSetup', 'install', 'telegramGuide', 'config', 'done']
-                  : ['welcome', 'envCheck', 'install', 'telegramGuide', 'config', 'done']
-                : undefined
-            }
           />
         )}
 
         <div className="flex-1 flex flex-col min-h-0 pb-10 step-enter" key={currentStep}>
           {currentStep === 'welcome' && <WelcomeStep onNext={next} />}
           {currentStep === 'envCheck' && (
-            <EnvCheckStep onNext={() => goTo('apiKeyGuide')} onNeedInstall={handleEnvCheckDone} />
+            <EnvCheckStep onNext={() => goTo('install')} onNeedInstall={handleEnvCheckDone} />
           )}
           {currentStep === 'wslSetup' && (
             <WslSetupStep wslState={wslState} onReady={handleWslReady} />
           )}
           {currentStep === 'install' && (
-            <InstallStep needs={installNeeds} onDone={handleInstallDone} onActivationCheck={handleInstallDone} />
-          )}
-          {currentStep === 'apiKeyGuide' && (
-            <ApiKeyGuideStep
-              provider={provider}
-              onSelectProvider={(p) => {
-                setProvider(p)
-                setModelId(undefined)
-                setAuthMethod('api-key')
-              }}
-              authMethod={authMethod}
-              onSelectAuthMethod={setAuthMethod}
-              modelId={modelId}
-              onSelectModel={setModelId}
-              onNext={next}
+            <InstallStep
+              needs={installNeeds}
+              onDone={() => goTo('activate')}
+              onActivationCheck={() => goTo('activate')}
             />
+          )}
+          {currentStep === 'activate' && (
+            <ActivateStep onNext={() => goTo('telegramGuide')} />
           )}
           {currentStep === 'telegramGuide' && <TelegramGuideStep onNext={next} />}
           {currentStep === 'config' && (

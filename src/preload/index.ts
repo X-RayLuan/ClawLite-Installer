@@ -189,6 +189,20 @@ const electronAPI = {
       apiKey: string
       baseUrl?: string
     }): Promise<{ success: boolean }> => ipcRenderer.invoke('activation:save', info)
+  },
+  installer: {
+    loadActivate: (): Promise<{
+      accountId: string
+      email: string
+      apiKey: string
+      baseUrl: string
+    } | null> => ipcRenderer.invoke('installer:load-activate'),
+    saveActivate: (data: {
+      accountId: string
+      email: string
+      apiKey: string
+      baseUrl: string
+    }): Promise<{ success: boolean }> => ipcRenderer.invoke('installer:save-activate', data)
   }
 }
 

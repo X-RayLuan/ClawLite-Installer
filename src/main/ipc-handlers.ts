@@ -543,4 +543,83 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
       }
     }
   )
+
+  // ─── Installer activation (activate.json) ────────────────────────────────────
+  const getActivatePath = (): string => join(app.getPath('userData'), 'activate.json')
+
+  ipcMain.handle('installer:load-activate', () => {
+    try {
+      const path = getActivatePath()
+      if (!existsSync(path)) return null
+      return JSON.parse(readFileSync(path, 'utf-8'))
+    } catch {
+      return null
+    }
+  })
+
+  ipcMain.handle(
+    'installer:save-activate',
+    (
+      _e,
+      data: {
+        accountId: string
+        email: string
+        apiKey: string
+        baseUrl: string
+      }
+    ) => {
+      try {
+        // Write activate.json
+        const activatePath = getActivatePath()
+        writeFileSync(activatePath, JSON.stringify(data, null, 2))
+
+        // Also write clawlite config to ~/.openclaw/openclaw.json
+        try {
+          const openClawDir = join(app.getPath('home'), '.openclaw')
+          const openClawConfigPath = join(openClawDir, 'openclaw.json')
+          let ocConfig: Record<string, any> = {}
+          if (existsSync(openClawConfigPath)) {
+            ocConfig = JSON.parse(readFileSync(openClawConfigPath, 'utf-8'))
+          }
+          ocConfig.models = ocConfig.models || {}
+          ocConfig.models.providers = ocConfig.models.providers || {}
+          ocConfig.models.providers.clawlite = {
+            baseUrl: data.baseUrl,
+            apiKey: data.apiKey,
+            api: 'openai-completions',
+            models: [
+              {
+                id: 'gpt-5.4',
+                name: 'GPT-5.4',
+                input: ['text', 'image'],
+                cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+                contextWindow: 200000,
+                maxTokens: 32000,
+                reasoning: true
+              }
+            ]
+          }
+          ocConfig.agents = ocConfig.agents || {}
+          ocConfig.agents.default = ocConfig.agents.default || {}
+          ocConfig.agents.default.provider = 'clawlite'
+          ocConfig.agents.default.model = 'gpt-5.4'
+          if (!ocConfig.gateway) ocConfig.gateway = {}
+          if (!ocConfig.gateway.auth) ocConfig.gateway.auth = {}
+          if (!ocConfig.gateway.auth.token) {
+            ocConfig.gateway.auth.token = randomBytes(32).toString('hex')
+          }
+          if (!existsSync(openClawDir)) {
+            mkdirSync(openClawDir, { recursive: true })
+          }
+          writeFileSync(openClawConfigPath, JSON.stringify(ocConfig, null, 2), { mode: 0o600 })
+        } catch (writeErr) {
+          console.error('[installer:save-activate] failed to write openclaw config:', writeErr)
+        }
+
+        return { success: true }
+      } catch {
+        return { success: false }
+      }
+    }
+  )
 }

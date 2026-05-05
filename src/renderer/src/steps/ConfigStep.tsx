@@ -50,16 +50,16 @@ export default function ConfigStep({
   const isOAuth = authMethod === 'oauth'
 
   // ─── Skip if clawlite is already configured ────────────────────────────────
-  // After Activation Gate, clawlite is pre-configured via activation:save.
-  // Detect this by reading the OpenClaw config and skip to done.
+  // After Activation Gate, clawlite is pre-configured via installer:save-activate.
+  // Detect this by reading the activate.json and skip to done.
   useEffect(() => {
-    window.electronAPI.config.read().then((result) => {
-      if (result.success && result.config?.provider === 'clawlite') {
-        // clawlite already configured (via activation:save) — skip to done
+    window.electronAPI.installer.loadActivate().then((result) => {
+      if (result && result.apiKey && result.baseUrl) {
+        // clawlite already activated — skip to done
         onDone()
       }
     }).catch(() => {
-      // Config read failed — show the config form as usual
+      // activate.json read failed — show the config form as usual
     })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 

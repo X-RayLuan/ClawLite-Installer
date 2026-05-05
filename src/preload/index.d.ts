@@ -136,6 +136,20 @@ interface ElectronAPI {
       baseUrl?: string
     }) => Promise<{ success: boolean }>
   }
+  installer: {
+    loadActivate: () => Promise<{
+      accountId: string
+      email: string
+      apiKey: string
+      baseUrl: string
+    } | null>
+    saveActivate: (data: {
+      accountId: string
+      email: string
+      apiKey: string
+      baseUrl: string
+    }) => Promise<{ success: boolean }>
+  }
 }
 
 declare global {
