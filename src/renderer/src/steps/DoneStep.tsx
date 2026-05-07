@@ -10,8 +10,6 @@ import LanguageSwitcher from '../components/LanguageSwitcher'
 import { useManagement } from '../hooks/useManagement'
 import { buildWebChatUrl, describeWebChatLaunch, resolveLaunchToken } from './webchat-launch'
 
-const UPDATE_CHECK_INTERVAL = 30 * 60 * 1000 // 30 min
-
 export default function DoneStep({
   botUsername,
   onTroubleshoot,
@@ -34,75 +32,13 @@ export default function DoneStep({
   const [hasTelegram, setHasTelegram] = useState(false)
   const [installerVersion, setInstallerVersion] = useState<string>('')
 
-  // OpenClaw update state
-  const [openclawUpdate, setOpenclawUpdate] = useState<{
-    current: string
-    latest: string
-  } | null>(null)
-  const [updating, setUpdating] = useState(false)
-  const [updateLogs, setUpdateLogs] = useState<string[]>([])
-  const updateCheckedRef = useRef(false)
-  const lastLogRef = useRef<{ msg: string; ts: number } | null>(null)
   const statusRef = useRef<'starting' | 'running' | 'stopped'>('starting')
+  const lastLogRef = useRef<{ msg: string; ts: number } | null>(null)
 
   const tRef = useRef<TFunction>(t)
   tRef.current = t
 
   const { uninstall, backup } = useManagement(setStatus)
-
-  // Check for OpenClaw updates
-  const checkOpenclawUpdate = useCallback(async () => {
-    try {
-      const info = await window.electronAPI.openclaw.checkUpdate()
-      if (info.currentVersion && info.latestVersion && info.currentVersion !== info.latestVersion) {
-        setOpenclawUpdate({ current: info.currentVersion, latest: info.latestVersion })
-      } else {
-        setOpenclawUpdate(null)
-      }
-    } catch {
-      /* ignore network errors */
-    }
-  }, [])
-
-  // Check once when Gateway is running + every 30 min
-  useEffect(() => {
-    if (status !== 'running') return
-
-    if (!updateCheckedRef.current) {
-      updateCheckedRef.current = true
-      checkOpenclawUpdate()
-    }
-
-    const timer = setInterval(checkOpenclawUpdate, UPDATE_CHECK_INTERVAL)
-    return () => clearInterval(timer)
-  }, [status, checkOpenclawUpdate])
-
-  // Execute OpenClaw update
-  const handleOpenclawUpdate = useCallback(async () => {
-    setUpdating(true)
-    setUpdateLogs([])
-
-    const unsubProgress = window.electronAPI.install.onProgress((msg) => {
-      setUpdateLogs((prev) => [...prev, msg])
-    })
-    const unsubError = window.electronAPI.install.onError((msg) => {
-      setUpdateLogs((prev) => [...prev, tRef.current('done.errorPrefix', { msg })])
-    })
-
-    try {
-      const result = await window.electronAPI.install.openclaw()
-      if (result.success) {
-        setUpdateLogs((prev) => [...prev, tRef.current('done.restartingGw')])
-        await window.electronAPI.gateway.restart()
-        setStatus('running')
-        await checkOpenclawUpdate()
-      }
-    } finally {
-      unsubProgress()
-      unsubError()
-      setUpdating(false)
-    }
-  }, [checkOpenclawUpdate])
 
   // Load auto launch settings
   useEffect(() => {
@@ -415,41 +351,7 @@ export default function DoneStep({
         </div>
       </div>
 
-      {/* OpenClaw update banner */}
-      <div className="w-full max-w-md min-h-14 shrink-0">
-      {(openclawUpdate || updating) && (
-        <div className="w-full max-w-md flex items-center gap-3 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-500/15 via-blue-500/10 to-blue-500/15 border border-blue-500/30">
-          <span className="text-base">{updating ? '⏳' : '🔄'}</span>
-          <div className="flex-1 min-w-0">
-            {updating ? (
-              <div>
-                <span className="text-[12px] font-bold">{t('common:status.updating')}</span>
-                {updateLogs.length > 0 && (
-                  <p className="text-[11px] text-text-muted/70 truncate">
-                    {updateLogs[updateLogs.length - 1]}
-                  </p>
-                )}
-              </div>
-            ) : (
-              <span className="text-[12px] font-bold">
-                {t('done.ocUpdateAvailable', { latest: openclawUpdate!.latest })}
-                <span className="text-text-muted/50 font-normal ml-1">
-                  ({t('done.ocCurrentVersion', { current: openclawUpdate!.current })})
-                </span>
-              </span>
-            )}
-          </div>
-          {!updating && (
-            <button
-              onClick={handleOpenclawUpdate}
-              className="px-3 py-1 text-[11px] font-bold rounded-lg bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30 transition-all duration-200 cursor-pointer whitespace-nowrap"
-            >
-              {t('common:button.update')}
-            </button>
-          )}
-        </div>
-      )}
-      </div>
+      {/* OpenClaw update banner removed per user request */}
 
       {/* Action buttons */}
       <div className="flex gap-3 min-h-9 items-center mt-2 shrink-0">

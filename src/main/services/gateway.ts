@@ -320,9 +320,16 @@ export const startGateway = async (): Promise<GatewayResult> => {
     emitLog(t('gateway.notInstalledRetry'))
     try {
       await runGateway(['install'])
+      // Wait for install to settle before starting
+      await new Promise((r) => setTimeout(r, 2000))
       await runGateway(['start'])
-      await runDoctorFix()
-      return { status: 'started' }
+      // Wait for gateway to be fully ready after install+start
+      const ready = await waitForGatewayReady(30000)
+      if (ready) {
+        await runDoctorFix()
+        return { status: 'started' }
+      }
+      return { status: 'error', error: 'Gateway health check failed after install' }
     } catch (retryErr) {
       const retryMsg = retryErr instanceof Error ? retryErr.message : String(retryErr)
       return { status: 'error', error: retryMsg }
