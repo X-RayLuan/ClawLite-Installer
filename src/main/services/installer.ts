@@ -453,5 +453,17 @@ export const installOpenClaw = async (win: BrowserWindow): Promise<void> => {
     )
   })
 
+  // Ensure launchd service is installed as a fallback
+  try {
+    await runWithLog(
+      findBin('openclaw'),
+      ['gateway', 'install'],
+      log,
+      { env: getPathEnv() }
+    )
+  } catch (err) {
+    log(`launchd service install warning: ${err instanceof Error ? err.message : err}`)
+  }
+
   log(t('installer.ocDone'))
 }

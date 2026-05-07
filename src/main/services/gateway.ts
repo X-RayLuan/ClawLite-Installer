@@ -1,5 +1,8 @@
 import { spawn, ChildProcess } from 'child_process'
 import http from 'http'
+import { existsSync } from 'fs'
+import { join } from 'path'
+import { homedir } from 'os'
 import { platform } from 'os'
 import { getPathEnv, findBin } from './path-utils'
 import { checkPort } from './troubleshooter'
@@ -284,8 +287,19 @@ export const startGateway = async (): Promise<GatewayResult> => {
     return { status: 'started' }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
+    const plistPath = join(homedir(), 'Library', 'LaunchAgents', 'ai.openclaw.gateway.plist')
+    const serviceNotInstalled = !existsSync(plistPath)
+
+    // If file doesn't exist, or error message indicates service problem, trigger reinstall
     const isServiceMissing =
-      msg.includes('not loaded') || msg.includes('not installed') || msg.includes('bootstrap')
+      serviceNotInstalled ||
+      msg.includes('not loaded') ||
+      msg.includes('not installed') ||
+      msg.includes('bootstrap') ||
+      msg.includes('Could not find') ||
+      msg.includes('not found') ||
+      msg.includes('Nothing to stop') ||
+      msg.includes('launchd')
     const isMissingGatewayMode =
       msg.includes('missing gateway.mode') || msg.includes('gateway.mode')
 

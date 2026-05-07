@@ -37,7 +37,15 @@ export default function InstallStep({
       }
       if (needs.needOpenclaw) {
         const r = await window.electronAPI.install.openclaw()
-        if (!r.success) throw new Error(r.error)
+        if (!r.success) {
+          // Don't immediately block — the error event may be a false positive.
+          // Verify by checking if the gateway is actually running.
+          const gatewayStatus = await window.electronAPI.gateway.status()
+          if (gatewayStatus !== 'running') {
+            throw new Error(r.error)
+          }
+          // Gateway is running despite the error — treat as success.
+        }
       }
       setDone(true)
     } catch {

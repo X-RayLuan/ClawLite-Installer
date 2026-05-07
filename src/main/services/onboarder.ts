@@ -538,10 +538,19 @@ export const runOnboard = async (
     const plistPath = join(homedir(), 'Library', 'LaunchAgents', 'ai.openclaw.gateway.plist')
     const uid = process.getuid?.() ?? ''
     if (existsSync(plistPath)) {
-      await new Promise<void>((resolve) => {
+      await new Promise<void>((resolve, reject) => {
+        let stderr = ''
         const child = spawn('launchctl', ['bootstrap', `gui/${uid}`, plistPath])
-        child.on('close', () => resolve())
-        child.on('error', () => resolve())
+        child.stderr.on('data', (d) => { stderr += d.toString() })
+        child.on('close', (code) => {
+          if (code !== 0) {
+            log(`launchctl bootstrap failed (code ${code}): ${stderr}`)
+            reject(new Error(stderr || `exit code ${code}`))
+          } else {
+            resolve()
+          }
+        })
+        child.on('error', reject)
       })
     }
   }
