@@ -53,7 +53,7 @@ export default function EnvCheckStep({
   const { t } = useTranslation(['steps', 'common'])
   const [checking, setChecking] = useState(true)
   const [env, setEnv] = useState<EnvResult | null>(null)
-  const [updating, setUpdating] = useState(false)
+
 
   const wslStateLabel = (state?: WslState): string => {
     switch (state) {
@@ -87,23 +87,9 @@ export default function EnvCheckStep({
     runCheck()
   }, [])
 
-  const hasUpdate =
-    env?.openclawInstalled &&
-    env.openclawVersion &&
-    env.openclawLatestVersion &&
-    env.openclawVersion !== env.openclawLatestVersion
 
-  const handleUpdate = async (): Promise<void> => {
-    setUpdating(true)
-    try {
-      await window.electronAPI.install.openclaw()
-      runCheck()
-    } catch {
-      /* install error is reported via IPC event */
-    } finally {
-      setUpdating(false)
-    }
-  }
+
+
 
   const allReady = env ? env.nodeInstalled && env.nodeVersionOk && env.openclawInstalled : false
 
@@ -146,17 +132,7 @@ export default function EnvCheckStep({
               env.openclawInstalled ? `v${env.openclawVersion}` : t('common:status.notInstalled')
             }
           />
-          {hasUpdate && (
-            <button
-              onClick={handleUpdate}
-              disabled={updating}
-              className="w-full text-xs text-center py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-accent transition-colors disabled:opacity-50"
-            >
-              {updating
-                ? t('common:status.updating')
-                : `v${env.openclawLatestVersion} ${t('envCheck.updateAvailable')}`}
-            </button>
-          )}
+
         </div>
       ) : null}
 
