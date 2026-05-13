@@ -8,6 +8,7 @@ interface ActivateData {
   email: string
   apiKey: string
   baseUrl: string
+  apiFormat?: string
 }
 
 // baseUrl for installer API endpoints — always points to clawlite.ai
@@ -314,6 +315,146 @@ function TopupStep({
   )
 }
 
+// ─── Step: Model Select ───────────────────────────────────────────────────────
+function ModelSelectStep({
+  email,
+  onSelect,
+  onBack,
+}: {
+  email: string
+  onSelect: (config: ActivateData) => Promise<void>
+  onBack: () => void
+}): React.JSX.Element {
+  const [loading, setLoading] = useState(false)
+  const [selected, setSelected] = useState<'gpt' | 'anthropic' | null>(null)
+
+  const handleConfirm = async (): Promise<void> => {
+    if (!selected) return
+    setLoading(true)
+    try {
+      // Load verify-otp response data from sessionStorage to get apiKey
+      const stored = sessionStorage.getItem('activate_verify_data')
+      const verifyData = stored ? JSON.parse(stored) : {}
+      const apiKey = verifyData.apiKey || ''
+
+      let config: ActivateData
+      if (selected === 'gpt') {
+        config = {
+          accountId: verifyData.accountId || '',
+          email,
+          apiKey,
+          baseUrl: 'https://clawlite.ai/api/openai/v1',
+        }
+      } else {
+        config = {
+          accountId: verifyData.accountId || '',
+          email,
+          apiKey,
+          baseUrl: 'https://clawlite.ai/api/claude',
+          apiFormat: 'anthropic-messages',
+        }
+      }
+      await onSelect(config)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-col items-center gap-5 w-full max-w-sm mx-auto">
+      <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+          <path
+            d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"
+            stroke="var(--color-primary)"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </div>
+
+      <div className="text-center">
+        <h2 className="text-xl font-black tracking-tight">选择模型</h2>
+        <p className="text-text-muted text-sm mt-1">选择要使用的 AI 模型 Provider</p>
+      </div>
+
+      <div className="w-full space-y-3">
+        {/* GPT Option */}
+        <button
+          onClick={() => setSelected('gpt')}
+          className={`w-full py-4 rounded-xl border transition-all duration-150 flex items-center gap-4 px-5 ${
+            selected === 'gpt'
+              ? 'bg-primary/10 border-primary/60 shadow-lg shadow-primary/20'
+              : 'bg-white/5 border-glass-border hover:border-primary/40 hover:bg-white/[0.08]'
+          }`}
+        >
+          <div className="w-10 h-10 rounded-xl bg-black flex items-center justify-center flex-shrink-0">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+              <path d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.9485 4.9485 0 0 1-2.8766-1.0408 4.8684 4.8684 0 0 1-1.8589-2.0826 4.9854 4.9854 0 0 1-.5829-3.6327 4.9854 4.9854 0 0 1 .5829-3.6327 4.8684 4.8684 0 0 1 1.8589-2.0826 4.9485 4.9485 0 0 1 4.0827-.297 4.981 4.981 0 0 1 3.875 2.7637 4.9863 4.9863 0 0 1 .582 3.9516 4.9854 4.9854 0 0 1-.582 3.6327 4.8684 4.8684 0 0 1-1.8589 2.0826 4.9485 4.9485 0 0 1-4.0827.297z"/>
+            </svg>
+          </div>
+          <div className="flex-1 text-left">
+            <div className="text-base font-black text-text">GPT</div>
+            <div className="text-sm text-text-muted/70 font-medium">gpt-5.4</div>
+            <div className="text-xs text-text-muted/50 mt-0.5">OpenAI 兼容 API</div>
+          </div>
+          {selected === 'gpt' && (
+            <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                <path d="M20 6L9 17l-5-5" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+          )}
+        </button>
+
+        {/* Anthropic Option */}
+        <button
+          onClick={() => setSelected('anthropic')}
+          className={`w-full py-4 rounded-xl border transition-all duration-150 flex items-center gap-4 px-5 ${
+            selected === 'anthropic'
+              ? 'bg-[#f25f4c]/10 border-[#f25f4c]/60 shadow-lg shadow-[#f25f4c]/20'
+              : 'bg-white/5 border-glass-border hover:border-[#f25f4c]/40 hover:bg-white/[0.08]'
+          }`}
+        >
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#f25f4c] to-[#ff8700] flex items-center justify-center flex-shrink-0">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+            </svg>
+          </div>
+          <div className="flex-1 text-left">
+            <div className="text-base font-black text-text">Anthropic</div>
+            <div className="text-sm text-text-muted/70 font-medium">claude-opus-4-7</div>
+            <div className="text-xs text-text-muted/50 mt-0.5">Anthropic Messages API</div>
+          </div>
+          {selected === 'anthropic' && (
+            <div className="w-5 h-5 rounded-full bg-[#f25f4c] flex items-center justify-center flex-shrink-0">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                <path d="M20 6L9 17l-5-5" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+          )}
+        </button>
+      </div>
+
+      <button
+        onClick={handleConfirm}
+        disabled={!selected || loading}
+        className="w-full py-3.5 rounded-xl bg-primary text-white font-black text-[15px] shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/50 hover:brightness-110 active:scale-[0.97] transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        {loading ? '保存中...' : '确认并继续'}
+      </button>
+
+      <button
+        onClick={onBack}
+        className="text-xs text-text-muted/60 hover:text-text font-medium transition-colors cursor-pointer px-2 py-1 rounded-lg hover:bg-white/10"
+      >
+        返回
+      </button>
+    </div>
+  )
+}
+
 // ─── Step: Pending Topup (Stripe Checkout Polling) ─────────────────────────────
 function PendingTopupStep({
   accountId,
@@ -375,7 +516,7 @@ function PendingTopupStep({
 }
 
 // ─── Main ActivateStep ────────────────────────────────────────────────────────
-type View = 'checking' | 'email' | 'verify' | 'topup' | 'pending_topup' | 'error'
+type View = 'checking' | 'email' | 'verify' | 'model_select' | 'topup' | 'pending_topup' | 'error'
 
 interface Props {
   onNext: () => void
@@ -476,16 +617,16 @@ export default function ActivateStep({ onNext }: Props): React.JSX.Element {
         const isActive = data.isActive === true
         const balance = (data as any).balance ?? 0
 
-        // If account is active and has balance, proceed directly
+        // If account is active and has balance, go to model select
         if (isActive && balance > 0) {
-          const saveData: ActivateData = {
+          // Store verify data for model select to retrieve apiKey
+          sessionStorage.setItem('activate_verify_data', JSON.stringify({
             accountId,
-            email,
             apiKey: data.apiKey,
             baseUrl: (data as any).baseUrl || 'https://clawlite.ai/api/openai/v1'
-          }
-          await window.electronAPI.installer.saveActivate(saveData)
-          onNext()
+          }))
+          setView('model_select')
+          setLoading(false)
           return
         }
 
@@ -545,6 +686,25 @@ export default function ActivateStep({ onNext }: Props): React.JSX.Element {
     [topupAccountId, email]
   )
 
+  const handleModelSelect = useCallback(
+    async (config: ActivateData): Promise<void> => {
+      try {
+        await window.electronAPI.installer.saveActivate(config)
+      } catch {
+        // best effort
+      }
+      sessionStorage.removeItem('activate_verify_data')
+      onNext()
+    },
+    [onNext]
+  )
+
+  const handleModelSelectBack = useCallback((): void => {
+    sessionStorage.removeItem('activate_verify_data')
+    setView('email')
+    setEmail('')
+  }, [])
+
   const handleTopupComplete = useCallback(async (): Promise<void> => {
     const saveData: ActivateData = {
       accountId: topupAccountId,
@@ -595,6 +755,13 @@ export default function ActivateStep({ onNext }: Props): React.JSX.Element {
             onCheckout={handleTopupCheckout}
             loading={loading}
             error={error}
+          />
+        )}
+        {view === 'model_select' && (
+          <ModelSelectStep
+            email={email}
+            onSelect={handleModelSelect}
+            onBack={handleModelSelectBack}
           />
         )}
         {view === 'pending_topup' && (
