@@ -110,8 +110,6 @@ export default function ModelSelectModal({
         modelId: selectedModelId
       })
       if (result.success) {
-        // Restart gateway to pick up new model
-        await window.electronAPI.gateway.restart()
         onSuccess()
         onClose()
       } else {
