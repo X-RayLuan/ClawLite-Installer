@@ -624,25 +624,8 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
   // ─── Model list ────────────────────────────────────────────────────────────────────
   ipcMain.handle('model:list', async () => {
     try {
-      // Hard-code clawlite.ai for model:list — no need to read activate.json
-      const baseUrl = 'https://clawlite.ai'
-      let apiKey = ''
-      const activatePath = join(app.getPath('userData'), 'activate.json')
-      if (existsSync(activatePath)) {
-        const data = JSON.parse(readFileSync(activatePath, 'utf-8'))
-        apiKey = data.apiKey || ''
-      }
-      if (!apiKey) {
-        return { success: false, models: [], error: 'not_activated' }
-      }
-
-      const fetchUrl = `${baseUrl}/api/models`
-      console.log(`[model:list] fetching ${fetchUrl} with key ${apiKey.slice(0, 8)}...`)
+      const fetchUrl = 'https://clawlite.ai/api/models'
       const resp = await fetch(fetchUrl, {
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json'
-        },
         signal: AbortSignal.timeout(8000)
       })
 
