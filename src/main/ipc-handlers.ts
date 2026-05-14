@@ -637,7 +637,9 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
         return { success: false, models: [], error: 'not_activated' }
       }
 
-      const resp = await fetch(`${baseUrl}/api/models`, {
+      const fetchUrl = `${baseUrl}/api/models`
+      console.log(`[model:list] fetching ${fetchUrl} with key ${apiKey.slice(0, 8)}...`)
+      const resp = await fetch(fetchUrl, {
         headers: {
           Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json'
