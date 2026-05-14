@@ -282,8 +282,11 @@ export const startGateway = async (): Promise<GatewayResult> => {
   }
 
   try {
+    console.log('[startGateway] running gateway start...')
     await runGateway(['start'])
+    console.log('[startGateway] start done, running doctor fix...')
     await runDoctorFix()
+    console.log('[startGateway] doctor fix done')
     return { status: 'started' }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
@@ -358,7 +361,7 @@ export const stopGateway = (): Promise<string> => {
 }
 
 export const restartGateway = async (): Promise<GatewayResult> => {
-  // Guard stopGateway with a timeout to prevent indefinite hangs
+  console.log('[restartGateway] step 1: stopGateway...')
   await Promise.race([
     (async () => {
       try {
@@ -369,7 +372,9 @@ export const restartGateway = async (): Promise<GatewayResult> => {
     })(),
     new Promise<void>((resolve) => setTimeout(resolve, 10000))
   ])
+  console.log('[restartGateway] step 2: waitUntilStopped...')
   await waitUntilStopped()
+  console.log('[restartGateway] step 3: startGateway...')
   return startGateway()
 }
 

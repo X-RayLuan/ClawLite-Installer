@@ -274,7 +274,12 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
 
   ipcMain.handle('gateway:restart', async () => {
     try {
-      const result = await restartGateway()
+      const result = await Promise.race([
+        restartGateway(),
+        new Promise<{ status: string; error?: string }>((resolve) =>
+          setTimeout(() => resolve({ status: 'timeout', error: 'restart timeout after 30s' }), 30000)
+        )
+      ])
       const success = result.status === 'started'
       return { success, error: result.error }
     } catch (e) {
