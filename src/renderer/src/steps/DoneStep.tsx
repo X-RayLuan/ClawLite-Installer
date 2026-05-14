@@ -6,6 +6,7 @@ import Button from '../components/Button'
 import LogViewer from '../components/LogViewer'
 import ManagementModal from '../components/ManagementModal'
 import ProviderSwitchModal from '../components/ProviderSwitchModal'
+import ModelSelectModal from '../components/ModelSelectModal'
 import LanguageSwitcher from '../components/LanguageSwitcher'
 import { useManagement } from '../hooks/useManagement'
 import { buildWebChatUrl, describeWebChatLaunch, resolveLaunchToken } from './webchat-launch'
@@ -28,6 +29,7 @@ export default function DoneStep({
   const [currentModel, setCurrentModel] = useState<string | null>(null)
   const [currentProvider, setCurrentProvider] = useState<string | undefined>()
   const [showProviderModal, setShowProviderModal] = useState(false)
+  const [showModelSelect, setShowModelSelect] = useState(false)
   const [gatewayToken, setGatewayToken] = useState<string | null>(null)
   const [hasTelegram, setHasTelegram] = useState(false)
   const [installerVersion, setInstallerVersion] = useState<string>('')
@@ -424,7 +426,7 @@ export default function DoneStep({
       </div>
 
       {/* ─── Action grid ─── */}
-      <div className="w-full max-w-md grid grid-cols-2 gap-2 auto-rows-fr shrink-0">
+      <div className="w-full max-w-md grid grid-cols-3 gap-2 auto-rows-fr shrink-0">
         <button
           onClick={toggleAutoLaunch}
           className="glass-card min-w-0 min-h-11 flex items-center gap-2 px-3 py-2 cursor-pointer hover:border-primary/40 transition-all duration-200"
@@ -467,8 +469,20 @@ export default function DoneStep({
           <span className="text-[11px] font-bold flex-1 min-w-0 text-left truncate">{t('done.restore')}</span>
         </button>
         <button
+          onClick={() => setShowModelSelect(true)}
+          className="glass-card min-w-0 min-h-11 flex items-center gap-2 px-3 py-2 cursor-pointer hover:border-primary/40 transition-all duration-200"
+        >
+          <span className="text-sm">🤖</span>
+          <div className="flex-1 min-w-0 text-left">
+            <span className="text-[11px] font-bold truncate block">{t('done.modelSelect') || 'Model'}</span>
+            {currentModel && (
+              <span className="text-[10px] text-text-muted/60 truncate block">{currentModel}</span>
+            )}
+          </div>
+        </button>
+        <button
           onClick={uninstall.open}
-          className="col-span-2 glass-card min-w-0 min-h-11 flex items-center gap-2 px-3 py-2 cursor-pointer hover:border-error/40 transition-all duration-200"
+          className="col-span-3 glass-card min-w-0 min-h-11 flex items-center gap-2 px-3 py-2 cursor-pointer hover:border-error/40 transition-all duration-200"
         >
           <span className="text-sm">🗑️</span>
           <span className="text-[11px] font-bold flex-1 min-w-0 text-left truncate text-error/80">
@@ -559,6 +573,23 @@ export default function DoneStep({
           onSuccess={() => {
             loadCurrentConfig()
             // Gateway restart is handled by IPC handler (config:switch-provider)
+            setStatus('starting')
+            setTimeout(async () => {
+              const s = await window.electronAPI.gateway.status()
+              setStatus(s === 'running' ? 'running' : 'stopped')
+            }, 3000)
+          }}
+        />
+      )}
+
+      {/* ─── Model select modal ─── */}
+      {showModelSelect && (
+        <ModelSelectModal
+          currentProvider={currentProvider}
+          currentModel={currentModel || undefined}
+          onClose={() => setShowModelSelect(false)}
+          onSuccess={() => {
+            loadCurrentConfig()
             setStatus('starting')
             setTimeout(async () => {
               const s = await window.electronAPI.gateway.status()
