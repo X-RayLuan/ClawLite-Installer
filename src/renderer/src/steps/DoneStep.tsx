@@ -33,6 +33,8 @@ export default function DoneStep({
   const [gatewayToken, setGatewayToken] = useState<string | null>(null)
   const [hasTelegram, setHasTelegram] = useState(false)
   const [installerVersion, setInstallerVersion] = useState<string>('')
+  const [currentChannel, setCurrentChannel] = useState<'telegram' | 'lark'>('telegram')
+  const [channelSaving, setChannelSaving] = useState(false)
 
   const statusRef = useRef<'starting' | 'running' | 'stopped'>('starting')
   const lastLogRef = useRef<{ msg: string; ts: number } | null>(null)
@@ -56,6 +58,8 @@ export default function DoneStep({
         setCurrentProvider(r.config.provider)
         setGatewayToken(r.config.gatewayToken || null)
         setHasTelegram(Boolean(r.config.hasTelegram))
+        const chan = (r.config.channels as { enabled?: string } | undefined)?.enabled
+        setCurrentChannel(chan === 'lark' ? 'lark' : 'telegram')
       }
     })
   }, [])
@@ -293,6 +297,17 @@ export default function DoneStep({
     }
   }, [settleStartResult])
 
+  const handleChannelSwitch = useCallback(async (channel: 'telegram' | 'lark') => {
+    if (channel === currentChannel || channelSaving) return
+    setChannelSaving(true)
+    try {
+      const r = await window.electronAPI.channel.save({ channel })
+      if (r.success) setCurrentChannel(channel)
+    } finally {
+      setChannelSaving(false)
+    }
+  }, [currentChannel, channelSaving])
+
   return (
     <div className="flex-1 flex flex-col items-center justify-start pt-10 px-10 gap-3 overflow-hidden">
       <div className="absolute top-4 right-4 text-right">
@@ -423,6 +438,51 @@ export default function DoneStep({
             <p className="text-[11px] text-text-muted/70">Open local OpenClaw dashboard</p>
           </div>
         </button>
+      </div>
+
+      {/* ─── Message channel selector ─── */}
+      <div className="w-full max-w-md">
+        <p className="text-[11px] text-text-muted/60 mb-1.5 px-0.5">Message Channel</p>
+        <div className="flex gap-2">
+          <button
+            onClick={() => handleChannelSwitch('telegram')}
+            disabled={channelSaving}
+            className={`flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl border cursor-pointer transition-all duration-200 ${
+              currentChannel === 'telegram'
+                ? 'bg-white/10 border-primary/60'
+                : 'bg-white/5 border-glass-border hover:border-glass-border/80'
+            }`}
+          >
+            <svg viewBox="0 0 24 24" className="w-4 h-4 shrink-0" fill="#0088cc">
+              <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+            </svg>
+            <div className="flex-1 text-left">
+              <span className="text-[12px] font-bold">Telegram</span>
+            </div>
+            {currentChannel === 'telegram' && (
+              <span className="text-success text-xs">✓</span>
+            )}
+          </button>
+          <button
+            onClick={() => handleChannelSwitch('lark')}
+            disabled={channelSaving}
+            className={`flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl border cursor-pointer transition-all duration-200 ${
+              currentChannel === 'lark'
+                ? 'bg-white/10 border-primary/60'
+                : 'bg-white/5 border-glass-border hover:border-glass-border/80'
+            }`}
+          >
+            <svg viewBox="0 0 24 24" className="w-4 h-4 shrink-0" fill="#1475E7">
+              <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.22l-2.477 10.65c-.127.47-.455.79-.877.79H9.46c-.422 0-.75-.32-.877-.79L6.106 8.22a.94.94 0 0 1 .877-1.28h10.034c.522 0 .922.516.877 1.28z"/>
+            </svg>
+            <div className="flex-1 text-left">
+              <span className="text-[12px] font-bold">Lark</span>
+            </div>
+            {currentChannel === 'lark' && (
+              <span className="text-success text-xs">✓</span>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* ─── Action grid ─── */}

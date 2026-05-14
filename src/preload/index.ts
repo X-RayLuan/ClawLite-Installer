@@ -122,9 +122,24 @@ const electronAPI = {
     }
   },
   config: {
+    /**
+     * Reads current OpenClaw config and installer channel preferences.
+     * Returns `{ provider, model, hasTelegram, gatewayToken, channels }`.
+     * `channels` shape: `{ enabled?, telegram?: { botToken }, lark?: { enabled } }`
+     */
     read: (): Promise<{
       success: boolean
-      config: { provider?: string; model?: string; hasTelegram?: boolean; gatewayToken?: string } | null
+      config: {
+        provider?: string
+        model?: string
+        hasTelegram?: boolean
+        gatewayToken?: string
+        channels?: {
+          enabled?: 'telegram' | 'lark'
+          telegram?: { botToken?: string }
+          lark?: { enabled?: boolean }
+        }
+      } | null
       error?: string
     }> => ipcRenderer.invoke('config:read'),
     switchProvider: (config: {
@@ -134,6 +149,26 @@ const electronAPI = {
       modelId?: string
     }): Promise<{ success: boolean; error?: string }> =>
       ipcRenderer.invoke('config:switch-provider', config)
+  },
+  /**
+   * Message channel configuration (Telegram / Lark/Feishu).
+   * Saves the selected channel and its credentials to the installer config file.
+   */
+  channel: {
+    /**
+     * Saves the active message channel configuration.
+     * @param params.channel - Which channel to enable: 'telegram' or 'lark'.
+     * @param params.telegramBotToken - Bot token (required when channel=telegram).
+     * @param params.larkBotToken - Bot token (required when channel=lark).
+     * @param params.larkBotName - Bot display name (optional, for channel=lark).
+     */
+    save: (params: {
+      channel: 'telegram' | 'lark'
+      telegramBotToken?: string
+      larkBotToken?: string
+      larkBotName?: string
+    }): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('channel:save', params)
   },
   openclaw: {
     checkUpdate: (): Promise<{ currentVersion: string | null; latestVersion: string | null }> =>
@@ -222,6 +257,10 @@ const electronAPI = {
       modelId: string
     }): Promise<{ success: boolean; error?: string }> =>
       ipcRenderer.invoke('model:switch', params)
+  },
+  channel: {
+    save: (params: { channel: 'telegram' | 'lark' }): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('channel:save', params)
   }
 }
 

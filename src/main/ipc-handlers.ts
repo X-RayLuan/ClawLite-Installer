@@ -3,7 +3,39 @@ import { spawn, spawnSync } from 'child_process'
 import { platform } from 'os'
 import { join } from 'path'
 import { existsSync, readFileSync, writeFileSync, unlinkSync, mkdirSync } from 'fs'
+import { homedir } from 'os'
 import { randomBytes } from 'crypto'
+
+// ─── Installer-specific config (channel preferences) ───────────────────────
+interface InstallerChannelConfig {
+  enabled?: 'telegram' | 'lark'
+  telegram?: { botToken?: string }
+  lark?: { enabled?: boolean }
+}
+
+interface InstallerConfig {
+  channels?: InstallerChannelConfig
+}
+
+const getInstallerConfigPath = (): string =>
+  join(homedir(), '.config', 'clawlite-installer', 'config.json')
+
+const readInstallerConfig = (): InstallerConfig => {
+  try {
+    const p = getInstallerConfigPath()
+    if (existsSync(p)) return JSON.parse(readFileSync(p, 'utf-8'))
+  } catch {
+    /* ignore */
+  }
+  return {}
+}
+
+const writeInstallerConfig = (cfg: InstallerConfig): void => {
+  const p = getInstallerConfigPath()
+  const dir = join(homedir(), '.config', 'clawlite-installer')
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
+  writeFileSync(p, JSON.stringify(cfg, null, 2), { mode: 0o600 })
+}
 import i18nMain, { initI18nMain } from '../shared/i18n/main'
 import { rebuildTrayMenu } from './services/tray-manager'
 import { checkEnvironment, checkOpenclawUpdate } from './services/env-checker'
@@ -211,11 +243,46 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
   ipcMain.handle('config:read', async () => {
     try {
       const config = await readCurrentConfig()
-      return { success: true, config }
+      const installerCfg = readInstallerConfig()
+      return { success: true, config: { ...config, channels: installerCfg.channels } }
     } catch (e) {
       return { success: false, config: null, error: e instanceof Error ? e.message : String(e) }
     }
   })
+
+  // ─── Message channel config ─────────────────────────────────────────────────
+  ipcMain.handle(
+    'channel:save',
+    (
+      _e,
+      params: {
+        channel: 'telegram' | 'lark'
+        telegramBotToken?: string
+        larkBotToken?: string
+        larkBotName?: string
+      }
+    ) => {
+      try {
+        const cfg = readInstallerConfig()
+        cfg.channels = cfg.channels || {}
+
+        if (params.channel === 'telegram') {
+          cfg.channels.enabled = 'telegram'
+          cfg.channels.telegram = { botToken: params.telegramBotToken ?? '' }
+          cfg.channels.lark = { enabled: false }
+        } else {
+          cfg.channels.enabled = 'lark'
+          cfg.channels.lark = { enabled: true }
+          cfg.channels.telegram = {}
+        }
+
+        writeInstallerConfig(cfg)
+        return { success: true }
+      } catch (e) {
+        return { success: false, error: e instanceof Error ? e.message : String(e) }
+      }
+    }
+  )
 
   ipcMain.handle(
     'config:switch-provider',
