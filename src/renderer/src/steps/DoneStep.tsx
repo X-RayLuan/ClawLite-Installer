@@ -35,6 +35,15 @@ export default function DoneStep({
   const [installerVersion, setInstallerVersion] = useState<string>('')
   const [currentChannel, setCurrentChannel] = useState<'telegram' | 'lark'>('telegram')
   const [channelSaving, setChannelSaving] = useState(false)
+  const [larkSetup, setLarkSetup] = useState<{
+    phase: 'idle' | 'qr' | 'polling' | 'success' | 'error'
+    qrUrl?: string
+    userCode?: string
+    deviceCode?: string
+    interval?: number
+    expireIn?: number
+    message?: string
+  }>({ phase: 'idle' })
 
   const statusRef = useRef<'starting' | 'running' | 'stopped'>('starting')
   const lastLogRef = useRef<{ msg: string; ts: number } | null>(null)
@@ -308,6 +317,62 @@ export default function DoneStep({
     }
   }, [currentChannel, channelSaving])
 
+  const configureLarkBot = useCallback(async (): Promise<void> => {
+    if (channelSaving || larkSetup.phase === 'polling') return
+    setChannelSaving(true)
+    setShowLogs(true)
+    setLogs((prev) => [...prev, 'Starting Lark/Feishu scan-to-create...'])
+    try {
+      const begin = await window.electronAPI.channel.larkBeginRegistration()
+      if (!begin.success || !begin.deviceCode || !begin.qrUrl) {
+        const msg = begin.error || 'Failed to create Lark/Feishu QR session'
+        setLarkSetup({ phase: 'error', message: msg })
+        setLogs((prev) => [...prev, `Lark setup failed: ${msg}`])
+        return
+      }
+
+      setCurrentChannel('lark')
+      setLarkSetup({
+        phase: 'qr',
+        qrUrl: begin.qrUrl,
+        userCode: begin.userCode,
+        deviceCode: begin.deviceCode,
+        interval: begin.interval,
+        expireIn: begin.expireIn,
+        message: 'Scan the QR with Lark/Feishu on your phone, then approve bot creation.'
+      })
+      setLogs((prev) => [...prev, 'Lark/Feishu QR is ready. Waiting for approval...'])
+
+      setLarkSetup((prev) => ({ ...prev, phase: 'polling' }))
+      const complete = await window.electronAPI.channel.larkCompleteRegistration({
+        deviceCode: begin.deviceCode,
+        interval: begin.interval,
+        expireIn: begin.expireIn
+      })
+
+      if (complete.success) {
+        setLarkSetup({
+          phase: 'success',
+          message: `Lark/Feishu bot configured${complete.domain ? ` (${complete.domain})` : ''}. Gateway restarted.`
+        })
+        setCurrentChannel('lark')
+        setStatus('running')
+        setLogs((prev) => [
+          ...prev,
+          `Lark/Feishu bot configured: ${complete.appId || 'app created'}`,
+          complete.restartError ? `Gateway restart warning: ${complete.restartError}` : 'Gateway restarted after Lark setup.'
+        ])
+        loadCurrentConfig()
+      } else {
+        const msg = complete.error || complete.status || 'Lark/Feishu setup failed'
+        setLarkSetup({ phase: 'error', qrUrl: begin.qrUrl, userCode: begin.userCode, message: msg })
+        setLogs((prev) => [...prev, `Lark setup failed: ${msg}`])
+      }
+    } finally {
+      setChannelSaving(false)
+    }
+  }, [channelSaving, larkSetup.phase, loadCurrentConfig])
+
   return (
     <div className="flex-1 flex flex-col items-center justify-start pt-10 px-10 gap-3 overflow-hidden">
       <div className="absolute top-4 right-4 text-right">
@@ -464,8 +529,8 @@ export default function DoneStep({
             )}
           </button>
           <button
-            onClick={() => handleChannelSwitch('lark')}
-            disabled={channelSaving}
+            onClick={configureLarkBot}
+            disabled={channelSaving || larkSetup.phase === 'polling'}
             className={`flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl border cursor-pointer transition-all duration-200 ${
               currentChannel === 'lark'
                 ? 'bg-white/10 border-primary/60'
@@ -477,12 +542,48 @@ export default function DoneStep({
             </svg>
             <div className="flex-1 text-left">
               <span className="text-[12px] font-bold">Lark</span>
+              <span className="block text-[10px] text-text-muted/60">
+                {larkSetup.phase === 'polling' ? 'Scan pending' : 'Scan setup'}
+              </span>
             </div>
-            {currentChannel === 'lark' && (
+            {larkSetup.phase === 'polling' ? (
+              <span className="text-warning text-xs">…</span>
+            ) : currentChannel === 'lark' ? (
               <span className="text-success text-xs">✓</span>
-            )}
+            ) : null}
           </button>
         </div>
+        {larkSetup.qrUrl && (larkSetup.phase === 'qr' || larkSetup.phase === 'polling' || larkSetup.phase === 'error') && (
+          <div className="mt-2 rounded-xl border border-glass-border bg-white/5 p-3 text-center">
+            <img
+              alt="Lark/Feishu setup QR"
+              src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(larkSetup.qrUrl)}`}
+              className="mx-auto h-[180px] w-[180px] rounded-lg bg-white p-2"
+            />
+            <p className="mt-2 text-[11px] text-text-muted/80">
+              {larkSetup.message || 'Scan with Lark/Feishu mobile app to create and bind the bot.'}
+            </p>
+            {larkSetup.userCode && (
+              <p className="mt-1 text-[10px] text-text-muted/60">Code: {larkSetup.userCode}</p>
+            )}
+            <button
+              onClick={() => window.electronAPI.system.openExternal(larkSetup.qrUrl!)}
+              className="mt-2 text-[11px] text-primary/90 hover:text-primary"
+            >
+              Open authorization page
+            </button>
+          </div>
+        )}
+        {larkSetup.phase === 'success' && larkSetup.message && (
+          <p className="mt-2 rounded-xl border border-success/30 bg-success/10 px-3 py-2 text-[11px] text-success">
+            {larkSetup.message}
+          </p>
+        )}
+        {larkSetup.phase === 'error' && larkSetup.message && (
+          <p className="mt-2 rounded-xl border border-error/30 bg-error/10 px-3 py-2 text-[11px] text-error">
+            {larkSetup.message}
+          </p>
+        )}
       </div>
 
       {/* ─── Action grid ─── */}

@@ -167,8 +167,30 @@ const electronAPI = {
       telegramBotToken?: string
       larkBotToken?: string
       larkBotName?: string
-    }): Promise<{ success: boolean; error?: string }> =>
-      ipcRenderer.invoke('channel:save', params)
+    }): Promise<{ success: boolean; error?: string }> => ipcRenderer.invoke('channel:save', params),
+    larkBeginRegistration: (): Promise<{
+      success: boolean
+      deviceCode?: string
+      qrUrl?: string
+      userCode?: string
+      interval?: number
+      expireIn?: number
+      error?: string
+    }> => ipcRenderer.invoke('channel:lark-begin-registration'),
+    larkCompleteRegistration: (params: {
+      deviceCode: string
+      interval?: number
+      expireIn?: number
+    }): Promise<{
+      success: boolean
+      status?: 'success' | 'access_denied' | 'expired' | 'timeout' | 'error'
+      appId?: string
+      domain?: 'feishu' | 'lark'
+      openId?: string
+      restart?: string
+      restartError?: string
+      error?: string
+    }> => ipcRenderer.invoke('channel:lark-complete-registration', params)
   },
   openclaw: {
     checkUpdate: (): Promise<{ currentVersion: string | null; latestVersion: string | null }> =>
@@ -257,10 +279,6 @@ const electronAPI = {
       modelId: string
     }): Promise<{ success: boolean; error?: string }> =>
       ipcRenderer.invoke('model:switch', params)
-  },
-  channel: {
-    save: (params: { channel: 'telegram' | 'lark' }): Promise<{ success: boolean; error?: string }> =>
-      ipcRenderer.invoke('channel:save', params)
   }
 }
 

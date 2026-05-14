@@ -81,7 +81,17 @@ interface ElectronAPI {
   config: {
     read: () => Promise<{
       success: boolean
-      config: { provider?: string; model?: string; hasTelegram?: boolean; gatewayToken?: string } | null
+      config: {
+        provider?: string
+        model?: string
+        hasTelegram?: boolean
+        gatewayToken?: string
+        channels?: {
+          enabled?: 'telegram' | 'lark'
+          telegram?: { botToken?: string }
+          lark?: { enabled?: boolean }
+        }
+      } | null
       error?: string
     }>
     switchProvider: (config: {
@@ -90,6 +100,37 @@ interface ElectronAPI {
       authMethod?: 'api-key' | 'oauth'
       modelId?: string
     }) => Promise<{ success: boolean; error?: string }>
+  }
+  channel: {
+    save: (params: {
+      channel: 'telegram' | 'lark'
+      telegramBotToken?: string
+      larkBotToken?: string
+      larkBotName?: string
+    }) => Promise<{ success: boolean; error?: string }>
+    larkBeginRegistration: () => Promise<{
+      success: boolean
+      deviceCode?: string
+      qrUrl?: string
+      userCode?: string
+      interval?: number
+      expireIn?: number
+      error?: string
+    }>
+    larkCompleteRegistration: (params: {
+      deviceCode: string
+      interval?: number
+      expireIn?: number
+    }) => Promise<{
+      success: boolean
+      status?: 'success' | 'access_denied' | 'expired' | 'timeout' | 'error'
+      appId?: string
+      domain?: 'feishu' | 'lark'
+      openId?: string
+      restart?: string
+      restartError?: string
+      error?: string
+    }>
   }
   openclaw: {
     checkUpdate: () => Promise<{ currentVersion: string | null; latestVersion: string | null }>

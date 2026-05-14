@@ -5,6 +5,7 @@ import { join } from 'path'
 import { existsSync, readFileSync, writeFileSync, unlinkSync, mkdirSync } from 'fs'
 import { homedir } from 'os'
 import { randomBytes } from 'crypto'
+import { getPathEnv, findBin } from './services/path-utils'
 
 // ─── Installer-specific config (channel preferences) ───────────────────────
 interface InstallerChannelConfig {
@@ -16,6 +17,34 @@ interface InstallerChannelConfig {
 interface InstallerConfig {
   channels?: InstallerChannelConfig
 }
+
+interface FeishuRegistrationBegin {
+  deviceCode: string
+  qrUrl: string
+  userCode?: string
+  interval: number
+  expireIn: number
+}
+
+interface FeishuRegistrationResult {
+  appId: string
+  appSecret: string
+  domain: 'feishu' | 'lark'
+  openId?: string
+}
+
+interface FeishuRegistrationOutcome {
+  status: 'success' | 'access_denied' | 'expired' | 'timeout' | 'error'
+  result?: FeishuRegistrationResult
+  message?: string
+}
+
+const FEISHU_ACCOUNTS_URL = 'https://accounts.feishu.cn'
+const LARK_ACCOUNTS_URL = 'https://accounts.larksuite.com'
+const FEISHU_REGISTRATION_PATH = '/oauth/v1/app/registration'
+const FEISHU_REGISTRATION_TIMEOUT_MS = 10000
+const DEFAULT_FEISHU_POLL_INTERVAL_SECONDS = 5
+const DEFAULT_FEISHU_REGISTRATION_EXPIRE_SECONDS = 600
 
 const getInstallerConfigPath = (): string =>
   join(homedir(), '.config', 'clawlite-installer', 'config.json')
@@ -35,6 +64,161 @@ const writeInstallerConfig = (cfg: InstallerConfig): void => {
   const dir = join(homedir(), '.config', 'clawlite-installer')
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
   writeFileSync(p, JSON.stringify(cfg, null, 2), { mode: 0o600 })
+}
+
+const feishuAccountsBaseUrl = (domain: 'feishu' | 'lark'): string =>
+  domain === 'lark' ? LARK_ACCOUNTS_URL : FEISHU_ACCOUNTS_URL
+
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
+
+const postFeishuRegistration = async (
+  domain: 'feishu' | 'lark',
+  body: Record<string, string>
+): Promise<Record<string, any>> => {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), FEISHU_REGISTRATION_TIMEOUT_MS)
+  try {
+    const res = await fetch(`${feishuAccountsBaseUrl(domain)}${FEISHU_REGISTRATION_PATH}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams(body).toString(),
+      signal: controller.signal
+    })
+    const json = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(json?.error_description || json?.error || `HTTP ${res.status}`)
+    return json
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+const initFeishuRegistration = async (domain: 'feishu' | 'lark' = 'feishu'): Promise<void> => {
+  const res = await postFeishuRegistration(domain, { action: 'init' })
+  const methods = Array.isArray(res.supported_auth_methods) ? res.supported_auth_methods : []
+  if (!methods.includes('client_secret')) {
+    throw new Error('Feishu scan-to-create is not available in this environment')
+  }
+}
+
+const beginFeishuRegistration = async (
+  domain: 'feishu' | 'lark' = 'feishu'
+): Promise<FeishuRegistrationBegin> => {
+  await initFeishuRegistration(domain)
+  const res = await postFeishuRegistration(domain, {
+    action: 'begin',
+    archetype: 'PersonalAgent',
+    auth_method: 'client_secret',
+    request_user_info: 'open_id'
+  })
+
+  if (!res.device_code || !res.verification_uri_complete) {
+    throw new Error('Feishu registration did not return a QR URL')
+  }
+
+  const qrUrl = new URL(String(res.verification_uri_complete))
+  qrUrl.searchParams.set('from', 'clawlite_installer')
+  qrUrl.searchParams.set('tp', 'ob_cli_app')
+
+  return {
+    deviceCode: String(res.device_code),
+    qrUrl: qrUrl.toString(),
+    userCode: res.user_code ? String(res.user_code) : undefined,
+    interval: Number(res.interval || DEFAULT_FEISHU_POLL_INTERVAL_SECONDS),
+    expireIn: Number(res.expire_in || DEFAULT_FEISHU_REGISTRATION_EXPIRE_SECONDS)
+  }
+}
+
+const pollFeishuRegistration = async (params: {
+  deviceCode: string
+  interval?: number
+  expireIn?: number
+  initialDomain?: 'feishu' | 'lark'
+}): Promise<FeishuRegistrationOutcome> => {
+  let currentInterval = params.interval || DEFAULT_FEISHU_POLL_INTERVAL_SECONDS
+  let domain: 'feishu' | 'lark' = params.initialDomain || 'feishu'
+  let domainSwitched = false
+  const deadline = Date.now() + (params.expireIn || DEFAULT_FEISHU_REGISTRATION_EXPIRE_SECONDS) * 1000
+
+  while (Date.now() < deadline) {
+    let pollRes: Record<string, any>
+    try {
+      pollRes = await postFeishuRegistration(domain, {
+        action: 'poll',
+        device_code: params.deviceCode,
+        tp: 'ob_app'
+      })
+    } catch {
+      await sleep(currentInterval * 1000)
+      continue
+    }
+
+    const tenantBrand = pollRes.user_info?.tenant_brand
+    if (!domainSwitched && tenantBrand === 'lark') {
+      domain = 'lark'
+      domainSwitched = true
+      continue
+    }
+
+    if (pollRes.client_id && pollRes.client_secret) {
+      return {
+        status: 'success',
+        result: {
+          appId: String(pollRes.client_id),
+          appSecret: String(pollRes.client_secret),
+          domain,
+          openId: pollRes.user_info?.open_id ? String(pollRes.user_info.open_id) : undefined
+        }
+      }
+    }
+
+    const error = pollRes.error ? String(pollRes.error) : ''
+    if (error === 'slow_down') currentInterval += 5
+    else if (error === 'access_denied') return { status: 'access_denied' }
+    else if (error === 'expired_token') return { status: 'expired' }
+    else if (error && error !== 'authorization_pending') {
+      return {
+        status: 'error',
+        message: `${error}: ${pollRes.error_description || 'unknown'}`
+      }
+    }
+
+    await sleep(currentInterval * 1000)
+  }
+
+  return { status: 'timeout' }
+}
+
+const applyFeishuOpenClawConfig = async (result: FeishuRegistrationResult): Promise<void> => {
+  const patch = {
+    channels: {
+      feishu: {
+        enabled: true,
+        appId: result.appId,
+        appSecret: result.appSecret,
+        connectionMode: 'websocket',
+        domain: result.domain,
+        dmPolicy: 'allowlist',
+        allowFrom: result.openId ? [result.openId] : [],
+        groupPolicy: 'allowlist'
+      }
+    }
+  }
+
+  await new Promise<void>((resolve, reject) => {
+    const child = spawn(findBin('openclaw'), ['config', 'patch', '--stdin'], {
+      env: getPathEnv(),
+      stdio: ['pipe', 'pipe', 'pipe']
+    })
+    let stderr = ''
+    child.stderr.on('data', (d) => (stderr += d.toString()))
+    child.on('error', reject)
+    child.on('close', (code) => {
+      if (code === 0) resolve()
+      else reject(new Error(stderr.trim() || `openclaw config patch exited with ${code}`))
+    })
+    child.stdin.write(JSON.stringify(patch))
+    child.stdin.end()
+  })
 }
 import i18nMain, { initI18nMain } from '../shared/i18n/main'
 import { rebuildTrayMenu } from './services/tray-manager'
@@ -280,6 +464,63 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
         return { success: true }
       } catch (e) {
         return { success: false, error: e instanceof Error ? e.message : String(e) }
+      }
+    }
+  )
+
+  ipcMain.handle('channel:lark-begin-registration', async () => {
+    try {
+      const begin = await beginFeishuRegistration('feishu')
+      return { success: true, ...begin }
+    } catch (e) {
+      return { success: false, error: e instanceof Error ? e.message : String(e) }
+    }
+  })
+
+  ipcMain.handle(
+    'channel:lark-complete-registration',
+    async (
+      _e,
+      params: {
+        deviceCode: string
+        interval?: number
+        expireIn?: number
+      }
+    ) => {
+      try {
+        if (!params.deviceCode) throw new Error('deviceCode is required')
+        const outcome = await pollFeishuRegistration(params)
+        if (outcome.status !== 'success' || !outcome.result) {
+          return { success: false, status: outcome.status, error: outcome.message || outcome.status }
+        }
+
+        await applyFeishuOpenClawConfig(outcome.result)
+
+        const cfg = readInstallerConfig()
+        cfg.channels = cfg.channels || {}
+        cfg.channels.enabled = 'lark'
+        cfg.channels.lark = { enabled: true }
+        cfg.channels.telegram = {}
+        writeInstallerConfig(cfg)
+
+        const restartResult = await Promise.race([
+          restartGateway(),
+          new Promise<{ status: string; error?: string }>((resolve) =>
+            setTimeout(() => resolve({ status: 'timeout', error: 'restart timeout after 30s' }), 30000)
+          )
+        ])
+
+        return {
+          success: true,
+          status: 'success',
+          appId: outcome.result.appId,
+          domain: outcome.result.domain,
+          openId: outcome.result.openId,
+          restart: restartResult.status,
+          restartError: restartResult.error
+        }
+      } catch (e) {
+        return { success: false, status: 'error', error: e instanceof Error ? e.message : String(e) }
       }
     }
   )
