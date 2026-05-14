@@ -625,16 +625,22 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
   ipcMain.handle('model:list', async () => {
     try {
       const fetchUrl = 'https://clawlite.ai/api/models'
-      const resp = await fetch(fetchUrl, {
-        signal: AbortSignal.timeout(8000)
-      })
+      let resp: Response
+      try {
+        resp = await fetch(fetchUrl, { signal: AbortSignal.timeout(15000) })
+      } catch (fetchErr) {
+        console.error('[model:list] fetch error:', fetchErr)
+        return { success: false, models: [], error: String(fetchErr) }
+      }
 
+      console.log(`[model:list] fetched ${fetchUrl}, status=${resp.status}`)
       if (!resp.ok) {
         return { success: false, models: [], error: `http_${resp.status}` }
       }
 
       const data = (await resp.json()) as { ok: boolean; models?: Array<{ id: string; name: string; provider: string; contextWindow: number; inputPer1M: number; outputPer1M: number }>; error?: string }
 
+      console.log(`[model:list] parsed ${data.models?.length ?? 0} models, ok=${data.ok}`)
       if (!data.ok || !data.models) {
         return { success: false, models: [], error: data.error || 'fetch_failed' }
       }
