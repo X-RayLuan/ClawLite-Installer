@@ -631,13 +631,25 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
       if (existsSync(activatePath)) {
         const data = JSON.parse(readFileSync(activatePath, 'utf-8'))
         apiKey = data.apiKey || ''
-        baseUrl = data.baseUrl || baseUrl
+        let rawBaseUrl = data.baseUrl || baseUrl
+        // Fix: strip trailing /api/openai/v1 or /api/... that would break model:list
+        if (rawBaseUrl.endsWith('/api/openai/v1') || rawBaseUrl.endsWith('/api/openai')) {
+          rawBaseUrl = 'https://clawlite.ai'
+          // Persist the corrected baseUrl so it doesn't need fixing every time
+          try {
+            data.baseUrl = rawBaseUrl
+            writeFileSync(activatePath, JSON.stringify(data, null, 2))
+          } catch {}
+        }
+        baseUrl = rawBaseUrl
       }
       if (!apiKey) {
         return { success: false, models: [], error: 'not_activated' }
       }
 
-      const resp = await fetch(`${baseUrl}/api/models`, {
+      const fetchUrl = `${baseUrl}/api/models`
+      console.log(`[model:list] fetching ${fetchUrl} with key ${apiKey.slice(0, 8)}...`)
+      const resp = await fetch(fetchUrl, {
         headers: {
           Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json'
