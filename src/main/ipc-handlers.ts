@@ -670,7 +670,7 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
           provider === 'openai' ? 'openai-completions' : 'anthropic-messages'
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const m = ocConfig.models as any
+        const m = (ocConfig.models = ocConfig.models || {}) as any
         m.providers = m.providers || {}
         m.providers.clawlite = {
           baseUrl: apiBaseUrl,
