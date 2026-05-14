@@ -191,7 +191,7 @@ export function useActivation() {
           licenseType: 'unknown',
           expiresAt: null,
           apiKey: provisionData.credentialRef,
-          baseUrl: 'https://clawlite.ai/api/openai/v1',
+          baseUrl: 'https://clawlite.ai',
           balanceUsd: balanceUsd ?? pendingBalanceRef.current,
         }
         setActivationInfo(info)
@@ -269,7 +269,7 @@ export function useActivation() {
           licenseType: 'unknown',
           expiresAt: null,
           apiKey: provisionData.credentialRef,
-          baseUrl: 'https://clawlite.ai/api/openai/v1',
+          baseUrl: 'https://clawlite.ai',
           balanceUsd,
         }
         setActivationInfo(info)
