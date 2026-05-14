@@ -637,7 +637,7 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
         return { success: false, models: [], error: 'not_activated' }
       }
 
-      const resp = await fetch(`${baseUrl}/api/clawrouter/models`, {
+      const resp = await fetch(`${baseUrl}/api/models`, {
         headers: {
           Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json'
