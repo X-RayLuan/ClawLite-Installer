@@ -624,24 +624,13 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
   // ─── Model list ────────────────────────────────────────────────────────────────────
   ipcMain.handle('model:list', async () => {
     try {
-      // Read activation to get API key
-      const activatePath = join(app.getPath('userData'), 'activate.json')
+      // Hard-code clawlite.ai for model:list — no need to read activate.json
+      const baseUrl = 'https://clawlite.ai'
       let apiKey = ''
-      let baseUrl = 'https://clawlite.ai'
+      const activatePath = join(app.getPath('userData'), 'activate.json')
       if (existsSync(activatePath)) {
         const data = JSON.parse(readFileSync(activatePath, 'utf-8'))
         apiKey = data.apiKey || ''
-        let rawBaseUrl = data.baseUrl || baseUrl
-        // Fix: strip trailing /api/openai/v1 or /api/... that would break model:list
-        if (rawBaseUrl.endsWith('/api/openai/v1') || rawBaseUrl.endsWith('/api/openai')) {
-          rawBaseUrl = 'https://clawlite.ai'
-          // Persist the corrected baseUrl so it doesn't need fixing every time
-          try {
-            data.baseUrl = rawBaseUrl
-            writeFileSync(activatePath, JSON.stringify(data, null, 2))
-          } catch {}
-        }
-        baseUrl = rawBaseUrl
       }
       if (!apiKey) {
         return { success: false, models: [], error: 'not_activated' }
