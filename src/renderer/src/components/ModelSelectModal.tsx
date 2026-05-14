@@ -1,50 +1,42 @@
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { providerConfigs } from '../constants/providers'
+
+type ModelChoice = 'gpt' | 'opus'
 
 interface Props {
-  currentProvider?: string
-  currentModel?: string
+  currentModelId?: string   // e.g. 'clawlite/gpt-5.4' or 'clawlite/claude-opus-4-7'
   onClose: () => void
   onSuccess: () => void
 }
 
-type QuickProvider = 'openai' | 'anthropic'
-
 export default function ModelSelectModal({
-  currentProvider,
+  currentModelId,
   onClose,
   onSuccess
 }: Props): React.JSX.Element {
-  const { t } = useTranslation('management')
-  const [loading, setLoading] = useState<QuickProvider | null>(null)
+  const [loading, setLoading] = useState<ModelChoice | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const handleSelect = async (providerId: QuickProvider): Promise<void> => {
-    setLoading(providerId)
+  // Determine which is currently active based on model id prefix
+  const current: ModelChoice | null =
+    currentModelId?.includes('claude') ? 'opus' : currentModelId?.includes('gpt') ? 'gpt' : null
+
+  const handleSelect = async (choice: ModelChoice): Promise<void> => {
+    if (choice === current) {
+      onClose()
+      return
+    }
+    setLoading(choice)
     setError(null)
     try {
-      const cfg = providerConfigs.find((p) => p.id === providerId)!
-      const defaultModel = cfg.models[0].id
-
-      const isSameProvider = currentProvider === providerId
-
-      if (isSameProvider) {
-        const result = await window.electronAPI.config.switchProvider({
-          provider: providerId,
-          modelId: defaultModel
-        })
-        if (result.success) {
-          onSuccess()
-          onClose()
-        } else {
-          setError(result.error || t('common:error.occurred'))
-        }
+      const result = await window.electronAPI.model.switch(choice)
+      if (result.success) {
+        onSuccess()
+        onClose()
       } else {
-        setError('请通过"切换 Provider"功能来更换不同模型服务商。')
+        setError(result.error || '切换失败')
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : t('common:error.unknown'))
+      setError(e instanceof Error ? e.message : '切换失败')
     } finally {
       setLoading(null)
     }
@@ -56,8 +48,8 @@ export default function ModelSelectModal({
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-base font-black">选择模型</h3>
-            <p className="text-xs text-text-muted mt-0.5">选择要使用的 AI 模型</p>
+            <h3 className="text-base font-black">Model Choose</h3>
+            <p className="text-xs text-text-muted mt-0.5">选择模型后 Gateway 将自动重启</p>
           </div>
           <button
             onClick={onClose}
@@ -77,14 +69,14 @@ export default function ModelSelectModal({
 
         {/* Provider cards */}
         <div className="space-y-3">
-          {/* GPT / OpenAI */}
+          {/* GPT */}
           <button
-            onClick={() => handleSelect('openai')}
+            onClick={() => handleSelect('gpt')}
             disabled={loading !== null}
             className={`w-full py-4 rounded-xl border transition-all duration-150 flex items-center gap-4 px-5 disabled:opacity-50 ${
-              loading === 'openai'
+              loading === 'gpt'
                 ? 'bg-primary/10 border-primary/60'
-                : currentProvider === 'openai'
+                : current === 'gpt'
                   ? 'bg-primary/10 border-primary/40'
                   : 'bg-white/5 border-glass-border hover:border-primary/40 hover:bg-white/[0.08]'
             }`}
@@ -96,13 +88,13 @@ export default function ModelSelectModal({
             </div>
             <div className="flex-1 text-left">
               <div className="text-base font-black text-text">GPT</div>
-              <div className="text-sm text-text-muted/70 font-medium">gpt-5.2</div>
-              <div className="text-xs text-text-muted/50 mt-0.5">OpenAI 兼容 API</div>
+              <div className="text-sm text-text-muted/70 font-medium">gpt-5.4</div>
+              <div className="text-xs text-text-muted/50 mt-0.5">clawlite.ai / OpenAI 兼容</div>
             </div>
-            {loading === 'openai' && (
+            {loading === 'gpt' && (
               <div className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin flex-shrink-0" />
             )}
-            {currentProvider === 'openai' && loading !== 'openai' && (
+            {current === 'gpt' && loading !== 'gpt' && (
               <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
                   <path d="M20 6L9 17l-5-5" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
@@ -111,14 +103,14 @@ export default function ModelSelectModal({
             )}
           </button>
 
-          {/* Anthropic */}
+          {/* Claude Opus */}
           <button
-            onClick={() => handleSelect('anthropic')}
+            onClick={() => handleSelect('opus')}
             disabled={loading !== null}
             className={`w-full py-4 rounded-xl border transition-all duration-150 flex items-center gap-4 px-5 disabled:opacity-50 ${
-              loading === 'anthropic'
+              loading === 'opus'
                 ? 'bg-[#f25f4c]/10 border-[#f25f4c]/60'
-                : currentProvider === 'anthropic'
+                : current === 'opus'
                   ? 'bg-[#f25f4c]/10 border-[#f25f4c]/40'
                   : 'bg-white/5 border-glass-border hover:border-[#f25f4c]/40 hover:bg-white/[0.08]'
             }`}
@@ -129,30 +121,20 @@ export default function ModelSelectModal({
               </svg>
             </div>
             <div className="flex-1 text-left">
-              <div className="text-base font-black text-text">Anthropic</div>
-              <div className="text-sm text-text-muted/70 font-medium">claude-sonnet-4-6</div>
-              <div className="text-xs text-text-muted/50 mt-0.5">Anthropic Messages API</div>
+              <div className="text-base font-black text-text">Claude Opus</div>
+              <div className="text-sm text-text-muted/70 font-medium">claude-opus-4-7</div>
+              <div className="text-xs text-text-muted/50 mt-0.5">clawlite.ai / Anthropic Messages</div>
             </div>
-            {loading === 'anthropic' && (
+            {loading === 'opus' && (
               <div className="w-5 h-5 border-2 border-[#f25f4c]/30 border-t-[#f25f4c] rounded-full animate-spin flex-shrink-0" />
             )}
-            {currentProvider === 'anthropic' && loading !== 'anthropic' && (
+            {current === 'opus' && loading !== 'opus' && (
               <div className="w-5 h-5 rounded-full bg-[#f25f4c] flex items-center justify-center flex-shrink-0">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
                   <path d="M20 6L9 17l-5-5" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </div>
             )}
-          </button>
-        </div>
-
-        {/* Footer: switch provider link */}
-        <div className="text-center">
-          <button
-            onClick={onClose}
-            className="text-xs text-text-muted/60 hover:text-text-muted transition-colors cursor-pointer"
-          >
-            切换到其他服务商 →
           </button>
         </div>
       </div>

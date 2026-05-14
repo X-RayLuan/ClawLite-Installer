@@ -150,6 +150,9 @@ interface ElectronAPI {
       baseUrl: string
     }) => Promise<{ success: boolean }>
   }
+  model: {
+    switch: (model: 'gpt' | 'opus') => Promise<{ success: boolean; error?: string }>
+  }
 }
 
 declare global {

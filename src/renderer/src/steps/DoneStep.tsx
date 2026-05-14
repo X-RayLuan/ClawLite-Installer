@@ -474,7 +474,7 @@ export default function DoneStep({
         >
           <span className="text-sm">🤖</span>
           <div className="flex-1 min-w-0 text-left">
-            <span className="text-[11px] font-bold truncate block">{t('done.modelSelect') || 'Model'}</span>
+            <span className="text-[11px] font-bold truncate block">Model Choose</span>
             {currentModel && (
               <span className="text-[10px] text-text-muted/60 truncate block">{currentModel}</span>
             )}
@@ -585,8 +585,7 @@ export default function DoneStep({
       {/* ─── Model select modal ─── */}
       {showModelSelect && (
         <ModelSelectModal
-          currentProvider={currentProvider}
-          currentModel={currentModel || undefined}
+          currentModelId={currentModel || undefined}
           onClose={() => setShowModelSelect(false)}
           onSuccess={() => {
             loadCurrentConfig()

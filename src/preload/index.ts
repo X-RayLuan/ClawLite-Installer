@@ -203,6 +203,10 @@ const electronAPI = {
       apiKey: string
       baseUrl: string
     }): Promise<{ success: boolean }> => ipcRenderer.invoke('installer:save-activate', data)
+  },
+  model: {
+    switch: (model: 'gpt' | 'opus'): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('model:switch', model)
   }
 }
 

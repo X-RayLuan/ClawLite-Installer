@@ -620,4 +620,81 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
       }
     }
   )
+
+  // ─── Model switch (lightweight — just update baseUrl/api/model in openclaw.json) ───
+  ipcMain.handle(
+    'model:switch',
+    (_e, model: 'gpt' | 'opus') => {
+      try {
+        const openClawDir = join(app.getPath('home'), '.openclaw')
+        const openClawConfigPath = join(openClawDir, 'openclaw.json')
+        let ocConfig: Record<string, unknown> = {}
+        if (existsSync(openClawConfigPath)) {
+          ocConfig = JSON.parse(readFileSync(openClawConfigPath, 'utf-8'))
+        }
+
+        // Same API key, just swap baseUrl / api / model
+        const existingApiKey =
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (ocConfig.models as any)?.providers?.clawlite?.apiKey ?? ''
+
+        if (model === 'gpt') {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const m = ocConfig.models as any
+          m.providers = m.providers || {}
+          m.providers.clawlite = {
+            baseUrl: 'https://clawlite.ai/api/openai/v1',
+            apiKey: existingApiKey,
+            api: 'openai-completions',
+            models: [
+              {
+                id: 'gpt-5.4',
+                name: 'GPT-5.4',
+                input: ['text', 'image'],
+                cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+                contextWindow: 200000,
+                maxTokens: 32000,
+                reasoning: true
+              }
+            ]
+          }
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const a = ocConfig.agents as any
+          a.defaults = a.defaults || {}
+          a.defaults.model = 'clawlite/gpt-5.4'
+        } else {
+          // opus
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const m = ocConfig.models as any
+          m.providers = m.providers || {}
+          m.providers.clawlite = {
+            baseUrl: 'https://clawlite.ai/api/claude',
+            apiKey: existingApiKey,
+            api: 'anthropic-messages',
+            models: [
+              {
+                id: 'claude-opus-4-7',
+                name: 'claude-opus-4-7',
+                input: ['text', 'image'],
+                cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+                contextWindow: 200000,
+                maxTokens: 32000,
+                reasoning: true
+              }
+            ]
+          }
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const a = ocConfig.agents as any
+          a.defaults = a.defaults || {}
+          a.defaults.model = 'clawlite/claude-opus-4-7'
+        }
+
+        writeFileSync(openClawConfigPath, JSON.stringify(ocConfig, null, 2), { mode: 0o600 })
+        return { success: true }
+      } catch (e) {
+        console.error('[model:switch] failed:', e)
+        return { success: false, error: String(e) }
+      }
+    }
+  )
 }
