@@ -621,10 +621,51 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
     }
   )
 
+  // ─── Model list ────────────────────────────────────────────────────────────────────
+  ipcMain.handle('model:list', async () => {
+    try {
+      // Read activation to get API key
+      const activatePath = join(app.getPath('userData'), 'activate.json')
+      let apiKey = ''
+      let baseUrl = 'https://clawlite.ai'
+      if (existsSync(activatePath)) {
+        const data = JSON.parse(readFileSync(activatePath, 'utf-8'))
+        apiKey = data.apiKey || ''
+        baseUrl = data.baseUrl || baseUrl
+      }
+      if (!apiKey) {
+        return { success: false, models: [], error: 'not_activated' }
+      }
+
+      const resp = await fetch(`${baseUrl}/api/clawrouter/models`, {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        signal: AbortSignal.timeout(8000)
+      })
+
+      if (!resp.ok) {
+        return { success: false, models: [], error: `http_${resp.status}` }
+      }
+
+      const data = (await resp.json()) as { ok: boolean; models?: Array<{ id: string; name: string; provider: string; contextWindow: number; inputPer1M: number; outputPer1M: number }>; error?: string }
+
+      if (!data.ok || !data.models) {
+        return { success: false, models: [], error: data.error || 'fetch_failed' }
+      }
+
+      return { success: true, models: data.models }
+    } catch (e) {
+      return { success: false, models: [], error: String(e) }
+    }
+  })
+
   // ─── Model switch (lightweight — just update baseUrl/api/model in openclaw.json) ───
   ipcMain.handle(
     'model:switch',
-    (_e, model: 'gpt' | 'opus') => {
+    (_e, params: { provider: 'openai' | 'anthropic'; modelId: string }) => {
+      const { provider, modelId } = params
       try {
         const openClawDir = join(app.getPath('home'), '.openclaw')
         const openClawConfigPath = join(openClawDir, 'openclaw.json')
@@ -633,61 +674,40 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
           ocConfig = JSON.parse(readFileSync(openClawConfigPath, 'utf-8'))
         }
 
-        // Same API key, just swap baseUrl / api / model
         const existingApiKey =
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (ocConfig.models as any)?.providers?.clawlite?.apiKey ?? ''
 
-        if (model === 'gpt') {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const m = ocConfig.models as any
-          m.providers = m.providers || {}
-          m.providers.clawlite = {
-            baseUrl: 'https://clawlite.ai/api/openai/v1',
-            apiKey: existingApiKey,
-            api: 'openai-completions',
-            models: [
-              {
-                id: 'gpt-5.4',
-                name: 'GPT-5.4',
-                input: ['text', 'image'],
-                cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-                contextWindow: 200000,
-                maxTokens: 32000,
-                reasoning: true
-              }
-            ]
-          }
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const a = ocConfig.agents as any
-          a.defaults = a.defaults || {}
-          a.defaults.model = 'clawlite/gpt-5.4'
-        } else {
-          // opus
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const m = ocConfig.models as any
-          m.providers = m.providers || {}
-          m.providers.clawlite = {
-            baseUrl: 'https://clawlite.ai/api/claude',
-            apiKey: existingApiKey,
-            api: 'anthropic-messages',
-            models: [
-              {
-                id: 'claude-opus-4-7',
-                name: 'claude-opus-4-7',
-                input: ['text', 'image'],
-                cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-                contextWindow: 200000,
-                maxTokens: 32000,
-                reasoning: true
-              }
-            ]
-          }
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const a = ocConfig.agents as any
-          a.defaults = a.defaults || {}
-          a.defaults.model = 'clawlite/claude-opus-4-7'
+        const apiBaseUrl =
+          provider === 'openai'
+            ? 'https://clawlite.ai/api/openai/v1'
+            : 'https://clawlite.ai/api/claude'
+        const api =
+          provider === 'openai' ? 'openai-completions' : 'anthropic-messages'
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const m = ocConfig.models as any
+        m.providers = m.providers || {}
+        m.providers.clawlite = {
+          baseUrl: apiBaseUrl,
+          apiKey: existingApiKey,
+          api,
+          models: [
+            {
+              id: modelId,
+              name: modelId,
+              input: ['text', 'image'],
+              cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+              contextWindow: 200000,
+              maxTokens: 32000,
+              reasoning: true
+            }
+          ]
         }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const a = ocConfig.agents as any
+        a.defaults = a.defaults || {}
+        a.defaults.model = `clawlite/${modelId}`
 
         writeFileSync(openClawConfigPath, JSON.stringify(ocConfig, null, 2), { mode: 0o600 })
         return { success: true }

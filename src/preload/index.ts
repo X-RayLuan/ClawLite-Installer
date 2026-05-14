@@ -205,8 +205,23 @@ const electronAPI = {
     }): Promise<{ success: boolean }> => ipcRenderer.invoke('installer:save-activate', data)
   },
   model: {
-    switch: (model: 'gpt' | 'opus'): Promise<{ success: boolean; error?: string }> =>
-      ipcRenderer.invoke('model:switch', model)
+    list: (): Promise<{
+      success: boolean
+      models: Array<{
+        id: string
+        name: string
+        provider: string
+        contextWindow: number
+        inputPer1M: number
+        outputPer1M: number
+      }>
+      error?: string
+    }> => ipcRenderer.invoke('model:list'),
+    switch: (params: {
+      provider: 'openai' | 'anthropic'
+      modelId: string
+    }): Promise<{ success: boolean; error?: string }> =>
+      ipcRenderer.invoke('model:switch', params)
   }
 }
 

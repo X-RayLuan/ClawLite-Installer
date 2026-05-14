@@ -151,7 +151,22 @@ interface ElectronAPI {
     }) => Promise<{ success: boolean }>
   }
   model: {
-    switch: (model: 'gpt' | 'opus') => Promise<{ success: boolean; error?: string }>
+    list: () => Promise<{
+      success: boolean
+      models: Array<{
+        id: string
+        name: string
+        provider: string
+        contextWindow: number
+        inputPer1M: number
+        outputPer1M: number
+      }>
+      error?: string
+    }>
+    switch: (params: {
+      provider: 'openai' | 'anthropic'
+      modelId: string
+    }) => Promise<{ success: boolean; error?: string }>
   }
 }
 
