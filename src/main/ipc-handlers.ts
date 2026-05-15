@@ -495,8 +495,13 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
         stdio: ['pipe', 'pipe', 'pipe']
       })
 
-      proc.stdin.write('y\n')
-      proc.stdin.end()
+      // Step 1: accept default "Download from npm" for plugin install prompt
+      proc.stdin.write('\n')
+      // Step 2: confirm "y" to use existing bot (after a short delay to let the UI update)
+      setTimeout(() => {
+        proc.stdin.write('y\n')
+        proc.stdin.end()
+      }, 100)
 
       proc.stdout.on('data', (d) => {
         stdout += d.toString()
