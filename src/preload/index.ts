@@ -191,13 +191,29 @@ const electronAPI = {
       restartError?: string
       error?: string
     }> => ipcRenderer.invoke('channel:lark-complete-registration', params),
-    larkLogin: (domain?: 'feishu' | 'lark'): Promise<{
+    larkLoginStart: (domain?: 'feishu' | 'lark'): Promise<{
       success: boolean
-      status?: 'success' | 'needs_qr' | 'timeout' | 'error'
+      status?: 'qr_ready' | 'already_configured' | 'no_url' | 'command_exited' | 'error'
+      oauthUrl?: string
       output?: string
       stderr?: string
       error?: string
-    }> => ipcRenderer.invoke('channel:lark-login', domain)
+      code?: number
+    }> => ipcRenderer.invoke('channel:lark-login-start', domain),
+    larkLoginWait: (domain?: 'feishu' | 'lark'): Promise<{
+      success: boolean
+      status?: 'success' | 'timeout' | 'command_exited' | 'error'
+      output?: string
+      stderr?: string
+      error?: string
+      code?: number
+    }> => ipcRenderer.invoke('channel:lark-login-wait', domain),
+    larkInstallPlugin: (domain?: 'feishu' | 'lark'): Promise<{
+      success: boolean
+      status?: 'success' | 'install_failed' | 'register_failed' | 'verify_failed'
+      logs?: string
+      verifyOutput?: string
+    }> => ipcRenderer.invoke('channel:lark-install-plugin', domain)
   },
   openclaw: {
     checkUpdate: (): Promise<{ currentVersion: string | null; latestVersion: string | null }> =>

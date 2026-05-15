@@ -38,13 +38,11 @@ export default function DoneStep({
   const [channelSaving, setChannelSaving] = useState(false)
   const [showChannelChoose, setShowChannelChoose] = useState(false)
   const [larkSetup, setLarkSetup] = useState<{
-    phase: 'idle' | 'qr' | 'polling' | 'success' | 'error'
+    phase: 'idle' | 'qr' | 'polling' | 'installing' | 'success' | 'error'
     qrUrl?: string
-    userCode?: string
-    deviceCode?: string
-    interval?: number
-    expireIn?: number
+    oauthUrl?: string
     message?: string
+    installLogs?: string
   }>({ phase: 'idle' })
 
   const statusRef = useRef<'starting' | 'running' | 'stopped'>('starting')
@@ -324,30 +322,84 @@ export default function DoneStep({
   }, [settleStartResult])
 
   const configureLarkBot = useCallback(async (domain: 'feishu' | 'lark' = 'feishu'): Promise<void> => {
-    if (channelSaving || larkSetup.phase === 'polling') return
+    if (channelSaving) return
     const brandName = domain === 'lark' ? 'Lark' : 'Feishu'
     setChannelSaving(true)
     setShowLogs(true)
     setShowChannelChoose(false)
-    setLarkSetup({ phase: 'polling', message: `Running openclaw channels login --channel ${domain}...` })
-    setLogs((prev) => [...prev, `Running openclaw channels login --channel ${domain}...`])
-    try {
-      const result = await window.electronAPI.channel.larkLogin(domain)
-      if (result.success) {
-        setLarkSetup({ phase: 'success', message: `${brandName} bot configured.` })
-        setCurrentChannel('lark')
-        setStatus('running')
-        setLogs((prev) => [...prev, `${brandName} bot configured successfully.`])
-        loadCurrentConfig()
-      } else {
-        const msg = result.error || result.stderr || result.output || `${brandName} setup failed`
-        setLarkSetup({ phase: 'error', message: msg })
-        setLogs((prev) => [...prev, `${brandName} setup failed: ${msg}`])
-      }
-    } finally {
+
+    // ─── Phase 1: Start login, capture OAuth URL for QR ───
+    setLarkSetup({ phase: 'qr', message: `Starting ${brandName} login...` })
+    setLogs((prev) => [...prev, `[${brandName}] Phase 1: Starting openclaw channels login --channel ${domain}...`])
+
+    const startResult = await window.electronAPI.channel.larkLoginStart(domain)
+    if (!startResult.success && startResult.status !== 'qr_ready') {
+      const msg = startResult.error || `${brandName} login start failed`
+      setLarkSetup({ phase: 'error', message: msg })
+      setLogs((prev) => [...prev, `[${brandName}] Phase 1 failed: ${msg}`])
       setChannelSaving(false)
+      return
     }
-  }, [channelSaving, larkSetup.phase, loadCurrentConfig])
+
+    // If already configured (prior auth), go straight to plugin install
+    if (startResult.status === 'already_configured') {
+      setLogs((prev) => [...prev, `[${brandName}] Already configured — skipping scan.`])
+      setLarkSetup({ phase: 'installing', message: 'Already authenticated — installing plugin...' })
+    } else {
+      // Show QR from captured OAuth URL
+      setLarkSetup({
+        phase: 'qr',
+        oauthUrl: startResult.oauthUrl,
+        qrUrl: startResult.oauthUrl,
+        message: `Scan the QR code with your ${brandName} mobile app to authorize the bot.`
+      })
+      setLogs((prev) => [
+        ...prev,
+        `[${brandName}] Phase 1: QR code ready — scan with ${brandName} app.`,
+        startResult.oauthUrl ? `[${brandName}] OAuth URL: ${startResult.oauthUrl}` : ''
+      ].filter(Boolean))
+    }
+
+    // ─── Phase 2: Wait for scan + auth completion ───
+    setLarkSetup((prev) => ({ ...prev, phase: 'polling', message: `Waiting for ${brandName} authorization...` }))
+    setLogs((prev) => [...prev, `[${brandName}] Phase 2: Polling for scan completion (up to 120s)...`]])
+
+    const waitResult = await window.electronAPI.channel.larkLoginWait(domain)
+    if (!waitResult.success) {
+      const msg = waitResult.error || waitResult.output || `Authorization timed out or failed`
+      setLarkSetup({ phase: 'error', message: msg })
+      setLogs((prev) => [...prev, `[${brandName}] Phase 2 failed: ${msg}`])
+      setChannelSaving(false)
+      return
+    }
+
+    setLogs((prev) => [...prev, `[${brandName}] Phase 2: Scan complete — authorization succeeded.`])
+
+    // ─── Phase 3: Install @openclaw/feishu plugin ───
+    setLarkSetup({ phase: 'installing', message: 'Scan complete! Installing @openclaw/feishu plugin...' })
+    setLogs((prev) => [...prev, `[${brandName}] Phase 3: Installing @openclaw/feishu plugin...`,"npm install -g @openclaw/feishu","openclaw plugins install @openclaw/feishu --dangerously-force-unsafe-install","openclaw plugins list | grep feishu"])
+
+    const installResult = await window.electronAPI.channel.larkInstallPlugin(domain)
+    if (!installResult.success) {
+      const msg = `Plugin install failed: ${installResult.status}`
+      setLarkSetup({ phase: 'error', message: msg, installLogs: installResult.logs })
+      setLogs((prev) => [...prev, `[${brandName}] Phase 3 FAILED: ${installResult.logs || installResult.status}`])
+      setChannelSaving(false)
+      return
+    }
+
+    // All three phases succeeded
+    setLarkSetup({ phase: 'success', message: `${brandName} setup complete! Plugin installed and enabled.` })
+    setCurrentChannel('lark')
+    setStatus('running')
+    setLogs((prev) => [
+      ...prev,
+      `[${brandName}] ✓ Phase 3: Plugin verified — @openclaw/feishu is enabled`,
+      `[${brandName}] ✓ ${brandName} bot configured and plugin installed successfully.`
+    ])
+    loadCurrentConfig()
+    setChannelSaving(false)
+  }, [channelSaving, loadCurrentConfig])
 
   return (
     <div className="flex-1 flex flex-col items-center justify-start pt-10 px-10 gap-3 overflow-hidden">
@@ -485,8 +537,8 @@ export default function DoneStep({
       <div className="w-full max-w-md">
         <button
           onClick={() => setShowChannelChoose(true)}
-          disabled={larkSetup.phase === 'polling'}
-          className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl border cursor-pointer bg-white/5 border-glass-border hover:border-primary/40 hover:bg-white/8 transition-all duration-200"
+          disabled={larkSetup.phase === 'polling' || larkSetup.phase === 'installing'}
+          className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl border cursor-pointer bg-white/5 border-glass-border hover:border-primary/40 hover:bg-white/8 transition-all duration-200 disabled:opacity-50"
         >
           <svg viewBox="0 0 24 24" className="w-4 h-4 shrink-0" fill="#1475E7">
             <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.22l-2.477 10.65c-.127.47-.455.79-.877.79H9.46c-.422 0-.75-.32-.877-.79L6.106 8.22a.94.94 0 0 1 .877-1.28h10.034c.522 0 .922.516.877 1.28z"/>
@@ -494,11 +546,11 @@ export default function DoneStep({
           <div className="flex-1 text-left">
             <span className="text-sm font-bold">Channel Choose</span>
             <p className="text-[11px] text-text-muted/70">
-              {larkSetup.phase === 'polling' ? 'Scan pending...' : larkSetup.phase === 'success' ? 'Connected' : larkSetup.phase === 'error' ? 'Setup failed — click to retry' : 'Set up Lark or Feishu bot'}
+              {larkSetup.phase === 'polling' ? 'Scan pending...' : larkSetup.phase === 'installing' ? 'Installing plugin...' : larkSetup.phase === 'success' ? 'Connected' : larkSetup.phase === 'error' ? 'Setup failed — click to retry' : 'Set up Lark or Feishu bot'}
             </p>
           </div>
-          {larkSetup.phase === 'polling' ? (
-            <span className="text-warning text-xs">…</span>
+          {larkSetup.phase === 'polling' || larkSetup.phase === 'installing' ? (
+            <span className="text-warning text-xs animate-pulse">…</span>
           ) : larkSetup.phase === 'success' ? (
             <span className="text-success text-xs">✓</span>
           ) : (
@@ -506,24 +558,31 @@ export default function DoneStep({
           )}
         </button>
 
-        {larkSetup.qrUrl && (larkSetup.phase === 'qr' || larkSetup.phase === 'polling' || larkSetup.phase === 'error') && (
+        {larkSetup.qrUrl && (larkSetup.phase === 'qr' || larkSetup.phase === 'polling') && (
           <div className="mt-2 rounded-xl border border-glass-border bg-white/5 p-3 text-center">
             <canvas
               ref={qrCanvasRef}
               className="mx-auto h-[180px] w-[180px] rounded-lg bg-white p-2"
             />
             <p className="mt-2 text-[11px] text-text-muted/80">
-              {larkSetup.message || 'Scan with Lark/Feishu mobile app to create and bind the bot.'}
+              {larkSetup.message || 'Scan with Lark/Feishu mobile app to authorize.'}
             </p>
-            {larkSetup.userCode && (
-              <p className="mt-1 text-[10px] text-text-muted/60">Code: {larkSetup.userCode}</p>
+            {larkSetup.oauthUrl && (
+              <button
+                onClick={() => window.electronAPI.system.openExternal(larkSetup.oauthUrl)}
+                className="mt-2 text-[11px] text-primary/90 hover:text-primary"
+              >
+                Open authorization page
+              </button>
             )}
-            <button
-              onClick={() => window.electronAPI.system.openExternal(larkSetup.qrUrl!)}
-              className="mt-2 text-[11px] text-primary/90 hover:text-primary"
-            >
-              Open authorization page
-            </button>
+          </div>
+        )}
+        {larkSetup.phase === 'installing' && (
+          <div className="mt-2 rounded-xl border border-warning/30 bg-warning/10 px-3 py-2 text-[11px] text-warning">
+            {larkSetup.message || 'Installing plugin...'}
+            {larkSetup.installLogs && (
+              <pre className="mt-1 text-[10px] text-warning/70 whitespace-pre-wrap">{larkSetup.installLogs}</pre>
+            )}
           </div>
         )}
         {larkSetup.phase === 'success' && larkSetup.message && (

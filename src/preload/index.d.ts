@@ -131,12 +131,28 @@ interface ElectronAPI {
       restartError?: string
       error?: string
     }>
-    larkLogin: (domain?: 'feishu' | 'lark') => Promise<{
+    larkLoginStart: (domain?: 'feishu' | 'lark') => Promise<{
       success: boolean
-      status?: 'success' | 'needs_qr' | 'timeout' | 'error'
+      status?: 'qr_ready' | 'already_configured' | 'no_url' | 'command_exited' | 'error'
+      oauthUrl?: string
       output?: string
       stderr?: string
       error?: string
+      code?: number
+    }>
+    larkLoginWait: (domain?: 'feishu' | 'lark') => Promise<{
+      success: boolean
+      status?: 'success' | 'timeout' | 'command_exited' | 'error'
+      output?: string
+      stderr?: string
+      error?: string
+      code?: number
+    }>
+    larkInstallPlugin: (domain?: 'feishu' | 'lark') => Promise<{
+      success: boolean
+      status?: 'success' | 'install_failed' | 'register_failed' | 'verify_failed'
+      logs?: string
+      verifyOutput?: string
     }>
   }
   openclaw: {

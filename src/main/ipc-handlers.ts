@@ -483,50 +483,66 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
   const stripWarnings = (s: string): string =>
     s.split('\n').filter((l) => !l.includes('Warning:') && !l.includes('top-level await')).join('\n')
 
-  ipcMain.handle('channel:lark-login', async (_e, domain?: 'feishu' | 'lark') => {
+  // ─── Lark/Feishu channel login ───────────────────────────────────────────────────────
+  //
+  // Full flow has three phases:
+  //   phase 1 – start  : spawn openclaw channels login, capture OAuth URL for QR display
+  //   phase 2 – poll    : renderer shows QR, polls for command success (scan completed in browser)
+  //   phase 3 – install : npm install -g + openclaw plugins install (only after phase 2 success)
+  //
+
+  ipcMain.handle('channel:lark-login-start', async (_e, domain?: 'feishu' | 'lark') => {
     return new Promise((resolve) => {
       const selectedDomain = domain || 'feishu'
       let stdout = ''
       let stderr = ''
       let settled = false
+      let oauthUrl: string | null = null
 
       const proc = spawn(findBin('openclaw'), ['channels', 'login', '--channel', selectedDomain], {
         env: getPathEnv(),
         stdio: ['pipe', 'pipe', 'pipe']
       })
 
-      // Step 1: accept default "Download from npm" for plugin install prompt
+      // Accept default "Download from npm" plugin install prompt
       proc.stdin.write('\n')
-      // Step 2: confirm "y" to use existing bot (after a short delay to let the UI update)
-      setTimeout(() => {
-        proc.stdin.write('y\n')
-        proc.stdin.end()
-      }, 100)
+      proc.stdin.end()
 
       proc.stdout.on('data', (d) => {
         stdout += d.toString()
+        // Try to find an HTTP URL in the output (OAuth authorization URL)
+        if (!oauthUrl) {
+          const match = stdout.match(/(https?:\/\/[^\s]+\?[^\s]+)/)
+          if (match) oauthUrl = match[1]
+        }
       })
-      proc.stderr.on('data', (d) => {
-        stderr += d.toString()
-      })
+      proc.stderr.on('data', (d) => { stderr += d.toString() })
 
+      // Give the process ~8 s to emit the OAuth URL, then return
       const timer = setTimeout(() => {
         if (settled) return
         settled = true
         proc.kill()
-        resolve({
-          success: false,
-          status: stdout.includes('Scan the QR') || stdout.includes('scan-to-create') ? 'needs_qr' : 'timeout',
-          output: stripAnsi(stdout),
-          stderr: stripAnsi(stderr)
-        })
-      }, 45000)
+        const rawOut = stripAnsi(stdout)
+        const rawErr = stripAnsi(stderr)
+        if (oauthUrl) {
+          resolve({ success: true, status: 'qr_ready', oauthUrl, output: rawOut, stderr: rawErr })
+        } else {
+          resolve({
+            success: false,
+            status: 'no_url',
+            output: rawOut,
+            stderr: rawErr,
+            error: 'Could not capture OAuth URL from openclaw channels login'
+          })
+        }
+      }, 8000)
 
       proc.on('error', (e) => {
         if (settled) return
         settled = true
         clearTimeout(timer)
-        resolve({ success: false, status: 'error', error: e.message, output: stripAnsi(stdout), stderr: stripAnsi(stderr) })
+        resolve({ success: false, status: 'error', error: e.message })
       })
 
       proc.on('close', (code) => {
@@ -535,7 +551,89 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
         clearTimeout(timer)
         const rawOut = stripAnsi(stdout)
         const rawErr = stripAnsi(stderr)
-        // Strip warning lines before checking for success
+        // If it already succeeded (e.g. prior session was already auth'd), return success
+        const out = stripWarnings(rawOut)
+        const configured =
+          code === 0 &&
+          (out.includes('Bot configured') ||
+            out.includes('configured') ||
+            out.includes('already exists') ||
+            rawOut.includes('Bot configured'))
+        if (configured) {
+          resolve({ success: true, status: 'already_configured', output: rawOut })
+        } else {
+          // Return what we have — renderer will poll for completion
+          resolve({
+            success: false,
+            status: 'command_exited',
+            code,
+            output: rawOut,
+            stderr: rawErr,
+            error: `Command exited with code ${code}`
+          })
+        }
+      })
+    })
+  })
+
+  ipcMain.handle('channel:lark-login-wait', async (_e, domain?: 'feishu' | 'lark') => {
+    return new Promise((resolve) => {
+      const selectedDomain = domain || 'feishu'
+      let stdout = ''
+      let stderr = ''
+      let settled = false
+
+      // Run a fresh login command — it will exit fast if already authenticated
+      const proc = spawn(findBin('openclaw'), ['channels', 'login', '--channel', selectedDomain], {
+        env: getPathEnv(),
+        stdio: ['pipe', 'pipe', 'pipe']
+      })
+
+      proc.stdin.write('\n')
+      proc.stdin.end()
+
+      proc.stdout.on('data', (d) => { stdout += d.toString() })
+      proc.stderr.on('data', (d) => { stderr += d.toString() })
+
+      // Poll for up to 120 s — user scans QR in browser during this time
+      const deadline = Date.now() + 120_000
+
+      const checkInterval = setInterval(() => {
+        if (settled) { clearInterval(checkInterval); return }
+        const rawOut = stripAnsi(stdout)
+        const out = stripWarnings(rawOut)
+        if (
+          out.includes('Bot configured') ||
+          out.includes('configured') ||
+          rawOut.includes('Bot configured')
+        ) {
+          clearInterval(checkInterval)
+          settled = true
+          proc.kill()
+          resolve({ success: true, status: 'success', output: rawOut })
+          return
+        }
+        if (Date.now() > deadline) {
+          clearInterval(checkInterval)
+          settled = true
+          proc.kill()
+          resolve({ success: false, status: 'timeout', output: rawOut, stderr: stripAnsi(stderr) })
+        }
+      }, 2000)
+
+      proc.on('error', (e) => {
+        if (settled) return
+        settled = true
+        clearInterval(checkInterval)
+        resolve({ success: false, status: 'error', error: e.message })
+      })
+
+      proc.on('close', (code) => {
+        if (settled) return
+        clearInterval(checkInterval)
+        settled = true
+        const rawOut = stripAnsi(stdout)
+        const rawErr = stripAnsi(stderr)
         const out = stripWarnings(rawOut)
         const configured =
           code === 0 &&
@@ -546,21 +644,68 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
         if (configured) {
           resolve({ success: true, status: 'success', output: rawOut })
         } else {
-          const errMsg = (rawErr || rawOut || `openclaw channels login exited with code ${code}`)
-            .split('\n')
-            .filter((l) => !l.includes('Warning:') && !l.includes('top-level await'))
-            .join('\n')
-            .trim()
           resolve({
             success: false,
-            status: 'error',
-            error: errMsg || `openclaw channels login exited with code ${code}`,
+            status: 'command_exited',
+            code,
             output: rawOut,
             stderr: rawErr
           })
         }
       })
     })
+  })
+
+  ipcMain.handle('channel:lark-install-plugin', async (_e, domain?: 'feishu' | 'lark') => {
+    const selectedDomain = domain || 'feishu'
+    const pluginName = '@openclaw/feishu'
+    const stepLogs: string[] = []
+
+    const runCommand = (cmd: string, args: string[]): Promise<{ success: boolean; stdout: string; stderr: string; error?: string }> =>
+      new Promise((resolve) => {
+        let stdout = ''
+        let stderr = ''
+        const child = spawn(cmd, args, { env: getPathEnv(), shell: true })
+        child.stdout.on('data', (d) => { stdout += d.toString() })
+        child.stderr.on('data', (d) => { stderr += d.toString() })
+        child.on('close', (code) => {
+          resolve({ success: code === 0, stdout, stderr, error: code !== 0 ? `exit ${code}` : undefined })
+        })
+        child.on('error', (e) => resolve({ success: false, stdout, stderr, error: e.message }))
+      })
+
+    const execAndLog = async (desc: string, cmd: string, args: string[]) => {
+      stepLogs.push(`[plugin] ${desc}: ${cmd} ${args.join(' ')}`)
+      const r = await runCommand(cmd, args)
+      stepLogs.push(r.success ? `[plugin] ${desc}: OK` : `[plugin] ${desc}: FAILED — ${r.error || r.stderr.slice(0, 200)}`)
+      return r
+    }
+
+    // Step 1: npm install -g @openclaw/feishu
+    const installStep = await execAndLog('npm install -g', 'npm', ['install', '-g', pluginName])
+    if (!installStep.success) {
+      return { success: false, status: 'install_failed', logs: stepLogs.join('\n') }
+    }
+
+    // Step 2: openclaw plugins install @openclaw/feishu --dangerously-force-unsafe-install
+    const registerStep = await execAndLog('openclaw plugins install', 'openclaw', [
+      'plugins', 'install', pluginName, '--dangerously-force-unsafe-install'
+    ])
+    if (!registerStep.success) {
+      return { success: false, status: 'register_failed', logs: stepLogs.join('\n') }
+    }
+
+    // Step 3: openclaw plugins list | grep feishu (verification)
+    const verifyStep = await execAndLog('verify', 'sh', ['-c', `openclaw plugins list | grep feishu`])
+    const verified = verifyStep.success && verifyStep.stdout.includes(pluginName)
+    stepLogs.push(verified ? '[plugin] Verification: OK (@openclaw/feishu is enabled)' : '[plugin] Verification: NOT FOUND in plugin list')
+
+    return {
+      success: verified,
+      status: verified ? 'success' : 'verify_failed',
+      logs: stepLogs.join('\n'),
+      verifyOutput: verifyStep.stdout
+    }
   })
 
   ipcMain.handle(
