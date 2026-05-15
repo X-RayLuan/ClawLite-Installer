@@ -479,6 +479,10 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
     }
   })
 
+  // Filter out node/toplesl-await warnings from openclaw output
+  const stripWarnings = (s: string): string =>
+    s.split('\n').filter((l) => !l.includes('Warning:') && !l.includes('top-level await')).join('\n')
+
   ipcMain.handle('channel:lark-login', async (_e, domain?: 'feishu' | 'lark') => {
     return new Promise((resolve) => {
       const selectedDomain = domain || 'feishu'
@@ -524,13 +528,31 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
         if (settled) return
         settled = true
         clearTimeout(timer)
-        const out = stripAnsi(stdout)
-        const err = stripAnsi(stderr)
-        const configured = code === 0 && (out.includes('Bot configured') || out.includes('configured'))
+        const rawOut = stripAnsi(stdout)
+        const rawErr = stripAnsi(stderr)
+        // Strip warning lines before checking for success
+        const out = stripWarnings(rawOut)
+        const configured =
+          code === 0 &&
+          (out.includes('Bot configured') ||
+            out.includes('configured') ||
+            out.includes('already exists') ||
+            rawOut.includes('Bot configured'))
         if (configured) {
-          resolve({ success: true, status: 'success', output: out })
+          resolve({ success: true, status: 'success', output: rawOut })
         } else {
-          resolve({ success: false, status: 'error', error: err || out || `openclaw channels login exited with code ${code}`, output: out, stderr: err })
+          const errMsg = (rawErr || rawOut || `openclaw channels login exited with code ${code}`)
+            .split('\n')
+            .filter((l) => !l.includes('Warning:') && !l.includes('top-level await'))
+            .join('\n')
+            .trim()
+          resolve({
+            success: false,
+            status: 'error',
+            error: errMsg || `openclaw channels login exited with code ${code}`,
+            output: rawOut,
+            stderr: rawErr
+          })
         }
       })
     })
