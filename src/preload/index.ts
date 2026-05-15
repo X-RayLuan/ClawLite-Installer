@@ -190,7 +190,14 @@ const electronAPI = {
       restart?: string
       restartError?: string
       error?: string
-    }> => ipcRenderer.invoke('channel:lark-complete-registration', params)
+    }> => ipcRenderer.invoke('channel:lark-complete-registration', params),
+    larkLogin: (domain?: 'feishu' | 'lark'): Promise<{
+      success: boolean
+      status?: 'success' | 'needs_qr' | 'timeout' | 'error'
+      output?: string
+      stderr?: string
+      error?: string
+    }> => ipcRenderer.invoke('channel:lark-login', domain)
   },
   openclaw: {
     checkUpdate: (): Promise<{ currentVersion: string | null; latestVersion: string | null }> =>

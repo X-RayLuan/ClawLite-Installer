@@ -7,6 +7,8 @@ import { homedir } from 'os'
 import { randomBytes } from 'crypto'
 import { getPathEnv, findBin } from './services/path-utils'
 
+const stripAnsi = (s: string): string => s.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '')
+
 // ─── Installer-specific config (channel preferences) ───────────────────────
 interface InstallerChannelConfig {
   enabled?: 'telegram' | 'lark'
@@ -475,6 +477,63 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
     } catch (e) {
       return { success: false, error: e instanceof Error ? e.message : String(e) }
     }
+  })
+
+  ipcMain.handle('channel:lark-login', async (_e, domain?: 'feishu' | 'lark') => {
+    return new Promise((resolve) => {
+      const selectedDomain = domain || 'feishu'
+      let stdout = ''
+      let stderr = ''
+      let settled = false
+
+      const proc = spawn(findBin('openclaw'), ['channels', 'login', '--channel', selectedDomain], {
+        env: getPathEnv(),
+        stdio: ['pipe', 'pipe', 'pipe']
+      })
+
+      proc.stdin.write('y\n')
+      proc.stdin.end()
+
+      proc.stdout.on('data', (d) => {
+        stdout += d.toString()
+      })
+      proc.stderr.on('data', (d) => {
+        stderr += d.toString()
+      })
+
+      const timer = setTimeout(() => {
+        if (settled) return
+        settled = true
+        proc.kill()
+        resolve({
+          success: false,
+          status: stdout.includes('Scan the QR') || stdout.includes('scan-to-create') ? 'needs_qr' : 'timeout',
+          output: stripAnsi(stdout),
+          stderr: stripAnsi(stderr)
+        })
+      }, 45000)
+
+      proc.on('error', (e) => {
+        if (settled) return
+        settled = true
+        clearTimeout(timer)
+        resolve({ success: false, status: 'error', error: e.message, output: stripAnsi(stdout), stderr: stripAnsi(stderr) })
+      })
+
+      proc.on('close', (code) => {
+        if (settled) return
+        settled = true
+        clearTimeout(timer)
+        const out = stripAnsi(stdout)
+        const err = stripAnsi(stderr)
+        const configured = code === 0 && (out.includes('Bot configured') || out.includes('configured'))
+        if (configured) {
+          resolve({ success: true, status: 'success', output: out })
+        } else {
+          resolve({ success: false, status: 'error', error: err || out || `openclaw channels login exited with code ${code}`, output: out, stderr: err })
+        }
+      })
+    })
   })
 
   ipcMain.handle(

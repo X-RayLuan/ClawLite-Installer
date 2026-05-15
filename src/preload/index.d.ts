@@ -108,7 +108,7 @@ interface ElectronAPI {
       larkBotToken?: string
       larkBotName?: string
     }) => Promise<{ success: boolean; error?: string }>
-    larkBeginRegistration: () => Promise<{
+    larkBeginRegistration: (domain?: 'feishu' | 'lark') => Promise<{
       success: boolean
       deviceCode?: string
       qrUrl?: string
@@ -129,6 +129,13 @@ interface ElectronAPI {
       openId?: string
       restart?: string
       restartError?: string
+      error?: string
+    }>
+    larkLogin: (domain?: 'feishu' | 'lark') => Promise<{
+      success: boolean
+      status?: 'success' | 'needs_qr' | 'timeout' | 'error'
+      output?: string
+      stderr?: string
       error?: string
     }>
   }

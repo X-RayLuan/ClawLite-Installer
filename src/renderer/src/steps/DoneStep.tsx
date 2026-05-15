@@ -34,7 +34,7 @@ export default function DoneStep({
   const [gatewayToken, setGatewayToken] = useState<string | null>(null)
   const [hasTelegram, setHasTelegram] = useState(false)
   const [installerVersion, setInstallerVersion] = useState<string>('')
-  const [currentChannel, setCurrentChannel] = useState<'telegram' | 'lark'>('lark')
+  const [, setCurrentChannel] = useState<'telegram' | 'lark'>('lark')
   const [channelSaving, setChannelSaving] = useState(false)
   const [showChannelChoose, setShowChannelChoose] = useState(false)
   const [larkSetup, setLarkSetup] = useState<{
@@ -323,69 +323,26 @@ export default function DoneStep({
     }
   }, [settleStartResult])
 
-  const handleChannelSwitch = useCallback(async (channel: 'telegram' | 'lark') => {
-    if (channel === currentChannel || channelSaving) return
-    setChannelSaving(true)
-    try {
-      const r = await window.electronAPI.channel.save({ channel })
-      if (r.success) setCurrentChannel(channel)
-    } finally {
-      setChannelSaving(false)
-    }
-  }, [currentChannel, channelSaving])
-
   const configureLarkBot = useCallback(async (domain: 'feishu' | 'lark' = 'feishu'): Promise<void> => {
     if (channelSaving || larkSetup.phase === 'polling') return
+    const brandName = domain === 'lark' ? 'Lark' : 'Feishu'
     setChannelSaving(true)
     setShowLogs(true)
     setShowChannelChoose(false)
-    setLogs((prev) => [...prev, `Starting ${domain === 'lark' ? 'Lark' : 'Feishu'} scan-to-create...`])
+    setLarkSetup({ phase: 'polling', message: `Running openclaw channels login --channel ${domain}...` })
+    setLogs((prev) => [...prev, `Running openclaw channels login --channel ${domain}...`])
     try {
-      const begin = await window.electronAPI.channel.larkBeginRegistration(domain)
-      if (!begin.success || !begin.deviceCode || !begin.qrUrl) {
-        const msg = begin.error || `Failed to create ${domain === 'lark' ? 'Lark' : 'Feishu'} QR session`
-        setLarkSetup({ phase: 'error', message: msg })
-        setLogs((prev) => [...prev, `${domain === 'lark' ? 'Lark' : 'Feishu'} setup failed: ${msg}`])
-        return
-      }
-
-      setCurrentChannel('lark')
-      setLarkSetup({
-        phase: 'qr',
-        qrUrl: begin.qrUrl,
-        userCode: begin.userCode,
-        deviceCode: begin.deviceCode,
-        interval: begin.interval,
-        expireIn: begin.expireIn,
-        message: `Scan the QR with ${domain === 'lark' ? 'Lark' : 'Feishu'} on your phone to create and bind the bot.`
-      })
-      setLogs((prev) => [...prev, `${domain === 'lark' ? 'Lark' : 'Feishu'} QR is ready. Waiting for approval...`])
-
-      setLarkSetup((prev) => ({ ...prev, phase: 'polling' }))
-      const complete = await window.electronAPI.channel.larkCompleteRegistration({
-        deviceCode: begin.deviceCode,
-        interval: begin.interval,
-        expireIn: begin.expireIn
-      })
-
-      if (complete.success) {
-        const brandName = domain === 'lark' ? 'Lark' : 'Feishu'
-        setLarkSetup({
-          phase: 'success',
-          message: `${brandName} bot configured${complete.domain ? ` (${complete.domain})` : ''}. Gateway restarted.`
-        })
+      const result = await window.electronAPI.channel.larkLogin(domain)
+      if (result.success) {
+        setLarkSetup({ phase: 'success', message: `${brandName} bot configured.` })
         setCurrentChannel('lark')
         setStatus('running')
-        setLogs((prev) => [
-          ...prev,
-          `${brandName} bot configured: ${complete.appId || 'app created'}`,
-          complete.restartError ? `Gateway restart warning: ${complete.restartError}` : `Gateway restarted after ${brandName} setup.`
-        ])
+        setLogs((prev) => [...prev, `${brandName} bot configured successfully.`])
         loadCurrentConfig()
       } else {
-        const msg = complete.error || complete.status || `${domain === 'lark' ? 'Lark' : 'Feishu'} setup failed`
-        setLarkSetup({ phase: 'error', qrUrl: begin.qrUrl, userCode: begin.userCode, message: msg })
-        setLogs((prev) => [...prev, `${domain === 'lark' ? 'Lark' : 'Feishu'} setup failed: ${msg}`])
+        const msg = result.error || result.stderr || result.output || `${brandName} setup failed`
+        setLarkSetup({ phase: 'error', message: msg })
+        setLogs((prev) => [...prev, `${brandName} setup failed: ${msg}`])
       }
     } finally {
       setChannelSaving(false)
@@ -602,7 +559,7 @@ export default function DoneStep({
                 className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-glass-border bg-white/5 hover:bg-white/10 hover:border-primary/40 cursor-pointer transition-all duration-200 disabled:opacity-50"
               >
                 <svg viewBox="0 0 24 24" className="w-6 h-6 shrink-0" fill="#1475E7">
-                  <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.22l-2.477 10.65c-.127.47-.455.79-.877.79H9.46c-.422 0-.75-.32-.877-.79L6.106 8.22a.94.94 0 0 1 .877-1.28h10.034c.522 0 .922.516.877 1.28z"/>
+                  <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.22l-2.477 10.65c-.127.47-.455.79-.877.79H9.46c-.422 0-.75-.32-.877-.79L6.106 8.22a.94.94 0 0 1 .877-1.28h10.034c.522 0 .922.516.877 1.28z" />
                 </svg>
                 <div className="flex-1 text-left">
                   <span className="text-sm font-bold">Lark</span>
@@ -616,7 +573,7 @@ export default function DoneStep({
                 className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-glass-border bg-white/5 hover:bg-white/10 hover:border-primary/40 cursor-pointer transition-all duration-200 disabled:opacity-50"
               >
                 <svg viewBox="0 0 24 24" className="w-6 h-6 shrink-0" fill="#1677FF">
-                  <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.22l-2.477 10.65c-.127.47-.455.79-.877.79H9.46c-.422 0-.75-.32-.877-.79L6.106 8.22a.94.94 0 0 1 .877-1.28h10.034c.522 0 .922.516.877 1.28z"/>
+                  <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.22l-2.477 10.65c-.127.47-.455.79-.877.79H9.46c-.422 0-.75-.32-.877-.79L6.106 8.22a.94.94 0 0 1 .877-1.28h10.034c.522 0 .922.516.877 1.28z" />
                 </svg>
                 <div className="flex-1 text-left">
                   <span className="text-sm font-bold">Feishu</span>
@@ -627,7 +584,7 @@ export default function DoneStep({
             </div>
           </div>
         </div>
-      )
+      )}
 
       {/* ─── Action grid ─── */}
       <div className="w-full max-w-md grid grid-cols-3 gap-2 auto-rows-fr shrink-0">
