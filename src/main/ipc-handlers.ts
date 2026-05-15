@@ -656,8 +656,7 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
     })
   })
 
-  ipcMain.handle('channel:lark-install-plugin', async (_e, domain?: 'feishu' | 'lark') => {
-    const selectedDomain = domain || 'feishu'
+  ipcMain.handle('channel:lark-install-plugin', async (_e, _domain?: 'feishu' | 'lark') => {
     const pluginName = '@openclaw/feishu'
     const stepLogs: string[] = []
 

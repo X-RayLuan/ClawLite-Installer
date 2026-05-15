@@ -362,7 +362,7 @@ export default function DoneStep({
 
     // ─── Phase 2: Wait for scan + auth completion ───
     setLarkSetup((prev) => ({ ...prev, phase: 'polling', message: `Waiting for ${brandName} authorization...` }))
-    setLogs((prev) => [...prev, `[${brandName}] Phase 2: Polling for scan completion (up to 120s)...`]])
+    setLogs((prev) => [...prev, `[${brandName}] Phase 2: Polling for scan completion (up to 120s)...`])
 
     const waitResult = await window.electronAPI.channel.larkLoginWait(domain)
     if (!waitResult.success) {
@@ -569,7 +569,7 @@ export default function DoneStep({
             </p>
             {larkSetup.oauthUrl && (
               <button
-                onClick={() => window.electronAPI.system.openExternal(larkSetup.oauthUrl)}
+                onClick={() => window.electronAPI.system.openExternal(larkSetup.oauthUrl!)}
                 className="mt-2 text-[11px] text-primary/90 hover:text-primary"
               >
                 Open authorization page
