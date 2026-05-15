@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
+import QRCode from 'qrcode'
 import LobsterLogo from '../components/LobsterLogo'
 import Button from '../components/Button'
 import LogViewer from '../components/LogViewer'
@@ -33,7 +34,7 @@ export default function DoneStep({
   const [gatewayToken, setGatewayToken] = useState<string | null>(null)
   const [hasTelegram, setHasTelegram] = useState(false)
   const [installerVersion, setInstallerVersion] = useState<string>('')
-  const [currentChannel, setCurrentChannel] = useState<'telegram' | 'lark'>('telegram')
+  const [currentChannel, setCurrentChannel] = useState<'telegram' | 'lark'>('lark')
   const [channelSaving, setChannelSaving] = useState(false)
   const [larkSetup, setLarkSetup] = useState<{
     phase: 'idle' | 'qr' | 'polling' | 'success' | 'error'
@@ -47,6 +48,21 @@ export default function DoneStep({
 
   const statusRef = useRef<'starting' | 'running' | 'stopped'>('starting')
   const lastLogRef = useRef<{ msg: string; ts: number } | null>(null)
+  const qrCanvasRef = useRef<HTMLCanvasElement>(null)
+
+  // Generate QR code on canvas when larkSetup.qrUrl changes
+  useEffect(() => {
+    if (!larkSetup.qrUrl || !qrCanvasRef.current) return
+    if (larkSetup.phase !== 'qr' && larkSetup.phase !== 'polling' && larkSetup.phase !== 'error') return
+    const canvas = qrCanvasRef.current
+    QRCode.toCanvas(canvas, larkSetup.qrUrl, {
+      width: 180,
+      margin: 2,
+      color: { dark: '#000000', light: '#ffffff' }
+    }).catch(() => {
+      /* QR generation failed – skip silently */
+    })
+  }, [larkSetup.qrUrl, larkSetup.phase])
 
   const tRef = useRef<TFunction>(t)
   tRef.current = t
@@ -68,7 +84,7 @@ export default function DoneStep({
         setGatewayToken(r.config.gatewayToken || null)
         setHasTelegram(Boolean(r.config.hasTelegram))
         const chan = (r.config.channels as { enabled?: string } | undefined)?.enabled
-        setCurrentChannel(chan === 'lark' ? 'lark' : 'telegram')
+        setCurrentChannel(chan === 'telegram' ? 'telegram' : 'lark')
       }
     })
   }, [])
@@ -510,6 +526,30 @@ export default function DoneStep({
         <p className="text-[11px] text-text-muted/60 mb-1.5 px-0.5">Message Channel</p>
         <div className="flex gap-2">
           <button
+            onClick={configureLarkBot}
+            disabled={channelSaving || larkSetup.phase === 'polling'}
+            className={`flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl border cursor-pointer transition-all duration-200 ${
+              currentChannel === 'lark'
+                ? 'bg-white/10 border-primary/60'
+                : 'bg-white/5 border-glass-border hover:border-glass-border/80'
+            }`}
+          >
+            <svg viewBox="0 0 24 24" className="w-4 h-4 shrink-0" fill="#1475E7">
+              <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.22l-2.477 10.65c-.127.47-.455.79-.877.79H9.46c-.422 0-.75-.32-.877-.79L6.106 8.22a.94.94 0 0 1 .877-1.28h10.034c.522 0 .922.516.877 1.28z"/>
+            </svg>
+            <div className="flex-1 text-left">
+              <span className="text-[12px] font-bold">Lark</span>
+              <span className="block text-[10px] text-text-muted/60">
+                {larkSetup.phase === 'polling' ? 'Scan pending' : larkSetup.phase === 'success' ? 'Connected' : larkSetup.phase === 'error' ? 'Failed' : 'Scan setup'}
+              </span>
+            </div>
+            {larkSetup.phase === 'polling' ? (
+              <span className="text-warning text-xs">…</span>
+            ) : currentChannel === 'lark' ? (
+              <span className="text-success text-xs">✓</span>
+            ) : null}
+          </button>
+          <button
             onClick={() => handleChannelSwitch('telegram')}
             disabled={channelSaving}
             className={`flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl border cursor-pointer transition-all duration-200 ${
@@ -528,36 +568,11 @@ export default function DoneStep({
               <span className="text-success text-xs">✓</span>
             )}
           </button>
-          <button
-            onClick={configureLarkBot}
-            disabled={channelSaving || larkSetup.phase === 'polling'}
-            className={`flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl border cursor-pointer transition-all duration-200 ${
-              currentChannel === 'lark'
-                ? 'bg-white/10 border-primary/60'
-                : 'bg-white/5 border-glass-border hover:border-glass-border/80'
-            }`}
-          >
-            <svg viewBox="0 0 24 24" className="w-4 h-4 shrink-0" fill="#1475E7">
-              <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.22l-2.477 10.65c-.127.47-.455.79-.877.79H9.46c-.422 0-.75-.32-.877-.79L6.106 8.22a.94.94 0 0 1 .877-1.28h10.034c.522 0 .922.516.877 1.28z"/>
-            </svg>
-            <div className="flex-1 text-left">
-              <span className="text-[12px] font-bold">Lark</span>
-              <span className="block text-[10px] text-text-muted/60">
-                {larkSetup.phase === 'polling' ? 'Scan pending' : 'Scan setup'}
-              </span>
-            </div>
-            {larkSetup.phase === 'polling' ? (
-              <span className="text-warning text-xs">…</span>
-            ) : currentChannel === 'lark' ? (
-              <span className="text-success text-xs">✓</span>
-            ) : null}
-          </button>
         </div>
         {larkSetup.qrUrl && (larkSetup.phase === 'qr' || larkSetup.phase === 'polling' || larkSetup.phase === 'error') && (
           <div className="mt-2 rounded-xl border border-glass-border bg-white/5 p-3 text-center">
-            <img
-              alt="Lark/Feishu setup QR"
-              src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(larkSetup.qrUrl)}`}
+            <canvas
+              ref={qrCanvasRef}
               className="mx-auto h-[180px] w-[180px] rounded-lg bg-white p-2"
             />
             <p className="mt-2 text-[11px] text-text-muted/80">
