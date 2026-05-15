@@ -2,13 +2,23 @@ import { existsSync } from 'fs'
 import { platform } from 'os'
 import { join } from 'path'
 
-export const PATH_DIRS = [
-  '/opt/homebrew/bin',
-  '/usr/local/bin',
-  process.env.NVM_BIN ?? '',
-  `${process.env.HOME}/.volta/bin`,
-  `${process.env.HOME}/.npm-global/bin`
-].filter(Boolean)
+export const PATH_DIRS = (() => {
+  const nvmBin = process.env.NVM_BIN || ''
+  // Derive nvm bin from execPath when NVM_BIN is not set (e.g., in Electron)
+  const nvmFromExec = process.execPath
+    ? `${process.execPath.replace(/\/bin\/node$/, '')}/bin`
+    : ''
+  const all = [
+    '/opt/homebrew/bin',
+    '/usr/local/bin',
+    nvmBin,
+    nvmFromExec,
+    `${process.env.HOME || ''}/.volta/bin`,
+    `${process.env.HOME || ''}/.npm-global/bin`
+  ].filter(Boolean)
+  // Deduplicate
+  return [...new Set(all)]
+})()
 
 export const getPathEnv = (): NodeJS.ProcessEnv => {
   const env: NodeJS.ProcessEnv = {
