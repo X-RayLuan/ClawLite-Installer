@@ -328,52 +328,63 @@ export default function DoneStep({
     setShowLogs(true)
     setShowChannelChoose(false)
 
-    // ─── Phase 1: Start login, capture OAuth URL for QR ───
-    setLarkSetup({ phase: 'qr', message: `Starting ${brandName} login...` })
-    setLogs((prev) => [...prev, `[${brandName}] Phase 1: Starting openclaw channels login --channel ${domain}...`])
+    // ─── Phase 1: Begin Feishu scan-to-create registration ───
+    setLarkSetup({ phase: 'qr', message: `Starting ${brandName} scan-to-create...` })
+    setLogs((prev) => [...prev, `[${brandName}] Phase 1: Calling beginFeishuRegistration API...`])
 
-    const startResult = await window.electronAPI.channel.larkLoginStart(domain)
-    if (!startResult.success && startResult.status !== 'qr_ready') {
-      const msg = startResult.error || `${brandName} login start failed`
+    let beginResult: Awaited<ReturnType<typeof window.electronAPI.channel.larkBeginRegistration>>
+    try {
+      beginResult = await window.electronAPI.channel.larkBeginRegistration(domain)
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
       setLarkSetup({ phase: 'error', message: msg })
       setLogs((prev) => [...prev, `[${brandName}] Phase 1 failed: ${msg}`])
       setChannelSaving(false)
       return
     }
 
-    // If already configured (prior auth), go straight to plugin install
-    if (startResult.status === 'already_configured') {
-      setLogs((prev) => [...prev, `[${brandName}] Already configured — skipping scan.`])
-      setLarkSetup({ phase: 'installing', message: 'Already authenticated — installing plugin...' })
-    } else {
-      // Show QR from captured OAuth URL
-      setLarkSetup({
-        phase: 'qr',
-        oauthUrl: startResult.oauthUrl,
-        qrUrl: startResult.oauthUrl,
-        message: `Scan the QR code with your ${brandName} mobile app to authorize the bot.`
-      })
-      setLogs((prev) => [
-        ...prev,
-        `[${brandName}] Phase 1: QR code ready — scan with ${brandName} app.`,
-        startResult.oauthUrl ? `[${brandName}] OAuth URL: ${startResult.oauthUrl}` : ''
-      ].filter(Boolean))
+    if (!beginResult.success || !beginResult.qrUrl || !beginResult.deviceCode) {
+      const msg = beginResult.error || `${brandName} registration begin failed`
+      setLarkSetup({ phase: 'error', message: msg })
+      setLogs((prev) => [...prev, `[${brandName}] Phase 1 failed: ${msg}`])
+      setChannelSaving(false)
+      return
     }
 
-    // ─── Phase 2: Wait for scan + auth completion ───
-    setLarkSetup((prev) => ({ ...prev, phase: 'polling', message: `Waiting for ${brandName} authorization...` }))
-    setLogs((prev) => [...prev, `[${brandName}] Phase 2: Polling for scan completion (up to 120s)...`])
+    // Show QR from qrUrl returned by the API
+    setLarkSetup({
+      phase: 'qr',
+      qrUrl: beginResult.qrUrl,
+      message: `Scan the QR code with your ${brandName} mobile app to authorize the bot.`
+    })
+    setLogs((prev) => [
+      ...prev,
+      `[${brandName}] Phase 1: QR code ready — scan with ${brandName} app.`,
+      `[${brandName}] QR URL: ${beginResult.qrUrl}`
+    ])
 
-    const waitResult = await window.electronAPI.channel.larkLoginWait(domain)
-    if (!waitResult.success) {
-      const msg = waitResult.error || waitResult.output || `Authorization timed out or failed`
+    // ─── Phase 2: Poll for scan completion via API ───
+    setLarkSetup((prev) => ({ ...prev, phase: 'polling', message: `Waiting for ${brandName} authorization...` }))
+    setLogs((prev) => [...prev, `[${brandName}] Phase 2: Polling for scan completion...`])
+
+    const completeResult = await window.electronAPI.channel.larkCompleteRegistration({
+      deviceCode: beginResult.deviceCode,
+      interval: beginResult.interval,
+      expireIn: beginResult.expireIn
+    })
+    if (!completeResult.success) {
+      const msg = completeResult.error || completeResult.status || `Authorization timed out or failed`
       setLarkSetup({ phase: 'error', message: msg })
       setLogs((prev) => [...prev, `[${brandName}] Phase 2 failed: ${msg}`])
       setChannelSaving(false)
       return
     }
 
-    setLogs((prev) => [...prev, `[${brandName}] Phase 2: Scan complete — authorization succeeded.`])
+    setLogs((prev) => [
+      ...prev,
+      `[${brandName}] Phase 2: Scan complete — authorization succeeded.`,
+      `[${brandName}] App ID: ${completeResult.appId}`
+    ])
 
     // ─── Phase 3: Install @openclaw/feishu plugin ───
     setLarkSetup({ phase: 'installing', message: 'Scan complete! Installing @openclaw/feishu plugin...' })
