@@ -36,6 +36,7 @@ export default function DoneStep({
   const [installerVersion, setInstallerVersion] = useState<string>('')
   const [currentChannel, setCurrentChannel] = useState<'telegram' | 'lark'>('lark')
   const [channelSaving, setChannelSaving] = useState(false)
+  const [showChannelChoose, setShowChannelChoose] = useState(false)
   const [larkSetup, setLarkSetup] = useState<{
     phase: 'idle' | 'qr' | 'polling' | 'success' | 'error'
     qrUrl?: string
@@ -333,17 +334,18 @@ export default function DoneStep({
     }
   }, [currentChannel, channelSaving])
 
-  const configureLarkBot = useCallback(async (): Promise<void> => {
+  const configureLarkBot = useCallback(async (domain: 'feishu' | 'lark' = 'feishu'): Promise<void> => {
     if (channelSaving || larkSetup.phase === 'polling') return
     setChannelSaving(true)
     setShowLogs(true)
-    setLogs((prev) => [...prev, 'Starting Lark/Feishu scan-to-create...'])
+    setShowChannelChoose(false)
+    setLogs((prev) => [...prev, `Starting ${domain === 'lark' ? 'Lark' : 'Feishu'} scan-to-create...`])
     try {
-      const begin = await window.electronAPI.channel.larkBeginRegistration()
+      const begin = await window.electronAPI.channel.larkBeginRegistration(domain)
       if (!begin.success || !begin.deviceCode || !begin.qrUrl) {
-        const msg = begin.error || 'Failed to create Lark/Feishu QR session'
+        const msg = begin.error || `Failed to create ${domain === 'lark' ? 'Lark' : 'Feishu'} QR session`
         setLarkSetup({ phase: 'error', message: msg })
-        setLogs((prev) => [...prev, `Lark setup failed: ${msg}`])
+        setLogs((prev) => [...prev, `${domain === 'lark' ? 'Lark' : 'Feishu'} setup failed: ${msg}`])
         return
       }
 
@@ -355,9 +357,9 @@ export default function DoneStep({
         deviceCode: begin.deviceCode,
         interval: begin.interval,
         expireIn: begin.expireIn,
-        message: 'Scan the QR with Lark/Feishu on your phone, then approve bot creation.'
+        message: `Scan the QR with ${domain === 'lark' ? 'Lark' : 'Feishu'} on your phone to create and bind the bot.`
       })
-      setLogs((prev) => [...prev, 'Lark/Feishu QR is ready. Waiting for approval...'])
+      setLogs((prev) => [...prev, `${domain === 'lark' ? 'Lark' : 'Feishu'} QR is ready. Waiting for approval...`])
 
       setLarkSetup((prev) => ({ ...prev, phase: 'polling' }))
       const complete = await window.electronAPI.channel.larkCompleteRegistration({
@@ -367,22 +369,23 @@ export default function DoneStep({
       })
 
       if (complete.success) {
+        const brandName = domain === 'lark' ? 'Lark' : 'Feishu'
         setLarkSetup({
           phase: 'success',
-          message: `Lark/Feishu bot configured${complete.domain ? ` (${complete.domain})` : ''}. Gateway restarted.`
+          message: `${brandName} bot configured${complete.domain ? ` (${complete.domain})` : ''}. Gateway restarted.`
         })
         setCurrentChannel('lark')
         setStatus('running')
         setLogs((prev) => [
           ...prev,
-          `Lark/Feishu bot configured: ${complete.appId || 'app created'}`,
-          complete.restartError ? `Gateway restart warning: ${complete.restartError}` : 'Gateway restarted after Lark setup.'
+          `${brandName} bot configured: ${complete.appId || 'app created'}`,
+          complete.restartError ? `Gateway restart warning: ${complete.restartError}` : `Gateway restarted after ${brandName} setup.`
         ])
         loadCurrentConfig()
       } else {
-        const msg = complete.error || complete.status || 'Lark/Feishu setup failed'
+        const msg = complete.error || complete.status || `${domain === 'lark' ? 'Lark' : 'Feishu'} setup failed`
         setLarkSetup({ phase: 'error', qrUrl: begin.qrUrl, userCode: begin.userCode, message: msg })
-        setLogs((prev) => [...prev, `Lark setup failed: ${msg}`])
+        setLogs((prev) => [...prev, `${domain === 'lark' ? 'Lark' : 'Feishu'} setup failed: ${msg}`])
       }
     } finally {
       setChannelSaving(false)
@@ -523,52 +526,29 @@ export default function DoneStep({
 
       {/* ─── Message channel selector ─── */}
       <div className="w-full max-w-md">
-        <p className="text-[11px] text-text-muted/60 mb-1.5 px-0.5">Message Channel</p>
-        <div className="flex gap-2">
-          <button
-            onClick={configureLarkBot}
-            disabled={channelSaving || larkSetup.phase === 'polling'}
-            className={`flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl border cursor-pointer transition-all duration-200 ${
-              currentChannel === 'lark'
-                ? 'bg-white/10 border-primary/60'
-                : 'bg-white/5 border-glass-border hover:border-glass-border/80'
-            }`}
-          >
-            <svg viewBox="0 0 24 24" className="w-4 h-4 shrink-0" fill="#1475E7">
-              <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.22l-2.477 10.65c-.127.47-.455.79-.877.79H9.46c-.422 0-.75-.32-.877-.79L6.106 8.22a.94.94 0 0 1 .877-1.28h10.034c.522 0 .922.516.877 1.28z"/>
-            </svg>
-            <div className="flex-1 text-left">
-              <span className="text-[12px] font-bold">Lark</span>
-              <span className="block text-[10px] text-text-muted/60">
-                {larkSetup.phase === 'polling' ? 'Scan pending' : larkSetup.phase === 'success' ? 'Connected' : larkSetup.phase === 'error' ? 'Failed' : 'Scan setup'}
-              </span>
-            </div>
-            {larkSetup.phase === 'polling' ? (
-              <span className="text-warning text-xs">…</span>
-            ) : currentChannel === 'lark' ? (
-              <span className="text-success text-xs">✓</span>
-            ) : null}
-          </button>
-          <button
-            onClick={() => handleChannelSwitch('telegram')}
-            disabled={channelSaving}
-            className={`flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl border cursor-pointer transition-all duration-200 ${
-              currentChannel === 'telegram'
-                ? 'bg-white/10 border-primary/60'
-                : 'bg-white/5 border-glass-border hover:border-glass-border/80'
-            }`}
-          >
-            <svg viewBox="0 0 24 24" className="w-4 h-4 shrink-0" fill="#0088cc">
-              <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
-            </svg>
-            <div className="flex-1 text-left">
-              <span className="text-[12px] font-bold">Telegram</span>
-            </div>
-            {currentChannel === 'telegram' && (
-              <span className="text-success text-xs">✓</span>
-            )}
-          </button>
-        </div>
+        <button
+          onClick={() => setShowChannelChoose(true)}
+          disabled={larkSetup.phase === 'polling'}
+          className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl border cursor-pointer bg-white/5 border-glass-border hover:border-primary/40 hover:bg-white/8 transition-all duration-200"
+        >
+          <svg viewBox="0 0 24 24" className="w-4 h-4 shrink-0" fill="#1475E7">
+            <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.22l-2.477 10.65c-.127.47-.455.79-.877.79H9.46c-.422 0-.75-.32-.877-.79L6.106 8.22a.94.94 0 0 1 .877-1.28h10.034c.522 0 .922.516.877 1.28z"/>
+          </svg>
+          <div className="flex-1 text-left">
+            <span className="text-sm font-bold">Channel Choose</span>
+            <p className="text-[11px] text-text-muted/70">
+              {larkSetup.phase === 'polling' ? 'Scan pending...' : larkSetup.phase === 'success' ? 'Connected' : larkSetup.phase === 'error' ? 'Setup failed — click to retry' : 'Set up Lark or Feishu bot'}
+            </p>
+          </div>
+          {larkSetup.phase === 'polling' ? (
+            <span className="text-warning text-xs">…</span>
+          ) : larkSetup.phase === 'success' ? (
+            <span className="text-success text-xs">✓</span>
+          ) : (
+            <span className="text-text-muted text-xs">›</span>
+          )}
+        </button>
+
         {larkSetup.qrUrl && (larkSetup.phase === 'qr' || larkSetup.phase === 'polling' || larkSetup.phase === 'error') && (
           <div className="mt-2 rounded-xl border border-glass-border bg-white/5 p-3 text-center">
             <canvas
@@ -600,6 +580,54 @@ export default function DoneStep({
           </p>
         )}
       </div>
+
+      {/* ─── Channel Choose modal ─── */}
+      {showChannelChoose && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-sm mx-4 rounded-2xl border border-glass-border bg-[#1a1a2e] p-5 shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-base font-bold">Choose Channel</h3>
+              <button
+                onClick={() => setShowChannelChoose(false)}
+                className="w-7 h-7 flex items-center justify-center rounded-lg text-text-muted hover:text-text hover:bg-white/10 transition-all"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="text-[12px] text-text-muted/70 mb-4">Select a messaging platform to create and bind your bot.</p>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => configureLarkBot('lark')}
+                disabled={channelSaving || larkSetup.phase === 'polling'}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-glass-border bg-white/5 hover:bg-white/10 hover:border-primary/40 cursor-pointer transition-all duration-200 disabled:opacity-50"
+              >
+                <svg viewBox="0 0 24 24" className="w-6 h-6 shrink-0" fill="#1475E7">
+                  <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.22l-2.477 10.65c-.127.47-.455.79-.877.79H9.46c-.422 0-.75-.32-.877-.79L6.106 8.22a.94.94 0 0 1 .877-1.28h10.034c.522 0 .922.516.877 1.28z"/>
+                </svg>
+                <div className="flex-1 text-left">
+                  <span className="text-sm font-bold">Lark</span>
+                  <p className="text-[11px] text-text-muted/60">字节跳动 Lark（海外版）</p>
+                </div>
+                <span className="text-text-muted text-sm">›</span>
+              </button>
+              <button
+                onClick={() => configureLarkBot('feishu')}
+                disabled={channelSaving || larkSetup.phase === 'polling'}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-glass-border bg-white/5 hover:bg-white/10 hover:border-primary/40 cursor-pointer transition-all duration-200 disabled:opacity-50"
+              >
+                <svg viewBox="0 0 24 24" className="w-6 h-6 shrink-0" fill="#1677FF">
+                  <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.22l-2.477 10.65c-.127.47-.455.79-.877.79H9.46c-.422 0-.75-.32-.877-.79L6.106 8.22a.94.94 0 0 1 .877-1.28h10.034c.522 0 .922.516.877 1.28z"/>
+                </svg>
+                <div className="flex-1 text-left">
+                  <span className="text-sm font-bold">Feishu</span>
+                  <p className="text-[11px] text-text-muted/60">飞书（字节跳动·国内版）</p>
+                </div>
+                <span className="text-text-muted text-sm">›</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )
 
       {/* ─── Action grid ─── */}
       <div className="w-full max-w-md grid grid-cols-3 gap-2 auto-rows-fr shrink-0">

@@ -168,7 +168,7 @@ const electronAPI = {
       larkBotToken?: string
       larkBotName?: string
     }): Promise<{ success: boolean; error?: string }> => ipcRenderer.invoke('channel:save', params),
-    larkBeginRegistration: (): Promise<{
+    larkBeginRegistration: (domain?: 'feishu' | 'lark'): Promise<{
       success: boolean
       deviceCode?: string
       qrUrl?: string
@@ -176,7 +176,7 @@ const electronAPI = {
       interval?: number
       expireIn?: number
       error?: string
-    }> => ipcRenderer.invoke('channel:lark-begin-registration'),
+    }> => ipcRenderer.invoke('channel:lark-begin-registration', domain),
     larkCompleteRegistration: (params: {
       deviceCode: string
       interval?: number

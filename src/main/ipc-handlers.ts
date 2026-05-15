@@ -468,9 +468,9 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
     }
   )
 
-  ipcMain.handle('channel:lark-begin-registration', async () => {
+  ipcMain.handle('channel:lark-begin-registration', async (_e, domain?: 'feishu' | 'lark') => {
     try {
-      const begin = await beginFeishuRegistration('feishu')
+      const begin = await beginFeishuRegistration(domain || 'feishu')
       return { success: true, ...begin }
     } catch (e) {
       return { success: false, error: e instanceof Error ? e.message : String(e) }
