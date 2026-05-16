@@ -657,71 +657,45 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
   })
 
   ipcMain.handle('channel:lark-install-plugin', async (_e, _domain?: 'feishu' | 'lark') => {
-    const pluginName = '@openclaw/feishu'
     const stepLogs: string[] = []
 
-    // Use shell:false and pass command as single string for reliable execution
     const runCommand = (cmdStr: string): Promise<{ success: boolean; stdout: string; stderr: string; error?: string }> =>
       new Promise((resolve) => {
         let stdout = ''
         let stderr = ''
-        // Use shell:true with a single command string (not cmd+args array) for reliability
         const child = spawn(cmdStr, { env: getPathEnv(), shell: true })
         child.stdout.on('data', (d) => { stdout += d.toString() })
         child.stderr.on('data', (d) => { stderr += d.toString() })
         child.on('close', (code) => {
-          resolve({ success: code === 0, stdout, stderr, error: code !== 0 ? `exit ${code}` : undefined })
+          resolve({ success: code === 0, stdout, stderr, error: code !== 0 ? 'exit ' + code : undefined })
         })
         child.on('error', (e) => resolve({ success: false, stdout, stderr, error: e.message }))
       })
 
-    const execAndLog = async (desc: string, cmdStr: string) => {
-      stepLogs.push(`[plugin] ${desc}: ${cmdStr}`)
-      const r = await runCommand(cmdStr)
-      stepLogs.push(r.success ? `[plugin] ${desc}: OK` : `[plugin] ${desc}: FAILED — ${r.error || r.stderr.slice(0, 200)}`)
-      return r
-    }
+    // The feishu plugin is pre-installed on the gateway machine.
+    // After scan-to-create, we just need to enable it via openclaw plugins enable.
+    stepLogs.push('[plugin] Enabling feishu plugin...')
 
-    // Step 0: Check if plugin is already installed and enabled
-    stepLogs.push('[plugin] Checking if feishu plugin is already installed...')
+    // Step 1: openclaw plugins enable feishu
+    const enableResult = await runCommand('openclaw plugins enable feishu')
+    if (!enableResult.success) {
+      stepLogs.push('[plugin] enable failed: ' + (enableResult.error || enableResult.stderr.slice(0, 200)))
+      return { success: false, status: 'enable_failed', logs: stepLogs.join('\n') }
+    }
+    stepLogs.push('[plugin] enable: OK')
+
+
+    // Step 2: Verify plugin is now enabled
     const listResult = await runCommand('openclaw plugins list')
-    const alreadyInstalled = listResult.stdout.includes('feishu') && listResult.stdout.includes('enabled')
-    stepLogs.push(alreadyInstalled ? '[plugin] Feishu plugin already installed and enabled' : '[plugin] Feishu plugin not found, will install')
+    const enabled = listResult.stdout.includes('feishu') && listResult.stdout.includes('enabled')
+    stepLogs.push(enabled ? '[plugin] Verification: OK (feishu is enabled)' : '[plugin] Verification: NOT enabled')
 
-    if (alreadyInstalled) {
-      return {
-        success: true,
-        status: 'already_installed',
-        logs: stepLogs.join('\n')
-      }
-    }
-
-    // Step 1: openclaw plugins install @openclaw/feishu --dangerously-force-unsafe-install
-    // Note: openclaw handles npm download itself, no need for separate 'npm install -g'
-    // Use --force to handle cases where plugin already exists but needs update
-    const installStep = await execAndLog('openclaw plugins install',
-      `openclaw plugins install ${pluginName} --dangerously-force-unsafe-install --force`)
-
-    // Check if install succeeded (exit 0 or stdout contains success indicators)
-    const installOk = installStep.success ||
-      installStep.stdout.includes('Installed') ||
-      installStep.stdout.includes('enabled')
-
-    if (!installOk) {
-      stepLogs.push(`[plugin] Install check: ${installStep.error || installStep.stderr.slice(0, 100)}`)
-      return { success: false, status: 'install_failed', logs: stepLogs.join('\n') }
-    }
-
-    // Step 3: Verify plugin is now installed and enabled
-    const verifyResult = await runCommand('openclaw plugins list')
-    const verified = verifyResult.stdout.includes('feishu') && verifyResult.stdout.includes('enabled')
-    stepLogs.push(verified ? '[plugin] Verification: OK (@openclaw/feishu is enabled)' : '[plugin] Verification: NOT FOUND in plugin list')
 
     return {
-      success: verified,
-      status: verified ? 'success' : 'verify_failed',
+      success: enabled,
+      status: enabled ? 'success' : 'verify_failed',
       logs: stepLogs.join('\n'),
-      verifyOutput: verifyResult.stdout
+      verifyOutput: listResult.stdout
     }
   })
 
