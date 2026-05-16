@@ -191,7 +191,23 @@ const pollFeishuRegistration = async (params: {
 }
 
 const applyFeishuOpenClawConfig = async (result: FeishuRegistrationResult): Promise<void> => {
+  // Complete base config for Feishu channel + gateway settings
   const patch = {
+    gateway: {
+      mode: 'local',
+      bind: 'loopback',
+      auth: {
+        mode: 'token'
+      }
+    },
+    commands: {
+      restart: true
+    },
+    plugins: {
+      allow: {
+        feishu: true
+      }
+    },
     channels: {
       feishu: {
         enabled: true,
