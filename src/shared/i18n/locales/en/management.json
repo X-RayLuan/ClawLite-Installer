@@ -8,6 +8,8 @@
     "ocUpdateAvailable": "OpenClaw v{{latest}} update available",
     "ocCurrentVersion": "Currently v{{current}}",
     "openTelegram": "Open Telegram",
+    "telegramGuide": "Open Telegram and send any message to start chatting",
+    "telegramGuideTitle": "💬 Start Chatting",
     "restartBtn": "Restart",
     "stopBtn": "Stop",
     "startBtn": "Start Again",

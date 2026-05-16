@@ -504,6 +504,14 @@ export default function DoneStep({
         ) : null}
       </div>
 
+      {/* Telegram guide — shown when Telegram is active */}
+      {status === 'running' && hasTelegram && (
+        <div className="w-full max-w-md mt-2 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-center">
+          <p className="text-xs font-bold text-primary/90">{t('done.telegramGuideTitle')}</p>
+          <p className="text-[11px] text-text-muted/80 mt-0.5">{t('done.telegramGuide')}</p>
+        </div>
+      )}
+
       {/* Gateway logs drawer (isolated at bottom to avoid overlapping controls) */}
       <div className="w-full max-w-md mt-auto shrink-0">
         {logs.length > 0 && (

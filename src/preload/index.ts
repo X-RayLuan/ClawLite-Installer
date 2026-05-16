@@ -213,7 +213,14 @@ const electronAPI = {
       status?: 'success' | 'install_failed' | 'register_failed' | 'verify_failed'
       logs?: string
       verifyOutput?: string
-    }> => ipcRenderer.invoke('channel:lark-install-plugin', domain)
+    }> => ipcRenderer.invoke('channel:lark-install-plugin', domain),
+    configureTelegram: (params: { botToken: string }): Promise<{
+      success: boolean
+      status?: 'success' | 'enable_failed' | 'verify_failed' | 'error'
+      logs?: string
+      verifyOutput?: string
+      error?: string
+    }> => ipcRenderer.invoke('channel:configure-telegram', params)
   },
   openclaw: {
     checkUpdate: (): Promise<{ currentVersion: string | null; latestVersion: string | null }> =>

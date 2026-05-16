@@ -8,6 +8,8 @@
     "ocUpdateAvailable": "OpenClaw v{{latest}} アップデート可能",
     "ocCurrentVersion": "現在 v{{current}}",
     "openTelegram": "Telegramを開く",
+    "telegramGuide": "Telegramを開いて、任意のメッセージを送信してください",
+    "telegramGuideTitle": "💬 チャットを始める",
     "restartBtn": "再起動",
     "stopBtn": "停止",
     "startBtn": "再開する",

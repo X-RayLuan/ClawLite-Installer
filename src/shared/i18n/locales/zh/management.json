@@ -8,6 +8,8 @@
     "ocUpdateAvailable": "OpenClaw v{{latest}} 可更新",
     "ocCurrentVersion": "当前 v{{current}}",
     "openTelegram": "打开 Telegram",
+    "telegramGuide": "打开 Telegram，发送任意消息开始对话",
+    "telegramGuideTitle": "💬 开始聊天",
     "restartBtn": "重启",
     "stopBtn": "停止",
     "startBtn": "重新启动",

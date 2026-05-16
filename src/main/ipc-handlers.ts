@@ -204,9 +204,7 @@ const applyFeishuOpenClawConfig = async (result: FeishuRegistrationResult): Prom
       restart: true
     },
     plugins: {
-      allow: {
-        feishu: true
-      }
+      allow: ['feishu']
     },
     channels: {
       feishu: {
@@ -482,6 +480,80 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
         return { success: true }
       } catch (e) {
         return { success: false, error: e instanceof Error ? e.message : String(e) }
+      }
+    }
+  )
+
+  // Configure Telegram bot token and enable the telegram plugin
+  ipcMain.handle(
+    'channel:configure-telegram',
+    async (_e, params: { botToken: string }) => {
+      const stepLogs: string[] = []
+
+      const runCommand = (cmdStr: string): Promise<{ success: boolean; stdout: string; stderr: string; error?: string }> =>
+        new Promise((resolve) => {
+          let stdout = ''
+          let stderr = ''
+          const child = spawn(cmdStr, { env: getPathEnv(), shell: true })
+          child.stdout.on('data', (d) => { stdout += d.toString() })
+          child.stderr.on('data', (d) => { stderr += d.toString() })
+          child.on('close', (code) => {
+            resolve({ success: code === 0, stdout, stderr, error: code !== 0 ? 'exit ' + code : undefined })
+          })
+          child.on('error', (e) => resolve({ success: false, stdout, stderr, error: e.message }))
+        })
+
+      try {
+        // Step 1: Patch OpenClaw config with Telegram bot token
+        stepLogs.push('[telegram] Patching config with bot token...')
+        const patch = {
+          channels: {
+            telegram: {
+              enabled: true,
+              botToken: params.botToken
+            }
+          }
+        }
+
+        await new Promise<void>((resolve, reject) => {
+          const child = spawn(findBin('openclaw'), ['config', 'patch', '--stdin'], {
+            env: getPathEnv(),
+            stdio: ['pipe', 'pipe', 'pipe']
+          })
+          let stderr = ''
+          child.stderr.on('data', (d) => { stderr += d.toString() })
+          child.on('error', reject)
+          child.on('close', (code) => {
+            if (code === 0) resolve()
+            else reject(new Error(stderr.trim() || 'config patch exited ' + code))
+          })
+          child.stdin.write(JSON.stringify(patch))
+          child.stdin.end()
+        })
+        stepLogs.push('[telegram] Config patch: OK')
+
+        // Step 2: Enable telegram plugin
+        stepLogs.push('[telegram] Enabling telegram plugin...')
+        const enableResult = await runCommand('openclaw plugins enable telegram')
+        if (!enableResult.success) {
+          stepLogs.push('[telegram] enable failed: ' + (enableResult.error || enableResult.stderr.slice(0, 200)))
+          return { success: false, status: 'enable_failed', logs: stepLogs.join('\n') }
+        }
+        stepLogs.push('[telegram] Plugin enable: OK')
+
+        // Step 3: Verify
+        const listResult = await runCommand('openclaw plugins list')
+        const enabled = listResult.stdout.includes('telegram') && listResult.stdout.includes('enabled')
+        stepLogs.push(enabled ? '[telegram] Verification: OK (telegram is enabled)' : '[telegram] Verification: NOT enabled')
+
+        return {
+          success: enabled,
+          status: enabled ? 'success' : 'verify_failed',
+          logs: stepLogs.join('\n'),
+          verifyOutput: listResult.stdout
+        }
+      } catch (e) {
+        return { success: false, status: 'error', error: e instanceof Error ? e.message : String(e), logs: stepLogs.join('\n') }
       }
     }
   )
