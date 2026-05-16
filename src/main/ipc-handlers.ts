@@ -696,19 +696,20 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
       }
     }
 
-    // Step 1: npm install -g @openclaw/feishu
-    const installStep = await execAndLog('npm install', `npm install -g ${pluginName}`)
-    if (!installStep.success) {
-      return { success: false, status: 'install_failed', logs: stepLogs.join('\n') }
-    }
-
-    // Step 2: openclaw plugins install @openclaw/feishu --dangerously-force-unsafe-install --force
-    // Use --force to replace if already exists
-    const registerStep = await execAndLog('openclaw plugins install',
+    // Step 1: openclaw plugins install @openclaw/feishu --dangerously-force-unsafe-install
+    // Note: openclaw handles npm download itself, no need for separate 'npm install -g'
+    // Use --force to handle cases where plugin already exists but needs update
+    const installStep = await execAndLog('openclaw plugins install',
       `openclaw plugins install ${pluginName} --dangerously-force-unsafe-install --force`)
-    // Note: exit code may be non-zero if plugin already existed but --force replaced it - treat as success if plugin now shows up
-    if (!registerStep.success && !registerStep.stdout.includes('Installed plugin')) {
-      return { success: false, status: 'register_failed', logs: stepLogs.join('\n') }
+
+    // Check if install succeeded (exit 0 or stdout contains success indicators)
+    const installOk = installStep.success ||
+      installStep.stdout.includes('Installed') ||
+      installStep.stdout.includes('enabled')
+
+    if (!installOk) {
+      stepLogs.push(`[plugin] Install check: ${installStep.error || installStep.stderr.slice(0, 100)}`)
+      return { success: false, status: 'install_failed', logs: stepLogs.join('\n') }
     }
 
     // Step 3: Verify plugin is now installed and enabled
