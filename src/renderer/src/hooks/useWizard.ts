@@ -7,6 +7,7 @@ export type StepName =
   | 'install'
   | 'activate'
   | 'telegramGuide'
+  | 'config'
   | 'done'
   | 'troubleshoot'
 

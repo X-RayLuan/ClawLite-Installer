@@ -9,6 +9,7 @@ import WslSetupStep from './steps/WslSetupStep'
 import InstallStep from './steps/InstallStep'
 import ActivateStep from './steps/ActivateStep'
 
+import ConfigStep from './steps/ConfigStep'
 import DoneStep from './steps/DoneStep'
 import TroubleshootStep from './steps/TroubleshootStep'
 
@@ -63,6 +64,11 @@ function App(): React.JSX.Element {
     needNode: false,
     needOpenclaw: false
   })
+  const [provider] = useState<'anthropic' | 'google' | 'openai' | 'minimax' | 'glm'>(
+    'anthropic'
+  )
+  const [modelId] = useState<string | undefined>()
+  const [authMethod] = useState<'api-key' | 'oauth'>('api-key')
   const [isWindows, setIsWindows] = useState(false)
   const [wslState, setWslState] = useState<WslState>('ready')
   const [version, setVersion] = useState('')
@@ -103,6 +109,11 @@ function App(): React.JSX.Element {
     goTo('envCheck')
   }, [goTo])
 
+  const handleDone = useCallback((): void => {
+    window.electronAPI.wizard.clearState()
+    goTo('done')
+  }, [goTo])
+
   // ─── Render ───────────────────────────────────────────────────────────────────
 
   return (
@@ -137,15 +148,22 @@ function App(): React.JSX.Element {
           {currentStep === 'activate' && (
             <ActivateStep onNext={() => goTo('done')} />
           )}
+          {currentStep === 'config' && (
+            <ConfigStep
+              provider={provider}
+              authMethod={authMethod}
+              modelId={modelId}
+              onDone={handleDone}
+            />
+          )}
           {currentStep === 'done' && (
             <DoneStep
-  
+              onConfig={() => goTo('config')}
               onTroubleshoot={() => goTo('troubleshoot')}
               onUninstallDone={() => {
                 window.electronAPI.wizard.clearState()
                 goTo('welcome')
               }}
-  
             />
           )}
           {currentStep === 'troubleshoot' && (
