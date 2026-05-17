@@ -7,7 +7,6 @@ export type StepName =
   | 'install'
   | 'activate'
   | 'telegramGuide'
-  | 'config'
   | 'done'
   | 'troubleshoot'
 
@@ -18,7 +17,6 @@ const STEPS: StepName[] = [
   'install',
   'activate',
   'telegramGuide',
-  'config',
   'done'
 ]
 

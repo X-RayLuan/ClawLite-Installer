@@ -1,7 +1,7 @@
 {
   "indicator": {
-    "default": ["Start", "Env", "Install", "Activate", "Config", "Done"],
-    "windows": ["Start", "Env", "WSL", "Install", "Activate", "Config", "Done"]
+    "default": ["Start", "Env", "Install", "Activate", "Done"],
+    "windows": ["Start", "Env", "WSL", "Install", "Activate", "Done"]
   },
   "welcome": {
     "title": "Your Own AI Agent, One Click Away",

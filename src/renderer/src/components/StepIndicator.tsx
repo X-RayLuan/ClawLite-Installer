@@ -5,7 +5,6 @@ const defaultSteps = [
   'envCheck',
   'install',
   'activate',
-  'config',
   'done'
 ]
 
@@ -15,7 +14,6 @@ const windowsSteps = [
   'wslSetup',
   'install',
   'activate',
-  'config',
   'done'
 ]
 

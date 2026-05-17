@@ -7,7 +7,6 @@ export type MvpStep =
   | 'install'
   | 'apiKeyGuide'
   | 'telegramGuide'
-  | 'config'
   | 'done'
   | 'troubleshoot'
 
