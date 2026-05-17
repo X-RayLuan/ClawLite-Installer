@@ -1,13 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
-import QRCode from 'qrcode'
 import LobsterLogo from '../components/LobsterLogo'
 import Button from '../components/Button'
 import LogViewer from '../components/LogViewer'
 import ManagementModal from '../components/ManagementModal'
 import ProviderSwitchModal from '../components/ProviderSwitchModal'
-import ModelSelectModal from '../components/ModelSelectModal'
 import LanguageSwitcher from '../components/LanguageSwitcher'
 import { useManagement } from '../hooks/useManagement'
 import { buildWebChatUrl, describeWebChatLaunch, resolveLaunchToken } from './webchat-launch'
@@ -15,11 +13,13 @@ import { buildWebChatUrl, describeWebChatLaunch, resolveLaunchToken } from './we
 export default function DoneStep({
   botUsername,
   onTroubleshoot,
-  onUninstallDone
+  onUninstallDone,
+  onConfig
 }: {
   botUsername?: string
   onTroubleshoot?: () => void
   onUninstallDone?: () => void
+  onConfig?: () => void
 }): React.JSX.Element {
   const { t } = useTranslation('management')
   const [status, setStatus] = useState<'starting' | 'running' | 'stopped'>('starting')
@@ -30,38 +30,12 @@ export default function DoneStep({
   const [currentModel, setCurrentModel] = useState<string | null>(null)
   const [currentProvider, setCurrentProvider] = useState<string | undefined>()
   const [showProviderModal, setShowProviderModal] = useState(false)
-  const [showModelSelect, setShowModelSelect] = useState(false)
   const [gatewayToken, setGatewayToken] = useState<string | null>(null)
   const [hasTelegram, setHasTelegram] = useState(false)
   const [installerVersion, setInstallerVersion] = useState<string>('')
   const [, setCurrentChannel] = useState<'telegram' | 'lark'>('lark')
-  const [channelSaving, setChannelSaving] = useState(false)
-  const [showChannelChoose, setShowChannelChoose] = useState(false)
-  const [larkSetup, setLarkSetup] = useState<{
-    phase: 'idle' | 'qr' | 'polling' | 'installing' | 'success' | 'error'
-    qrUrl?: string
-    oauthUrl?: string
-    message?: string
-    installLogs?: string
-  }>({ phase: 'idle' })
-
   const statusRef = useRef<'starting' | 'running' | 'stopped'>('starting')
   const lastLogRef = useRef<{ msg: string; ts: number } | null>(null)
-  const qrCanvasRef = useRef<HTMLCanvasElement>(null)
-
-  // Generate QR code on canvas when larkSetup.qrUrl changes
-  useEffect(() => {
-    if (!larkSetup.qrUrl || !qrCanvasRef.current) return
-    if (larkSetup.phase !== 'qr' && larkSetup.phase !== 'polling' && larkSetup.phase !== 'error') return
-    const canvas = qrCanvasRef.current
-    QRCode.toCanvas(canvas, larkSetup.qrUrl, {
-      width: 180,
-      margin: 2,
-      color: { dark: '#000000', light: '#ffffff' }
-    }).catch(() => {
-      /* QR generation failed – skip silently */
-    })
-  }, [larkSetup.qrUrl, larkSetup.phase])
 
   const tRef = useRef<TFunction>(t)
   tRef.current = t
@@ -321,101 +295,6 @@ export default function DoneStep({
     }
   }, [settleStartResult])
 
-  const configureLarkBot = useCallback(async (domain: 'feishu' | 'lark' = 'feishu'): Promise<void> => {
-    if (channelSaving) return
-    const brandName = domain === 'lark' ? 'Lark' : 'Feishu'
-    setChannelSaving(true)
-    setShowLogs(true)
-    setShowChannelChoose(false)
-
-    // ─── Phase 1: Begin Feishu scan-to-create registration ───
-    setLarkSetup({ phase: 'qr', message: `Starting ${brandName} scan-to-create...` })
-    setLogs((prev) => [...prev, `[${brandName}] Phase 1: Calling beginFeishuRegistration API...`])
-
-    let beginResult: Awaited<ReturnType<typeof window.electronAPI.channel.larkBeginRegistration>>
-    try {
-      beginResult = await window.electronAPI.channel.larkBeginRegistration(domain)
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e)
-      setLarkSetup({ phase: 'error', message: msg })
-      setLogs((prev) => [...prev, `[${brandName}] Phase 1 failed: ${msg}`])
-      setChannelSaving(false)
-      return
-    }
-
-    if (!beginResult.success || !beginResult.qrUrl || !beginResult.deviceCode) {
-      const msg = beginResult.error || `${brandName} registration begin failed`
-      setLarkSetup({ phase: 'error', message: msg })
-      setLogs((prev) => [...prev, `[${brandName}] Phase 1 failed: ${msg}`])
-      setChannelSaving(false)
-      return
-    }
-
-    // Show QR from qrUrl returned by the API
-    setLarkSetup({
-      phase: 'qr',
-      qrUrl: beginResult.qrUrl,
-      message: `Scan the QR code with your ${brandName} mobile app to authorize the bot.`
-    })
-    setLogs((prev) => [
-      ...prev,
-      `[${brandName}] Phase 1: QR code ready — scan with ${brandName} app.`,
-      `[${brandName}] QR URL: ${beginResult.qrUrl}`
-    ])
-
-    // ─── Phase 2: Poll for scan completion via API ───
-    setLarkSetup((prev) => ({ ...prev, phase: 'polling', message: `Waiting for ${brandName} authorization...` }))
-    setLogs((prev) => [...prev, `[${brandName}] Phase 2: Polling for scan completion...`])
-
-    const completeResult = await window.electronAPI.channel.larkCompleteRegistration({
-      deviceCode: beginResult.deviceCode,
-      interval: beginResult.interval,
-      expireIn: beginResult.expireIn
-    })
-    if (!completeResult.success) {
-      const msg = completeResult.error || completeResult.status || `Authorization timed out or failed`
-      setLarkSetup({ phase: 'error', message: msg })
-      setLogs((prev) => [...prev, `[${brandName}] Phase 2 failed: ${msg}`])
-      setChannelSaving(false)
-      return
-    }
-
-    setLogs((prev) => [
-      ...prev,
-      `[${brandName}] Phase 2: Scan complete — authorization succeeded.`,
-      `[${brandName}] App ID: ${completeResult.appId}`
-    ])
-
-    // ─── Phase 3: Install @openclaw/feishu plugin ───
-    setLarkSetup({ phase: 'installing', message: 'Scan complete! Installing @openclaw/feishu plugin...' })
-    setLogs((prev) => [...prev, `[${brandName}] Phase 3: Installing @openclaw/feishu plugin...`])
-
-    const installResult = await window.electronAPI.channel.larkInstallPlugin(domain)
-    if (!installResult.success) {
-      const msg = `Plugin install failed: ${installResult.status}`
-      setLarkSetup({ phase: 'error', message: msg, installLogs: installResult.logs })
-      setLogs((prev) => [...prev, `[${brandName}] Phase 3 FAILED: ${installResult.logs || installResult.status}`])
-      setChannelSaving(false)
-      return
-    }
-
-    // All three phases succeeded
-    setLarkSetup({ phase: 'success', message: `${brandName} setup complete! Plugin installed and enabled.` })
-    setCurrentChannel('lark')
-    setStatus('running')
-    setShowLogs(false) // collapse log viewer after success
-    setLogs((prev) => [
-      ...prev,
-      `[${brandName}] ✓ Phase 3: Plugin verified — @openclaw/feishu is enabled`,
-      `[${brandName}] ✓ ${brandName} bot configured and plugin installed successfully.`,
-      `[${brandName}] Restarting gateway to apply changes...`
-    ])
-    loadCurrentConfig()
-    setChannelSaving(false)
-    // Restart gateway so feishu plugin takes effect
-    handleRestart()
-  }, [channelSaving, loadCurrentConfig])
-
   return (
     <div className="flex-1 flex flex-col items-center justify-start pt-10 px-10 gap-3 overflow-hidden">
       <div className="absolute top-4 right-4 text-right">
@@ -556,118 +435,6 @@ export default function DoneStep({
         </button>
       </div>
 
-      {/* ─── Message channel selector ─── */}
-      <div className="w-full max-w-md">
-        <button
-          onClick={() => setShowChannelChoose(true)}
-          disabled={larkSetup.phase === 'polling' || larkSetup.phase === 'installing'}
-          className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl border cursor-pointer bg-white/5 border-glass-border hover:border-primary/40 hover:bg-white/8 transition-all duration-200 disabled:opacity-50"
-        >
-          <svg viewBox="0 0 24 24" className="w-4 h-4 shrink-0" fill="#1475E7">
-            <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.22l-2.477 10.65c-.127.47-.455.79-.877.79H9.46c-.422 0-.75-.32-.877-.79L6.106 8.22a.94.94 0 0 1 .877-1.28h10.034c.522 0 .922.516.877 1.28z"/>
-          </svg>
-          <div className="flex-1 text-left">
-            <span className="text-sm font-bold">Channel Choose</span>
-            <p className="text-[11px] text-text-muted/70">
-              {larkSetup.phase === 'polling' ? 'Scan pending...' : larkSetup.phase === 'installing' ? 'Installing plugin...' : larkSetup.phase === 'success' ? 'Connected' : larkSetup.phase === 'error' ? 'Setup failed — click to retry' : 'Set up Lark or Feishu bot'}
-            </p>
-          </div>
-          {larkSetup.phase === 'polling' || larkSetup.phase === 'installing' ? (
-            <span className="text-warning text-xs animate-pulse">…</span>
-          ) : larkSetup.phase === 'success' ? (
-            <span className="text-success text-xs">✓</span>
-          ) : (
-            <span className="text-text-muted text-xs">›</span>
-          )}
-        </button>
-
-        {larkSetup.qrUrl && (larkSetup.phase === 'qr' || larkSetup.phase === 'polling') && (
-          <div className="mt-2 rounded-xl border border-glass-border bg-white/5 p-3 text-center">
-            <canvas
-              ref={qrCanvasRef}
-              className="mx-auto h-[180px] w-[180px] rounded-lg bg-white p-2"
-            />
-            <p className="mt-2 text-[11px] text-text-muted/80">
-              {larkSetup.message || 'Scan with Lark/Feishu mobile app to authorize.'}
-            </p>
-            {larkSetup.oauthUrl && (
-              <button
-                onClick={() => window.electronAPI.system.openExternal(larkSetup.oauthUrl!)}
-                className="mt-2 text-[11px] text-primary/90 hover:text-primary"
-              >
-                Open authorization page
-              </button>
-            )}
-          </div>
-        )}
-        {larkSetup.phase === 'installing' && (
-          <div className="mt-2 rounded-xl border border-warning/30 bg-warning/10 px-3 py-2 text-[11px] text-warning">
-            {larkSetup.message || 'Installing plugin...'}
-            {larkSetup.installLogs && (
-              <pre className="mt-1 text-[10px] text-warning/70 whitespace-pre-wrap">{larkSetup.installLogs}</pre>
-            )}
-          </div>
-        )}
-        {larkSetup.phase === 'success' && larkSetup.message && (
-          <p className="mt-2 rounded-xl border border-success/30 bg-success/10 px-3 py-2 text-[11px] text-success">
-            {larkSetup.message}
-          </p>
-        )}
-        {larkSetup.phase === 'error' && larkSetup.message && (
-          <p className="mt-2 rounded-xl border border-error/30 bg-error/10 px-3 py-2 text-[11px] text-error">
-            {larkSetup.message}
-          </p>
-        )}
-      </div>
-
-      {/* ─── Channel Choose modal ─── */}
-      {showChannelChoose && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="w-full max-w-sm mx-4 rounded-2xl border border-glass-border bg-[#1a1a2e] p-5 shadow-2xl">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-bold">Choose Channel</h3>
-              <button
-                onClick={() => setShowChannelChoose(false)}
-                className="w-7 h-7 flex items-center justify-center rounded-lg text-text-muted hover:text-text hover:bg-white/10 transition-all"
-              >
-                ✕
-              </button>
-            </div>
-            <p className="text-[12px] text-text-muted/70 mb-4">Select a messaging platform to create and bind your bot.</p>
-            <div className="flex flex-col gap-2">
-              <button
-                onClick={() => configureLarkBot('lark')}
-                disabled={channelSaving || larkSetup.phase === 'polling'}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-glass-border bg-white/5 hover:bg-white/10 hover:border-primary/40 cursor-pointer transition-all duration-200 disabled:opacity-50"
-              >
-                <svg viewBox="0 0 24 24" className="w-6 h-6 shrink-0" fill="#1475E7">
-                  <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.22l-2.477 10.65c-.127.47-.455.79-.877.79H9.46c-.422 0-.75-.32-.877-.79L6.106 8.22a.94.94 0 0 1 .877-1.28h10.034c.522 0 .922.516.877 1.28z" />
-                </svg>
-                <div className="flex-1 text-left">
-                  <span className="text-sm font-bold">Lark</span>
-                  <p className="text-[11px] text-text-muted/60">字节跳动 Lark（海外版）</p>
-                </div>
-                <span className="text-text-muted text-sm">›</span>
-              </button>
-              <button
-                onClick={() => configureLarkBot('feishu')}
-                disabled={channelSaving || larkSetup.phase === 'polling'}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-glass-border bg-white/5 hover:bg-white/10 hover:border-primary/40 cursor-pointer transition-all duration-200 disabled:opacity-50"
-              >
-                <svg viewBox="0 0 24 24" className="w-6 h-6 shrink-0" fill="#1677FF">
-                  <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.22l-2.477 10.65c-.127.47-.455.79-.877.79H9.46c-.422 0-.75-.32-.877-.79L6.106 8.22a.94.94 0 0 1 .877-1.28h10.034c.522 0 .922.516.877 1.28z" />
-                </svg>
-                <div className="flex-1 text-left">
-                  <span className="text-sm font-bold">Feishu</span>
-                  <p className="text-[11px] text-text-muted/60">飞书（字节跳动·国内版）</p>
-                </div>
-                <span className="text-text-muted text-sm">›</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* ─── Action grid ─── */}
       <div className="w-full max-w-md grid grid-cols-3 gap-2 auto-rows-fr shrink-0">
         <button
@@ -712,16 +479,11 @@ export default function DoneStep({
           <span className="text-[11px] font-bold flex-1 min-w-0 text-left truncate">{t('done.restore')}</span>
         </button>
         <button
-          onClick={() => setShowModelSelect(true)}
+          onClick={onConfig}
           className="glass-card min-w-0 min-h-11 flex items-center gap-2 px-3 py-2 cursor-pointer hover:border-primary/40 transition-all duration-200"
         >
-          <span className="text-sm">🤖</span>
-          <div className="flex-1 min-w-0 text-left">
-            <span className="text-[11px] font-bold truncate block">Model Choose</span>
-            {currentModel && (
-              <span className="text-[10px] text-text-muted/60 truncate block">{currentModel}</span>
-            )}
-          </div>
+          <span className="text-sm">⚙️</span>
+          <span className="text-[11px] font-bold flex-1 min-w-0 text-left truncate">Config</span>
         </button>
         <button
           onClick={uninstall.open}
@@ -825,21 +587,6 @@ export default function DoneStep({
         />
       )}
 
-      {/* ─── Model select modal ─── */}
-      {showModelSelect && (
-        <ModelSelectModal
-          currentModelId={currentModel || undefined}
-          onClose={() => setShowModelSelect(false)}
-          onSuccess={() => {
-            loadCurrentConfig()
-            setStatus('starting')
-            setTimeout(async () => {
-              const s = await window.electronAPI.gateway.status()
-              setStatus(s === 'running' ? 'running' : 'stopped')
-            }, 3000)
-          }}
-        />
-      )}
     </div>
   )
 }

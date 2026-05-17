@@ -168,6 +168,7 @@ function App(): React.JSX.Element {
                 window.electronAPI.wizard.clearState()
                 goTo('welcome')
               }}
+              onConfig={() => goTo('config')}
             />
           )}
           {currentStep === 'troubleshoot' && (
