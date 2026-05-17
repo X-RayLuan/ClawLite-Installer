@@ -760,11 +760,26 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
         child.on('error', (e) => resolve({ success: false, stdout, stderr, error: e.message }))
       })
 
-    // The feishu plugin is pre-installed on the gateway machine.
-    // After scan-to-create, we just need to enable it via openclaw plugins enable.
-    stepLogs.push('[plugin] Enabling feishu plugin...')
+    // The feishu plugin needs to be installed and enabled.
+    // Use npmmirror for faster download in China.
+    stepLogs.push('[plugin] Installing @openclaw/feishu...')
 
-    // Step 1: openclaw plugins enable feishu (with retry for timing issues)
+    // Step 1: Install feishu plugin (with retry for transient network errors)
+    let installResult: { success: boolean; stdout: string; stderr: string; error?: string } | null = null
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      installResult = await runCommand('npm install -g @openclaw/feishu --registry=https://registry.npmmirror.com')
+      if (installResult!.success) break
+      stepLogs.push(`[plugin] install attempt ${attempt} failed, retrying in 5s...`)
+      await new Promise((r) => setTimeout(r, 5000))
+    }
+    if (!installResult!.success) {
+      stepLogs.push('[plugin] install failed: ' + (installResult!.error || installResult!.stderr.slice(0, 200)))
+      return { success: false, status: 'install_failed', logs: stepLogs.join('\n') }
+    }
+    stepLogs.push('[plugin] install: OK')
+
+    // Step 2: openclaw plugins enable feishu (with retry for timing issues)
+    stepLogs.push('[plugin] Enabling feishu plugin...')
     let enableResult: { success: boolean; stdout: string; stderr: string; error?: string } | null = null
     for (let attempt = 1; attempt <= 3; attempt++) {
       enableResult = await runCommand('openclaw plugins enable feishu')
