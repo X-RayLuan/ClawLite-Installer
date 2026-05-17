@@ -8,7 +8,6 @@ import EnvCheckStep from './steps/EnvCheckStep'
 import WslSetupStep from './steps/WslSetupStep'
 import InstallStep from './steps/InstallStep'
 import ActivateStep from './steps/ActivateStep'
-import TelegramGuideStep from './steps/TelegramGuideStep'
 import ConfigStep from './steps/ConfigStep'
 import DoneStep from './steps/DoneStep'
 import TroubleshootStep from './steps/TroubleshootStep'
@@ -151,9 +150,8 @@ function App(): React.JSX.Element {
             />
           )}
           {currentStep === 'activate' && (
-            <ActivateStep onNext={() => goTo('telegramGuide')} />
+            <ActivateStep onNext={() => goTo('config')} />
           )}
-          {currentStep === 'telegramGuide' && <TelegramGuideStep onNext={next} />}
           {currentStep === 'config' && (
             <ConfigStep
               provider={provider}
