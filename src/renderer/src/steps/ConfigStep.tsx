@@ -78,20 +78,6 @@ export default function ConfigStep({
     })
   }, [])
 
-  // ─── Skip if clawlite is already configured ────────────────────────────────
-  // After Activation Gate, clawlite is pre-configured via installer:save-activate.
-  // Detect this by reading the activate.json and skip to done.
-  useEffect(() => {
-    window.electronAPI.installer.loadActivate().then((result) => {
-      if (result && result.apiKey && result.baseUrl) {
-        // clawlite already activated — skip to done
-        onDone()
-      }
-    }).catch(() => {
-      // activate.json read failed — show the config form as usual
-    })
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
   // Generate QR code on canvas when larkSetup.qrUrl changes
   useEffect(() => {
     if (!larkSetup.qrUrl || !qrCanvasRef.current) return
