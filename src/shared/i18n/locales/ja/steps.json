@@ -1,7 +1,20 @@
 {
   "indicator": {
-    "default": ["開始", "環境", "インストール", "アクティブ", "完了"],
-    "windows": ["開始", "環境", "WSL", "インストール", "アクティブ", "完了"]
+    "default": [
+      "開始",
+      "環境",
+      "インストール",
+      "アクティブ",
+      "完了"
+    ],
+    "windows": [
+      "開始",
+      "環境",
+      "WSL",
+      "インストール",
+      "アクティブ",
+      "完了"
+    ]
   },
   "welcome": {
     "title": "自分だけのAIエージェントを、ワンクリックで",
@@ -169,6 +182,42 @@
       "gwRunningNoPort": "ゲートウェイは実行中ですがポート未使用",
       "available": "ポート18789は使用可能",
       "failed": "ポートの確認に失敗しました"
+    }
+  },
+  "modelConfig": {
+    "title": "Choose Model",
+    "desc": "Select the AI model you want to use",
+    "provider": "Provider",
+    "model": "Model",
+    "saveBtn": "Save & Continue",
+    "saved": "Saved",
+    "switching": "Switching...",
+    "restarting": "Restarting Gateway...",
+    "noModels": "No models available"
+  },
+  "channelConfig": {
+    "title": "Configure Channel",
+    "desc": "Bind your Feishu or Lark bot",
+    "choosePlatform": "Choose platform",
+    "feishu": "Feishu",
+    "feishuDesc": "ByteDance · China",
+    "lark": "Lark",
+    "larkDesc": "ByteDance · Overseas",
+    "skip": "Skip for now",
+    "skipDesc": "Configure later in settings",
+    "saveBtn": "Save & Continue",
+    "scanning": "Scanning...",
+    "waiting": "Waiting...",
+    "installing": "Installing...",
+    "success": "Success",
+    "error": "Error",
+    "status": {
+      "idle": "Ready",
+      "qr": "Scan QR",
+      "polling": "Waiting",
+      "installing": "Installing",
+      "success": "Done",
+      "error": "Error"
     }
   }
 }

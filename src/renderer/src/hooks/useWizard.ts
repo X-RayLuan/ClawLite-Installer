@@ -6,8 +6,8 @@ export type StepName =
   | 'wslSetup'
   | 'install'
   | 'activate'
-  | 'telegramGuide'
-  | 'config'
+  | 'modelConfig'
+  | 'channelConfig'
   | 'done'
   | 'troubleshoot'
 
@@ -17,7 +17,8 @@ const STEPS: StepName[] = [
   'wslSetup',
   'install',
   'activate',
-  'telegramGuide',
+  'modelConfig',
+  'channelConfig',
   'done'
 ]
 

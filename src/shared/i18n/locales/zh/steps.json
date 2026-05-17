@@ -1,7 +1,20 @@
 {
   "indicator": {
-    "default": ["开始", "环境", "安装", "激活", "完成"],
-    "windows": ["开始", "环境", "WSL", "安装", "激活", "完成"]
+    "default": [
+      "开始",
+      "环境",
+      "安装",
+      "激活",
+      "完成"
+    ],
+    "windows": [
+      "开始",
+      "环境",
+      "WSL",
+      "安装",
+      "激活",
+      "完成"
+    ]
   },
   "welcome": {
     "title": "专属 AI 智能体，一键搞定",
@@ -169,6 +182,42 @@
       "gwRunningNoPort": "网关运行中但未使用端口",
       "available": "端口 18789 可用",
       "failed": "端口检查失败"
+    }
+  },
+  "modelConfig": {
+    "title": "选择模型",
+    "desc": "选择您要使用的 AI 模型",
+    "provider": "供应商",
+    "model": "模型",
+    "saveBtn": "保存并继续",
+    "saved": "已保存",
+    "switching": "切换中...",
+    "restarting": "重启 Gateway...",
+    "noModels": "暂无可用模型"
+  },
+  "channelConfig": {
+    "title": "配置消息渠道",
+    "desc": "绑定您的飞书或 Lark 机器人",
+    "choosePlatform": "选择平台",
+    "feishu": "飞书",
+    "feishuDesc": "字节跳动·国内版",
+    "lark": "Lark",
+    "larkDesc": "字节跳动·海外版",
+    "skip": "暂时跳过",
+    "skipDesc": "后续可在设置中配置",
+    "saveBtn": "保存并继续",
+    "scanning": "扫描中...",
+    "waiting": "等待授权...",
+    "installing": "安装插件...",
+    "success": "配置成功",
+    "error": "配置失败",
+    "status": {
+      "idle": "就绪",
+      "qr": "扫码授权",
+      "polling": "等待中",
+      "installing": "安装中",
+      "success": "完成",
+      "error": "失败"
     }
   }
 }

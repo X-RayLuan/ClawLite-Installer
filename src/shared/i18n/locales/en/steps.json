@@ -1,7 +1,20 @@
 {
   "indicator": {
-    "default": ["Start", "Env", "Install", "Activate", "Done"],
-    "windows": ["Start", "Env", "WSL", "Install", "Activate", "Done"]
+    "default": [
+      "Start",
+      "Env",
+      "Install",
+      "Activate",
+      "Done"
+    ],
+    "windows": [
+      "Start",
+      "Env",
+      "WSL",
+      "Install",
+      "Activate",
+      "Done"
+    ]
   },
   "welcome": {
     "title": "Your Own AI Agent, One Click Away",
@@ -169,6 +182,42 @@
       "gwRunningNoPort": "Gateway is running but not using the port",
       "available": "Port 18789 is available",
       "failed": "Port check failed"
+    }
+  },
+  "modelConfig": {
+    "title": "Choose Model",
+    "desc": "Select the AI model you want to use",
+    "provider": "Provider",
+    "model": "Model",
+    "saveBtn": "Save & Continue",
+    "saved": "Saved",
+    "switching": "Switching...",
+    "restarting": "Restarting Gateway...",
+    "noModels": "No models available"
+  },
+  "channelConfig": {
+    "title": "Configure Channel",
+    "desc": "Bind your Feishu or Lark bot",
+    "choosePlatform": "Choose platform",
+    "feishu": "Feishu",
+    "feishuDesc": "ByteDance · China",
+    "lark": "Lark",
+    "larkDesc": "ByteDance · Overseas",
+    "skip": "Skip for now",
+    "skipDesc": "Configure later in settings",
+    "saveBtn": "Save & Continue",
+    "scanning": "Scanning...",
+    "waiting": "Waiting...",
+    "installing": "Installing...",
+    "success": "Success",
+    "error": "Error",
+    "status": {
+      "idle": "Ready",
+      "qr": "Scan QR",
+      "polling": "Waiting",
+      "installing": "Installing",
+      "success": "Done",
+      "error": "Error"
     }
   }
 }
