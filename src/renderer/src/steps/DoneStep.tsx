@@ -388,7 +388,7 @@ export default function DoneStep({
 
     // ─── Phase 3: Install @openclaw/feishu plugin ───
     setLarkSetup({ phase: 'installing', message: 'Scan complete! Installing @openclaw/feishu plugin...' })
-    setLogs((prev) => [...prev, `[${brandName}] Phase 3: Installing @openclaw/feishu plugin...`,"npm install -g @openclaw/feishu","openclaw plugins install @openclaw/feishu --dangerously-force-unsafe-install","openclaw plugins list | grep feishu"])
+    setLogs((prev) => [...prev, `[${brandName}] Phase 3: Installing @openclaw/feishu plugin...`])
 
     const installResult = await window.electronAPI.channel.larkInstallPlugin(domain)
     if (!installResult.success) {
