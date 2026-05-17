@@ -480,10 +480,14 @@ export default function DoneStep({
         </button>
         <button
           onClick={onConfig}
+          title="Configure model and channels"
           className="glass-card min-w-0 min-h-11 flex items-center gap-2 px-3 py-2 cursor-pointer hover:border-primary/40 transition-all duration-200"
         >
           <span className="text-sm">⚙️</span>
-          <span className="text-[11px] font-bold flex-1 min-w-0 text-left truncate">Config</span>
+          <div className="flex-1 min-w-0 text-left">
+            <span className="block text-[11px] font-bold truncate">Config</span>
+            <span className="block text-[9px] text-text-muted/70 leading-tight truncate">Choose Model / Channel</span>
+          </div>
         </button>
         <button
           onClick={uninstall.open}
