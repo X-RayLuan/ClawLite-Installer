@@ -5,6 +5,8 @@
       "Env",
       "Install",
       "Activate",
+      "Model",
+      "Channel",
       "Done"
     ],
     "windows": [
@@ -13,6 +15,8 @@
       "WSL",
       "Install",
       "Activate",
+      "Model",
+      "Channel",
       "Done"
     ]
   },

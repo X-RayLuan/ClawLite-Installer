@@ -5,6 +5,8 @@ const defaultSteps = [
   'envCheck',
   'install',
   'activate',
+  'modelConfig',
+  'channelConfig',
   'done'
 ]
 
@@ -14,6 +16,8 @@ const windowsSteps = [
   'wslSetup',
   'install',
   'activate',
+  'modelConfig',
+  'channelConfig',
   'done'
 ]
 
