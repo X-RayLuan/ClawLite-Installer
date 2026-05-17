@@ -403,13 +403,17 @@ export default function DoneStep({
     setLarkSetup({ phase: 'success', message: `${brandName} setup complete! Plugin installed and enabled.` })
     setCurrentChannel('lark')
     setStatus('running')
+    setShowLogs(false) // collapse log viewer after success
     setLogs((prev) => [
       ...prev,
       `[${brandName}] ✓ Phase 3: Plugin verified — @openclaw/feishu is enabled`,
-      `[${brandName}] ✓ ${brandName} bot configured and plugin installed successfully.`
+      `[${brandName}] ✓ ${brandName} bot configured and plugin installed successfully.`,
+      `[${brandName}] Restarting gateway to apply changes...`
     ])
     loadCurrentConfig()
     setChannelSaving(false)
+    // Restart gateway so feishu plugin takes effect
+    handleRestart()
   }, [channelSaving, loadCurrentConfig])
 
   return (
