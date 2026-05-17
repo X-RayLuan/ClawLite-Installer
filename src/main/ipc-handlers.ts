@@ -764,8 +764,8 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
     // After scan-to-create, we just need to enable it via openclaw plugins enable.
     stepLogs.push('[plugin] Enabling feishu plugin...')
 
-    // Step 1: openclaw plugins enable feishu
-    const enableResult = await runCommand('openclaw plugins enable feishu')
+    // Step 1: openclaw plugins enable @openclaw/feishu
+    const enableResult = await runCommand('openclaw plugins enable @openclaw/feishu')
     if (!enableResult.success) {
       stepLogs.push('[plugin] enable failed: ' + (enableResult.error || enableResult.stderr.slice(0, 200)))
       return { success: false, status: 'enable_failed', logs: stepLogs.join('\n') }
