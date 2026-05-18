@@ -58,10 +58,10 @@ export default function InstallStep({
   const logoState = installing ? 'loading' : failed ? 'error' : done ? 'success' : 'idle'
 
   return (
-    <div className="flex-1 flex flex-col px-8 pt-8 gap-4 justify-start">
+    <div className="flex-1 flex flex-col px-8 pt-8 gap-4 justify-start items-center">
       {/* Icon + title + description + items — centered as one block */}
       <div className="flex flex-col items-center gap-4">
-        <div className="flex items-center gap-4 self-start">
+        <div className="flex items-center gap-4 self-center">
           <LobsterLogo state={logoState} size={56} />
           <div>
             <h2 className="text-lg font-extrabold">
