@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useWizard } from '../hooks/useWizard'
 import LobsterLogo from '../components/LobsterLogo'
 import Button from '../components/Button'
 
@@ -45,6 +46,7 @@ function formatCtx(n: number): string {
 
 export default function ModelConfigStep(_: Props): React.JSX.Element {
   const { t } = useTranslation('steps')
+  const { next } = useWizard()
   const [currentModelId, setCurrentModelId] = useState<string | undefined>()
   const [models, setModels] = useState<ModelInfo[]>([])
   const [provider, setProvider] = useState<ProviderId>('openai')
@@ -103,6 +105,7 @@ export default function ModelConfigStep(_: Props): React.JSX.Element {
         await window.electronAPI.gateway.restart()
         setCurrentModelId(selectedModelId)
         setSaved(true)
+        setTimeout(() => next(), 800)
       } else {
         setError(result.error || '切换失败')
       }

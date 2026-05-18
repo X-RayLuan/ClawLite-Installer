@@ -115,6 +115,7 @@ export default function ChannelConfigStep({ onNext }: Props): React.JSX.Element 
     // Success!
     setChannelSaving(false)
     setLarkSetup({ phase: 'success', message: `${brandName} 配置成功！`, domain })
+    setTimeout(() => onNext(), 800)
   }, [channelSaving])
 
   const handleRetry = useCallback((): void => {
