@@ -112,7 +112,7 @@ function App(): React.JSX.Element {
       <div className="grain-overlay" />
       <Bubbles />
 
-      <div className="flex flex-col h-full relative z-10">
+      <div className="flex flex-col h-full w-full relative z-10">
         {currentStep !== 'welcome' && currentStep !== 'troubleshoot' && (
           <StepIndicator
             currentStep={currentStep}
@@ -120,7 +120,7 @@ function App(): React.JSX.Element {
           />
         )}
 
-        <div className="flex-1 flex flex-col min-h-0 pb-10 step-enter" key={currentStep}>
+        <div className="flex-1 flex flex-col min-h-0 pb-10 step-enter w-full" key={currentStep}>
           {currentStep === 'welcome' && <WelcomeStep onNext={next} />}
           {currentStep === 'envCheck' && (
             <EnvCheckStep onNext={() => goTo('install')} onNeedInstall={handleEnvCheckDone} />

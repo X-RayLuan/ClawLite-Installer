@@ -27,7 +27,7 @@ function createWindow(): void {
   let selfHealDone = false
 
   mainWindow = new BrowserWindow({
-    width: 800,
+    width: 1000,
     height: 700,
     minWidth: 800,
     minHeight: 700,
