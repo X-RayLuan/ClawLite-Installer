@@ -68,6 +68,13 @@ export default function ModelConfigStep(_: Props): React.JSX.Element {
     })
   }, [])
 
+  // Auto-navigate to next step when model is saved
+  useEffect(() => {
+    if (!saved) return
+    const timer = setTimeout(() => next(), 800)
+    return () => clearTimeout(timer)
+  }, [saved, next])
+
   // Fetch model list
   useEffect(() => {
     setLoading(true)
@@ -105,7 +112,7 @@ export default function ModelConfigStep(_: Props): React.JSX.Element {
         await window.electronAPI.gateway.restart()
         setCurrentModelId(selectedModelId)
         setSaved(true)
-        setTimeout(() => next(), 800)
+        next()
       } else {
         setError(result.error || '切换失败')
       }

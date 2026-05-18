@@ -115,8 +115,14 @@ export default function ChannelConfigStep({ onNext }: Props): React.JSX.Element 
     // Success!
     setChannelSaving(false)
     setLarkSetup({ phase: 'success', message: `${brandName} 配置成功！`, domain })
-    setTimeout(() => onNext(), 800)
   }, [channelSaving])
+
+  // Auto-navigate when channel config succeeds
+  useEffect(() => {
+    if (larkSetup.phase !== 'success') return
+    const timer = setTimeout(() => onNext(), 800)
+    return () => clearTimeout(timer)
+  }, [larkSetup.phase, onNext])
 
   const handleRetry = useCallback((): void => {
     setLarkSetup({ phase: 'idle' })
