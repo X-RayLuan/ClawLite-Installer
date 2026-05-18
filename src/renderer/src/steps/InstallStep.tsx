@@ -59,42 +59,45 @@ export default function InstallStep({
 
   return (
     <div className="flex-1 flex flex-col px-8 pt-8 gap-4 justify-start">
-      <div className="flex items-center gap-4">
-        <LobsterLogo state={logoState} size={56} />
-        <div>
-          <h2 className="text-lg font-extrabold">
-            {done
-              ? t('install.done')
-              : failed
-                ? t('install.failed')
-                : installing
-                  ? t('install.progress')
-                  : t('install.ready')}
-          </h2>
-          <p className="text-text-muted text-xs font-medium">
-            {installing
-              ? t('install.wait')
-              : done
-                ? t('install.allReady')
+      {/* Icon + title + description + items — centered as one block */}
+      <div className="flex flex-col items-center gap-4">
+        <div className="flex items-center gap-4 self-start">
+          <LobsterLogo state={logoState} size={56} />
+          <div>
+            <h2 className="text-lg font-extrabold">
+              {done
+                ? t('install.done')
                 : failed
-                  ? t('install.checkLog')
-                  : t('install.desc')}
-          </p>
+                  ? t('install.failed')
+                  : installing
+                    ? t('install.progress')
+                    : t('install.ready')}
+            </h2>
+            <p className="text-text-muted text-xs font-medium">
+              {installing
+                ? t('install.wait')
+                : done
+                  ? t('install.allReady')
+                  : failed
+                    ? t('install.checkLog')
+                    : t('install.desc')}
+            </p>
+          </div>
         </div>
-      </div>
 
-      <div className="space-y-2">
-        {needs.needNode && (
-          <div className="glass-card px-4 py-2.5 text-xs font-semibold flex items-center gap-2">
-            <span className="text-primary">01</span> {t('install.nodejs')}
-          </div>
-        )}
-        {needs.needOpenclaw && (
-          <div className="glass-card px-4 py-2.5 text-xs font-semibold flex items-center gap-2">
-            <span className="text-primary">{needs.needNode ? '02' : '01'}</span>{' '}
-            {t('install.openclaw')}
-          </div>
-        )}
+        <div className="space-y-2 w-full">
+          {needs.needNode && (
+            <div className="glass-card px-4 py-2.5 text-xs font-semibold flex items-center gap-2">
+              <span className="text-primary">01</span> {t('install.nodejs')}
+            </div>
+          )}
+          {needs.needOpenclaw && (
+            <div className="glass-card px-4 py-2.5 text-xs font-semibold flex items-center gap-2">
+              <span className="text-primary">{needs.needNode ? '02' : '01'}</span>{' '}
+              {t('install.openclaw')}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="min-h-36">
