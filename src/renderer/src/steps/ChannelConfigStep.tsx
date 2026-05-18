@@ -114,8 +114,8 @@ export default function ChannelConfigStep({ onNext, onBack }: Props): React.JSX.
     }
 
     // Success!
-    setLarkSetup({ phase: 'success', message: `${brandName} 配置成功！`, domain })
     setChannelSaving(false)
+    setLarkSetup({ phase: 'success', message: `${brandName} 配置成功！`, domain })
   }, [channelSaving])
 
   const handleRetry = useCallback((): void => {
@@ -227,32 +227,42 @@ export default function ChannelConfigStep({ onNext, onBack }: Props): React.JSX.
           </div>
         )}
 
-        {/* QR Code display with animated border */}
+        {/* QR Code modal */}
         {(larkSetup.phase === 'qr' || larkSetup.phase === 'polling') && larkSetup.qrUrl && (
-          <div className="mt-4 rounded-xl border border-primary/30 bg-white/[0.03] overflow-hidden">
-            {/* Animated gradient border */}
-            <div className="h-1 bg-gradient-to-r from-transparent via-primary to-transparent animate-[slide-gradient_2s_linear_infinite]" style={{ backgroundSize: '200% 100%' }} />
-            <div className="p-4 text-center">
-              <div className="relative inline-block">
-                <canvas ref={qrCanvasRef} className="mx-auto h-[180px] w-[180px] rounded-lg bg-white p-2" />
-                {/* Pulsing ring when waiting */}
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+            <div className="rounded-2xl border border-primary/30 bg-[#0f1923] overflow-hidden shadow-2xl max-w-sm w-full mx-4">
+              {/* Animated gradient border */}
+              <div className="h-1 bg-gradient-to-r from-transparent via-primary to-transparent animate-[slide-gradient_2s_linear_infinite]" style={{ backgroundSize: '200% 100%' }} />
+              <div className="p-6 text-center">
+                <div className="relative inline-block">
+                  <canvas ref={qrCanvasRef} className="mx-auto h-[180px] w-[180px] rounded-lg bg-white p-2" />
+                  {/* Pulsing ring when waiting */}
+                  {larkSetup.phase === 'polling' && (
+                    <div className="absolute inset-0 rounded-lg border-2 border-primary/40 animate-ping pointer-events-none" />
+                  )}
+                </div>
+                <p className="mt-4 text-sm text-text font-medium">{larkSetup.message}</p>
                 {larkSetup.phase === 'polling' && (
-                  <div className="absolute inset-0 rounded-lg border-2 border-primary/40 animate-ping pointer-events-none" />
+                  <div className="mt-3 flex items-center justify-center gap-2">
+                    <div className="flex gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
+                    <span className="text-xs text-text-muted/60">请在 App 中确认授权</span>
+                  </div>
                 )}
               </div>
-              <p className="mt-3 text-sm text-text font-medium">{larkSetup.message}</p>
-              {larkSetup.phase === 'polling' && (
-                <div className="mt-2 flex items-center justify-center gap-2">
-                  <div className="flex gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '300ms' }} />
-                  </div>
-                  <span className="text-xs text-text-muted/60">请在 App 中确认授权</span>
-                </div>
-              )}
+              <div className="h-1 bg-gradient-to-r from-transparent via-primary to-transparent animate-[slide-gradient_2s_linear_infinite]" style={{ backgroundSize: '200% 100%' }} />
+              <div className="px-6 pb-5 flex justify-center">
+                <button
+                  onClick={handleRetry}
+                  className="px-5 py-2 rounded-xl border border-glass-border text-sm font-semibold hover:border-white/20 hover:bg-white/5 transition-all cursor-pointer"
+                >
+                  {t('common:button.close')}
+                </button>
+              </div>
             </div>
-            <div className="h-1 bg-gradient-to-r from-transparent via-primary to-transparent animate-[slide-gradient_2s_linear_infinite]" style={{ backgroundSize: '200% 100%' }} />
           </div>
         )}
 
@@ -297,13 +307,7 @@ export default function ChannelConfigStep({ onNext, onBack }: Props): React.JSX.
       </div>
 
       {/* Action footer */}
-      <div className="shrink-0 flex justify-between py-3">
-        <button
-          onClick={onBack}
-          className="px-5 py-2.5 rounded-xl border border-glass-border text-sm font-semibold hover:border-white/20 hover:bg-white/5 transition-all cursor-pointer"
-        >
-          {t('common:button.back')}
-        </button>
+      <div className="shrink-0 flex justify-end py-3">
         <Button
           variant="primary"
           size="lg"
