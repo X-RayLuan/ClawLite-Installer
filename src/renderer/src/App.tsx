@@ -121,43 +121,45 @@ function App(): React.JSX.Element {
         )}
 
         <div className="flex-1 flex flex-col min-h-0 pb-10 step-enter w-full" key={currentStep}>
-          {currentStep === 'welcome' && <WelcomeStep onNext={next} />}
-          {currentStep === 'envCheck' && (
-            <EnvCheckStep onNext={() => goTo('install')} onNeedInstall={handleEnvCheckDone} />
-          )}
-          {currentStep === 'wslSetup' && (
-            <WslSetupStep wslState={wslState} onReady={handleWslReady} />
-          )}
-          {currentStep === 'install' && (
-            <InstallStep
-              needs={installNeeds}
-              onDone={() => goTo('activate')}
-              onActivationCheck={() => goTo('activate')}
-            />
-          )}
-          {currentStep === 'activate' && (
-            <ActivateStep onNext={() => goTo('modelConfig')} />
-          )}
-          {currentStep === 'modelConfig' && (
-            <ModelConfigStep />
-          )}
-          {currentStep === 'channelConfig' && (
-            <ChannelConfigStep
-              onNext={() => goTo('done')}
-            />
-          )}
-          {currentStep === 'done' && (
-            <DoneStep
-              onTroubleshoot={() => goTo('troubleshoot')}
-              onUninstallDone={() => {
-                window.electronAPI.wizard.clearState()
-                goTo('welcome')
-              }}
-            />
-          )}
-          {currentStep === 'troubleshoot' && (
-            <TroubleshootStep isWindows={isWindows} onBack={prev} />
-          )}
+          <div className="w-full max-w-3xl mx-auto">
+            {currentStep === 'welcome' && <WelcomeStep onNext={next} />}
+            {currentStep === 'envCheck' && (
+              <EnvCheckStep onNext={() => goTo('install')} onNeedInstall={handleEnvCheckDone} />
+            )}
+            {currentStep === 'wslSetup' && (
+              <WslSetupStep wslState={wslState} onReady={handleWslReady} />
+            )}
+            {currentStep === 'install' && (
+              <InstallStep
+                needs={installNeeds}
+                onDone={() => goTo('activate')}
+                onActivationCheck={() => goTo('activate')}
+              />
+            )}
+            {currentStep === 'activate' && (
+              <ActivateStep onNext={() => goTo('modelConfig')} />
+            )}
+            {currentStep === 'modelConfig' && (
+              <ModelConfigStep />
+            )}
+            {currentStep === 'channelConfig' && (
+              <ChannelConfigStep
+                onNext={() => goTo('done')}
+              />
+            )}
+            {currentStep === 'done' && (
+              <DoneStep
+                onTroubleshoot={() => goTo('troubleshoot')}
+                onUninstallDone={() => {
+                  window.electronAPI.wizard.clearState()
+                  goTo('welcome')
+                }}
+              />
+            )}
+            {currentStep === 'troubleshoot' && (
+              <TroubleshootStep isWindows={isWindows} onBack={prev} />
+            )}
+          </div>
         </div>
 
         <div className="absolute bottom-3 right-4 flex items-center gap-2">
