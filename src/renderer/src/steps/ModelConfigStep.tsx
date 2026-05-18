@@ -14,10 +14,7 @@ interface ModelInfo {
 
 type ProviderId = 'openai' | 'anthropic'
 
-interface Props {
-  onNext: () => void
-  onBack: () => void
-}
+interface Props {}
 
 const PROVIDER_TABS: { id: ProviderId; label: string; logo: React.ReactNode }[] = [
   {
@@ -46,7 +43,7 @@ function formatCtx(n: number): string {
   return String(n)
 }
 
-export default function ModelConfigStep({ onNext, onBack }: Props): React.JSX.Element {
+export default function ModelConfigStep(_: Props): React.JSX.Element {
   const { t } = useTranslation('steps')
   const [currentModelId, setCurrentModelId] = useState<string | undefined>()
   const [models, setModels] = useState<ModelInfo[]>([])

@@ -16,10 +16,9 @@ interface LarkSetup {
 
 interface Props {
   onNext: () => void
-  onBack: () => void
 }
 
-export default function ChannelConfigStep({ onNext, onBack }: Props): React.JSX.Element {
+export default function ChannelConfigStep({ onNext }: Props): React.JSX.Element {
   const { t } = useTranslation('steps')
   const [larkSetup, setLarkSetup] = useState<LarkSetup>({ phase: 'idle' })
   const [channelSaving, setChannelSaving] = useState(false)
