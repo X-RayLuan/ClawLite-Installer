@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useWizard } from '../hooks/useWizard'
 import LobsterLogo from '../components/LobsterLogo'
 import Button from '../components/Button'
+
+interface Props {
+  onNext: () => void
+}
 
 interface ModelInfo {
   id: string
@@ -44,9 +47,8 @@ function formatCtx(n: number): string {
   return String(n)
 }
 
-export default function ModelConfigStep(_: Props): React.JSX.Element {
+export default function ModelConfigStep({ onNext }: Props): React.JSX.Element {
   const { t } = useTranslation('steps')
-  const { next } = useWizard()
   const [currentModelId, setCurrentModelId] = useState<string | undefined>()
   const [models, setModels] = useState<ModelInfo[]>([])
   const [provider, setProvider] = useState<ProviderId>('openai')
@@ -71,9 +73,9 @@ export default function ModelConfigStep(_: Props): React.JSX.Element {
   // Auto-navigate to next step when model is saved
   useEffect(() => {
     if (!saved) return
-    const timer = setTimeout(() => next(), 800)
+    const timer = setTimeout(() => onNext(), 800)
     return () => clearTimeout(timer)
-  }, [saved, next])
+  }, [saved, onNext])
 
   // Fetch model list
   useEffect(() => {
@@ -112,7 +114,6 @@ export default function ModelConfigStep(_: Props): React.JSX.Element {
         await window.electronAPI.gateway.restart()
         setCurrentModelId(selectedModelId)
         setSaved(true)
-        next()
       } else {
         setError(result.error || '切换失败')
       }

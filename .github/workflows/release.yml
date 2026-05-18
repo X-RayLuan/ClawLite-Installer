@@ -22,12 +22,18 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - name: Cache electron-builder
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/electron-builder
+            node_modules/.cache/electron-builder
+          key: ${{ runner.os }}-electron-builder-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-electron-builder-
       - run: npm ci
       - name: Build macOS (universal)
         env:
-          # Build an unsigned DMG deterministically in CI.
-          # Passing empty/invalid signing secrets makes electron-builder try to load
-          # a certificate path and fail with "not a file" during mac packaging.
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
         run: npm run build:mac-local
       - name: Verify macOS app version matches release tag
@@ -49,6 +55,15 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - name: Cache electron-builder
+        uses: actions/cache@v4
+        with:
+          path: |
+            $LOCALAPPDATA\electron-builder\cache
+            node_modules\.cache\electron-builder
+          key: ${{ runner.os }}-electron-builder-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-electron-builder-
       - run: npm ci
       - name: Build Windows (x64)
         run: npm run build:win-local
@@ -84,5 +99,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag || github.ref_name }}
         run: |
-          gh release upload "$RELEASE_TAG" dist/clawlite.dmg --clobber
-          gh release upload "$RELEASE_TAG" dist/clawlite-setup.exe --clobber
+          gh release upload "$RELEASE_TAG" dist/clawlite.dmg --clobber &
+          gh release upload "$RELEASE_TAG" dist/clawlite-setup.exe --clobber &
+          wait

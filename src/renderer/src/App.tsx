@@ -140,7 +140,7 @@ function App(): React.JSX.Element {
               <ActivateStep onNext={() => goTo('modelConfig')} />
             )}
             {currentStep === 'modelConfig' && (
-              <ModelConfigStep />
+              <ModelConfigStep onNext={() => goTo('channelConfig')} />
             )}
             {currentStep === 'channelConfig' && (
               <ChannelConfigStep
