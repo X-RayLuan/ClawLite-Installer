@@ -11,6 +11,7 @@ import ActivateStep from './steps/ActivateStep'
 import ModelConfigStep from './steps/ModelConfigStep'
 import ChannelConfigStep from './steps/ChannelConfigStep'
 import DoneStep from './steps/DoneStep'
+import ConfigModal from './components/ConfigModal'
 import TroubleshootStep from './steps/TroubleshootStep'
 
 type WslState =
@@ -67,6 +68,7 @@ function App(): React.JSX.Element {
   const [isWindows, setIsWindows] = useState(false)
   const [wslState, setWslState] = useState<WslState>('ready')
   const [version, setVersion] = useState('')
+  const [showConfigModal, setShowConfigModal] = useState(false)
 
   // Load version + OS check on app start
   useEffect(() => {
@@ -154,6 +156,13 @@ function App(): React.JSX.Element {
                   window.electronAPI.wizard.clearState()
                   goTo('welcome')
                 }}
+                onConfig={() => setShowConfigModal(true)}
+              />
+            )}
+            {showConfigModal && (
+              <ConfigModal
+                onClose={() => setShowConfigModal(false)}
+                onDone={() => setShowConfigModal(false)}
               />
             )}
             {currentStep === 'troubleshoot' && (
