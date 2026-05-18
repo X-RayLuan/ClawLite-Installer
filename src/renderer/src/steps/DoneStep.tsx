@@ -66,6 +66,13 @@ export default function DoneStep({
     loadCurrentConfig()
   }, [loadCurrentConfig])
 
+  // Listen for config-updated events from ConfigModal
+  useEffect(() => {
+    const handler = (): void => loadCurrentConfig()
+    window.addEventListener('config-updated', handler)
+    return () => window.removeEventListener('config-updated', handler)
+  }, [loadCurrentConfig])
+
   const openWebChat = async (): Promise<void> => {
     const base = 'http://127.0.0.1:18789/'
     const appendLog = (msg: string): void => {

@@ -238,8 +238,15 @@ export default function ModelConfigStep({ onNext }: Props): React.JSX.Element {
         )}
       </div>
 
-      {/* Action footer — only Next button (Back is handled by global back button in App.tsx) */}
-      <div className="shrink-0 flex justify-end py-3">
+      {/* Action footer — Skip + Save buttons */}
+      <div className="shrink-0 flex justify-end gap-3 py-3">
+        <Button
+          variant="secondary"
+          size="lg"
+          onClick={onNext}
+        >
+          略过
+        </Button>
         <Button
           variant="primary"
           size="lg"
