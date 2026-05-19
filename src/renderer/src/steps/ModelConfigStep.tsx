@@ -16,7 +16,7 @@ interface ModelInfo {
   outputPer1M: number
 }
 
-type ProviderId = 'openai' | 'anthropic'
+type ProviderId = 'openai' | 'anthropic' | 'minimax'
 
 const PROVIDER_TABS: { id: ProviderId; label: string; logo: React.ReactNode }[] = [
   {
@@ -34,6 +34,16 @@ const PROVIDER_TABS: { id: ProviderId; label: string; logo: React.ReactNode }[] 
     logo: (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
         <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+      </svg>
+    )
+  },
+  {
+    id: 'minimax',
+    label: 'MiniMax',
+    logo: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+        <circle cx="12" cy="12" r="10" />
+        <path d="M12 6v12M6 12h12" stroke="#5B5BD6" strokeWidth="2" />
       </svg>
     )
   }
@@ -62,7 +72,8 @@ export default function ModelConfigStep({ onNext }: Props): React.JSX.Element {
       if (r.success && r.config?.model) {
         setCurrentModelId(r.config.model)
         const isAnthropic = r.config.model.includes('claude') || r.config.model.includes('anthropic')
-        setProvider(isAnthropic ? 'anthropic' : 'openai')
+        const isMiniMax = r.config.model.startsWith('minimax/')
+        setProvider(isAnthropic ? 'anthropic' : isMiniMax ? 'minimax' : 'openai')
         setSelectedModelId(r.config.model)
       }
     })
@@ -86,7 +97,9 @@ export default function ModelConfigStep({ onNext }: Props): React.JSX.Element {
           const first = r.models.find((m) =>
             provider === 'openai'
               ? !m.id.includes('claude')
-              : m.id.includes('claude')
+              : provider === 'anthropic'
+              ? m.id.includes('claude')
+              : m.id.startsWith('minimax/')
           )
           if (first) setSelectedModelId(first.id)
         }
@@ -99,6 +112,7 @@ export default function ModelConfigStep({ onNext }: Props): React.JSX.Element {
   const filteredModels = models.filter((m) => {
     if (provider === 'openai') return !m.id.includes('claude')
     if (provider === 'anthropic') return m.id.includes('claude')
+    if (provider === 'minimax') return m.id.startsWith('minimax/')
     return false
   })
 
@@ -148,7 +162,11 @@ export default function ModelConfigStep({ onNext }: Props): React.JSX.Element {
               onClick={() => {
                 setProvider(tab.id)
                 const first = models.find((m) =>
-                  tab.id === 'openai' ? !m.id.includes('claude') : m.id.includes('claude')
+                  tab.id === 'openai'
+                    ? !m.id.includes('claude')
+                    : tab.id === 'anthropic'
+                    ? m.id.includes('claude')
+                    : m.id.startsWith('minimax/')
                 )
                 setSelectedModelId(first?.id ?? null)
               }}
@@ -156,12 +174,14 @@ export default function ModelConfigStep({ onNext }: Props): React.JSX.Element {
                 provider === tab.id
                   ? tab.id === 'openai'
                     ? 'bg-primary/10 border-primary/40 text-primary'
-                    : 'bg-[#f25f4c]/10 border-[#f25f4c]/40 text-[#f25f4c]'
+                    : tab.id === 'anthropic'
+                    ? 'bg-[#f25f4c]/10 border-[#f25f4c]/40 text-[#f25f4c]'
+                    : 'bg-[#5B5BD6]/10 border-[#5B5BD6]/40 text-[#5B5BD6]'
                   : 'bg-white/5 border-glass-border hover:border-white/20 text-text-muted'
               }`}
             >
               <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
-                tab.id === 'openai' ? 'bg-black' : 'bg-gradient-to-br from-[#f25f4c] to-[#ff8700]'
+                tab.id === 'openai' ? 'bg-black' : tab.id === 'anthropic' ? 'bg-gradient-to-br from-[#f25f4c] to-[#ff8700]' : 'bg-[#5B5BD6]'
               }`}>
                 {tab.logo}
               </div>
@@ -192,7 +212,9 @@ export default function ModelConfigStep({ onNext }: Props): React.JSX.Element {
                     isSelected
                       ? provider === 'openai'
                         ? 'bg-primary/10 border-primary/40'
-                        : 'bg-[#f25f4c]/10 border-[#f25f4c]/40'
+                        : provider === 'anthropic'
+                        ? 'bg-[#f25f4c]/10 border-[#f25f4c]/40'
+                        : 'bg-[#5B5BD6]/10 border-[#5B5BD6]/40'
                       : 'bg-white/5 border-glass-border hover:border-white/20'
                   }`}
                 >
@@ -200,7 +222,9 @@ export default function ModelConfigStep({ onNext }: Props): React.JSX.Element {
                     isSelected
                       ? provider === 'openai'
                         ? 'border-primary bg-primary'
-                        : 'border-[#f25f4c] bg-[#f25f4c]'
+                        : provider === 'anthropic'
+                        ? 'border-[#f25f4c] bg-[#f25f4c]'
+                        : 'border-[#5B5BD6] bg-[#5B5BD6]'
                       : 'border-text-muted/30 bg-transparent'
                   }`}>
                     {isSelected && (
