@@ -247,7 +247,7 @@ interface Props {
 
 export default function ConfigModal({ onClose, onDone }: Props): React.JSX.Element {
   const { t } = useTranslation('steps')
-  const [tab, setTab] = useState<'model' | 'channel'>('model')
+  const [view, setView] = useState<'home' | 'model' | 'channel'>('home')
   const [larkSetup, setLarkSetup] = useState<{
     phase: ChannelPhase
     qrUrl?: string
@@ -258,6 +258,7 @@ export default function ConfigModal({ onClose, onDone }: Props): React.JSX.Eleme
   const qrCanvasRef = useRef<HTMLCanvasElement>(null)
   const [currentModel, setCurrentModel] = useState<string | null>(null)
   const [hasTelegram, setHasTelegram] = useState(false)
+  const isConfiguringChannel = larkSetup.phase !== 'idle' && larkSetup.phase !== 'success' && larkSetup.phase !== 'error'
 
   // Load current config
   useEffect(() => {
@@ -360,48 +361,82 @@ export default function ConfigModal({ onClose, onDone }: Props): React.JSX.Eleme
     window.dispatchEvent(new CustomEvent('config-updated'))
   }
 
+  const resetChannel = (): void => {
+    setLarkSetup({ phase: 'idle' })
+    setChannelSaving(false)
+  }
+
+  const title =
+    view === 'model'
+      ? t('modelConfig.title')
+      : view === 'channel'
+        ? t('channelConfig.title')
+        : 'Configure'
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div className="relative w-full max-w-md mx-4 bg-[#1c1c1e] rounded-2xl shadow-2xl border border-white/10 overflow-hidden">
-        {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
-          <h2 className="text-sm font-bold text-white">Configure</h2>
+          <div className="flex items-center gap-2 min-w-0">
+            {view !== 'home' && (
+              <button
+                onClick={() => setView('home')}
+                disabled={isConfiguringChannel}
+                className="w-7 h-7 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors text-sm disabled:opacity-40"
+              >
+                ‹
+              </button>
+            )}
+            <h2 className="text-sm font-bold text-white truncate">{title}</h2>
+          </div>
           <button
             onClick={onClose}
+            disabled={isConfiguringChannel}
             className="w-7 h-7 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-colors text-xs"
           >
             ✕
           </button>
         </div>
 
-        {/* Tabs */}
-        <div className="flex border-b border-white/10">
-          <button
-            onClick={() => setTab('model')}
-            className={`flex-1 py-3 text-xs font-bold transition-colors ${
-              tab === 'model'
-                ? 'text-white border-b-2 border-primary'
-                : 'text-white/40 hover:text-white/70'
-            }`}
-          >
-            Model
-          </button>
-          <button
-            onClick={() => setTab('channel')}
-            className={`flex-1 py-3 text-xs font-bold transition-colors ${
-              tab === 'channel'
-                ? 'text-white border-b-2 border-primary'
-                : 'text-white/40 hover:text-white/70'
-            }`}
-          >
-            Channel
-          </button>
-        </div>
-
-        {/* Body */}
         <div className="p-5 max-h-[70vh] overflow-y-auto">
-          {/* ── Model Tab ── */}
-          {tab === 'model' && (
+          {view === 'home' && (
+            <div className="space-y-3">
+              <button
+                onClick={() => setView('model')}
+                className="w-full flex items-center gap-3 px-4 py-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-primary/40 transition-all duration-200 text-left cursor-pointer"
+              >
+                <div className="w-10 h-10 rounded-lg bg-primary/15 flex items-center justify-center">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
+                    <path d="M12 2a3 3 0 0 0-3 3v1H7a3 3 0 0 0-3 3v8a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V9a3 3 0 0 0-3-3h-2V5a3 3 0 0 0-3-3Z" />
+                    <path d="M8 13h.01M16 13h.01M10 17h4" />
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-white">Model</p>
+                  <p className="text-[11px] text-white/50 truncate">{t('modelConfig.desc')}</p>
+                </div>
+                <span className="text-white/40 text-lg">›</span>
+              </button>
+
+              <button
+                onClick={() => setView('channel')}
+                className="w-full flex items-center gap-3 px-4 py-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-primary/40 transition-all duration-200 text-left cursor-pointer"
+              >
+                <div className="w-10 h-10 rounded-lg bg-[#1677FF]/15 flex items-center justify-center">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" className="text-[#4f9cff]">
+                    <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z" />
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-white">Channel</p>
+                  <p className="text-[11px] text-white/50 truncate">{t('channelConfig.desc')}</p>
+                </div>
+                <span className="text-white/40 text-lg">›</span>
+              </button>
+            </div>
+          )}
+
+          {view === 'model' && (
             <ModelSelectorInline
               currentModelId={currentModel}
               onSaved={() => {
@@ -415,88 +450,136 @@ export default function ConfigModal({ onClose, onDone }: Props): React.JSX.Eleme
             />
           )}
 
-          {/* ── Channel Tab ── */}
-          {tab === 'channel' && (
+          {view === 'channel' && (
             <div className="space-y-4">
-              <p className="text-xs text-white/50">{t('channel.description')}</p>
+              <p className="text-xs text-white/50">{t('channelConfig.desc')}</p>
 
-              {/* Feishu */}
-              <div className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center text-sm">📱</div>
-                  <div>
-                    <p className="text-sm font-bold text-white">Feishu / Lark</p>
-                    <p className="text-[10px] text-white/40">{t('channel.feishuSubtitle')}</p>
+              <button
+                onClick={() => configureLarkBot('feishu')}
+                disabled={channelSaving || isConfiguringChannel}
+                className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border transition-all duration-200 cursor-pointer text-left ${
+                  larkSetup.phase !== 'idle' && larkSetup.domain === 'feishu'
+                    ? 'border-primary/40 bg-primary/10'
+                    : 'border-white/10 bg-white/5 hover:bg-white/10 hover:border-primary/40'
+                } disabled:opacity-50`}
+              >
+                <div className="w-10 h-10 rounded-lg bg-[#1677FF]/20 flex items-center justify-center shrink-0">
+                  <svg viewBox="0 0 24 24" className="w-6 h-6" fill="#1677FF">
+                    <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.22l-2.477 10.65c-.127.47-.455.79-.877.79H9.46c-.422 0-.75-.32-.877-.79L6.106 8.22a.94.94 0 0 1 .877-1.28h10.034c.522 0 .922.516.877 1.28z" />
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-white">{t('channelConfig.feishu')}</p>
+                  <p className="text-[11px] text-white/50 truncate">{t('channelConfig.feishuDesc')}</p>
+                </div>
+                {larkSetup.domain === 'feishu' && larkSetup.phase === 'success' && (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                )}
+                {larkSetup.domain === 'feishu' && isConfiguringChannel && (
+                  <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                )}
+                {!isConfiguringChannel && larkSetup.domain !== 'feishu' && <span className="text-white/40 text-lg">›</span>}
+              </button>
+
+              <button
+                onClick={() => configureLarkBot('lark')}
+                disabled={channelSaving || isConfiguringChannel}
+                className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border transition-all duration-200 cursor-pointer text-left ${
+                  larkSetup.phase !== 'idle' && larkSetup.domain === 'lark'
+                    ? 'border-primary/40 bg-primary/10'
+                    : 'border-white/10 bg-white/5 hover:bg-white/10 hover:border-primary/40'
+                } disabled:opacity-50`}
+              >
+                <div className="w-10 h-10 rounded-lg bg-[#1475E7]/20 flex items-center justify-center shrink-0">
+                  <svg viewBox="0 0 24 24" className="w-6 h-6" fill="#1475E7">
+                    <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.22l-2.477 10.65c-.127.47-.455.79-.877.79H9.46c-.422 0-.75-.32-.877-.79L6.106 8.22a.94.94 0 0 1 .877-1.28h10.034c.522 0 .922.516.877 1.28z" />
+                  </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-white">{t('channelConfig.lark')}</p>
+                  <p className="text-[11px] text-white/50 truncate">{t('channelConfig.larkDesc')}</p>
+                </div>
+                {larkSetup.domain === 'lark' && larkSetup.phase === 'success' && (
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                )}
+                {larkSetup.domain === 'lark' && isConfiguringChannel && (
+                  <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                )}
+                {!isConfiguringChannel && larkSetup.domain !== 'lark' && <span className="text-white/40 text-lg">›</span>}
+              </button>
+
+              {larkSetup.phase === 'starting' && (
+                <div className="flex items-center gap-3 px-4 py-4 rounded-xl border border-white/10 bg-white/[0.03]">
+                  <div className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                  <span className="text-sm font-medium text-white/80">{larkSetup.message}</span>
+                </div>
+              )}
+
+              {(larkSetup.phase === 'qr' || larkSetup.phase === 'polling') && larkSetup.qrUrl && (
+                <div className="rounded-2xl border border-primary/30 bg-[#0f1923] overflow-hidden shadow-2xl">
+                  <div className="h-1 bg-gradient-to-r from-transparent via-primary to-transparent animate-[slide-gradient_2s_linear_infinite]" style={{ backgroundSize: '200% 100%' }} />
+                  <div className="p-5 text-center">
+                    <div className="relative inline-block">
+                      <canvas ref={qrCanvasRef} className="mx-auto h-[180px] w-[180px] rounded-lg bg-white p-2" />
+                      {larkSetup.phase === 'polling' && (
+                        <div className="absolute inset-0 rounded-lg border-2 border-primary/40 animate-ping pointer-events-none" />
+                      )}
+                    </div>
+                    <p className="mt-4 text-sm text-white font-medium">{larkSetup.message}</p>
+                    {larkSetup.phase === 'polling' && (
+                      <div className="mt-3 flex items-center justify-center gap-2">
+                        <div className="flex gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '0ms' }} />
+                          <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '150ms' }} />
+                          <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '300ms' }} />
+                        </div>
+                        <span className="text-xs text-white/50">请在 App 中确认授权</span>
+                      </div>
+                    )}
                   </div>
                 </div>
+              )}
 
-                {(larkSetup.phase === 'idle' || larkSetup.domain !== undefined) && larkSetup.phase !== 'success' && (
-                  <div className="flex gap-2">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => configureLarkBot('feishu')}
-                    >
-                      配置 Feishu
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => configureLarkBot('lark')}
-                    >
-                      配置 Lark
-                    </Button>
+              {larkSetup.phase === 'installing' && (
+                <div className="flex flex-col gap-3 px-4 py-4 rounded-xl border border-primary/20 bg-primary/5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                    <span className="text-sm font-medium text-primary">{larkSetup.message}</span>
                   </div>
-                )}
-
-                {larkSetup.phase === 'starting' && (
-                  <div className="flex items-center gap-2 text-xs text-white/50">
-                    <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                    {larkSetup.message}
+                  <div className="h-1 bg-white/10 rounded-full overflow-hidden">
+                    <div className="h-full bg-primary rounded-full animate-[slide_1.5s_ease-in-out_infinite]" style={{ width: '60%' }} />
                   </div>
-                )}
+                </div>
+              )}
 
-                {(larkSetup.phase === 'qr' || larkSetup.phase === 'polling') && (
-                  <div className="flex flex-col items-center gap-2">
-                    <p className="text-xs text-white/70">{larkSetup.message}</p>
-                    {larkSetup.phase === 'qr' && <canvas ref={qrCanvasRef} className="rounded-lg" />}
-                    {larkSetup.phase === 'polling' && (
-                      <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                    )}
-                    <p className="text-[10px] text-white/30">请使用 Feishu / Lark 扫码授权</p>
+              {larkSetup.phase === 'success' && (
+                <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-success/10 border border-success/30">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-success">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  <span className="text-sm font-medium text-success">{larkSetup.message}</span>
+                </div>
+              )}
+
+              {larkSetup.phase === 'error' && (
+                <div className="flex flex-col gap-2 px-4 py-3 rounded-xl bg-error/10 border border-error/20">
+                  <div className="flex items-start gap-2">
+                    <span className="text-sm">⚠️</span>
+                    <span className="text-xs text-error flex-1">{larkSetup.message}</span>
                   </div>
-                )}
+                  <button
+                    onClick={resetChannel}
+                    className="mt-1 px-3 py-1.5 rounded-lg bg-error/10 border border-error/20 text-xs font-medium text-error hover:bg-error/20 transition-colors cursor-pointer"
+                  >
+                    重试
+                  </button>
+                </div>
+              )}
 
-                {larkSetup.phase === 'installing' && (
-                  <div className="flex items-center gap-2 text-xs text-white/50">
-                    <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                    {larkSetup.message}
-                  </div>
-                )}
-
-                {larkSetup.phase === 'success' && (
-                  <div className="flex items-center gap-2 text-xs text-green-400">
-                    ✓ {larkSetup.message}
-                  </div>
-                )}
-
-                {larkSetup.phase === 'error' && (
-                  <div className="space-y-2">
-                    <p className="text-xs text-red-400">{larkSetup.message}</p>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => configureLarkBot(larkSetup.domain || 'feishu')}
-                    >
-                      重试
-                    </Button>
-                  </div>
-                )}
-              </div>
-
-              {/* Telegram */}
               <div className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-3">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center text-sm">✈️</div>

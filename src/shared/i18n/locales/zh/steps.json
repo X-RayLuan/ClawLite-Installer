@@ -193,6 +193,8 @@
     "desc": "选择您要使用的 AI 模型",
     "provider": "供应商",
     "model": "模型",
+    "skip": "略过",
+    "skipDesc": "后续可在设置中配置",
     "saveBtn": "保存并继续",
     "saved": "已保存",
     "switching": "切换中...",

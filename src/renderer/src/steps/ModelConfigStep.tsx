@@ -18,8 +18,6 @@ interface ModelInfo {
 
 type ProviderId = 'openai' | 'anthropic'
 
-interface Props {}
-
 const PROVIDER_TABS: { id: ProviderId; label: string; logo: React.ReactNode }[] = [
   {
     id: 'openai',
@@ -245,7 +243,7 @@ export default function ModelConfigStep({ onNext }: Props): React.JSX.Element {
           size="lg"
           onClick={onNext}
         >
-          略过
+          {t('modelConfig.skip')}
         </Button>
         <Button
           variant="primary"

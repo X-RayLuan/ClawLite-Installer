@@ -193,6 +193,8 @@
     "desc": "Select the AI model you want to use",
     "provider": "Provider",
     "model": "Model",
+    "skip": "Skip",
+    "skipDesc": "Configure later in settings",
     "saveBtn": "Save & Continue",
     "saved": "Saved",
     "switching": "Switching...",
