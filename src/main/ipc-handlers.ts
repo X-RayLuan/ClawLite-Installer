@@ -1298,7 +1298,7 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
   // ─── Model switch (lightweight — just update baseUrl/api/model in openclaw.json) ───
   ipcMain.handle(
     'model:switch',
-    (_e, params: { provider: 'openai' | 'anthropic'; modelId: string }) => {
+    (_e, params: { provider: 'openai' | 'anthropic' | 'minimax'; modelId: string }) => {
       const { provider, modelId } = params
       try {
         const openClawDir = join(app.getPath('home'), '.openclaw')
@@ -1315,9 +1315,15 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
         const apiBaseUrl =
           provider === 'openai'
             ? 'https://clawlite.ai/api/openai/v1'
-            : 'https://clawlite.ai/api/claude'
+            : provider === 'anthropic'
+            ? 'https://clawlite.ai/api/claude'
+            : 'https://clawlite.ai/api/minimax/v1'
         const api =
-          provider === 'openai' ? 'openai-completions' : 'anthropic-messages'
+          provider === 'openai'
+            ? 'openai-completions'
+            : provider === 'anthropic'
+            ? 'anthropic-messages'
+            : 'minimax-chat'
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const m = (ocConfig.models = ocConfig.models || {}) as any

@@ -305,7 +305,7 @@ const electronAPI = {
       error?: string
     }> => ipcRenderer.invoke('model:list'),
     switch: (params: {
-      provider: 'openai' | 'anthropic'
+      provider: 'openai' | 'anthropic' | 'minimax'
       modelId: string
     }): Promise<{ success: boolean; error?: string }> =>
       ipcRenderer.invoke('model:switch', params)

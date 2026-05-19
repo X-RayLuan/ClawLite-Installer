@@ -228,7 +228,7 @@ interface ElectronAPI {
       error?: string
     }>
     switch: (params: {
-      provider: 'openai' | 'anthropic'
+      provider: 'openai' | 'anthropic' | 'minimax'
       modelId: string
     }) => Promise<{ success: boolean; error?: string }>
   }

@@ -141,22 +141,28 @@ export const providerConfigs: ProviderConfig[] = [
     pattern: /^sk-/,
     models: [
       {
+        id: 'minimax/MiniMax-M2.7',
+        name: 'MiniMax M2.7',
+        desc: 'Latest Flagship (Recommended)',
+        price: '$0.30/$1.20'
+      },
+      {
+        id: 'minimax/MiniMax-M2.7-highspeed',
+        name: 'M2.7 Highspeed',
+        desc: 'High Speed',
+        price: '$0.60/$2.40'
+      },
+      {
         id: 'minimax/MiniMax-M2.5',
         name: 'MiniMax M2.5',
-        desc: 'Coding/Agent SOTA (Recommended)',
-        price: '$0.15/$1.2'
+        desc: 'Balanced',
+        price: '$0.30/$1.20'
       },
       {
         id: 'minimax/MiniMax-M2.5-highspeed',
         name: 'M2.5 Highspeed',
         desc: 'High Speed',
-        price: '$0.3/$2.4'
-      },
-      {
-        id: 'minimax/MiniMax-M2.1',
-        name: 'MiniMax M2.1',
-        desc: 'Coding Specialized',
-        price: '$0.27/$0.95'
+        price: '$0.60/$2.40'
       }
     ]
   },
