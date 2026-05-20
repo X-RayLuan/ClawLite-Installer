@@ -94,7 +94,7 @@ export default function ModelSelectModal({
                 m.provider === provider ||
                 (provider === 'openai' && !m.provider.includes('claude') && !m.provider.includes('minimax')) ||
                 (provider === 'anthropic' && m.provider.includes('claude')) ||
-                (provider === 'minimax' && m.provider.includes('minimax'))
+                (provider === 'minimax' && m.provider.toLowerCase().includes('minimax'))
             )
             if (first) setSelectedModelId(first.id)
           }
@@ -107,9 +107,10 @@ export default function ModelSelectModal({
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const filteredModels = models.filter((m) => {
-    if (provider === 'openai') return !m.id.includes('claude') && !m.id.includes('minimax')
-    if (provider === 'anthropic') return m.id.includes('claude')
-    if (provider === 'minimax') return m.id.includes('minimax')
+    const idLower = m.id.toLowerCase()
+    if (provider === 'openai') return !idLower.includes('claude') && !idLower.includes('minimax')
+    if (provider === 'anthropic') return idLower.includes('claude')
+    if (provider === 'minimax') return idLower.includes('minimax')
     return false
   })
 
@@ -180,13 +181,14 @@ export default function ModelSelectModal({
               onClick={() => {
                 setProvider(tab.id)
                 // Select first model of this provider
-                const first = models.find((m) =>
-                  tab.id === 'openai'
-                    ? !m.id.includes('claude') && !m.id.includes('minimax')
+                const first = models.find((m) => {
+                  const idLower = m.id.toLowerCase()
+                  return tab.id === 'openai'
+                    ? !idLower.includes('claude') && !idLower.includes('minimax')
                     : tab.id === 'anthropic'
-                    ? m.id.includes('claude')
-                    : m.id.includes('minimax')
-                )
+                    ? idLower.includes('claude')
+                    : idLower.includes('minimax')
+                })
                 setSelectedModelId(first?.id ?? null)
               }}
               className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border transition-all duration-150 cursor-pointer ${
