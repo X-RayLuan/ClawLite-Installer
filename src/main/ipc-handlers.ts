@@ -1340,7 +1340,7 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
             ? 'openai-completions'
             : provider === 'anthropic'
             ? 'anthropic-messages'
-            : 'minimax-chat'
+            : 'openai-completions'
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const m = (ocConfig.models = ocConfig.models || {}) as any
