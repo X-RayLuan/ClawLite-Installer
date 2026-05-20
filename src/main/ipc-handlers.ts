@@ -1,4 +1,21 @@
-import { ipcMain, BrowserWindow, app } from 'electron'
+import { ipcMain, BrowserWindow, app, net } from 'electron'
+
+// ─── Helper: HTTP GET using Electron's net (respects system proxy) ───
+async function httpGet(url: string, timeoutMs = 15000): Promise<{ body: string; status: number }> {
+  return new Promise((resolve, reject) => {
+    const req = net.request({ url, method: 'GET' })
+    const timeout = setTimeout(() => { req.abort(); reject(new Error('timeout')) }, timeoutMs)
+    let data = ''
+    req.on('response', (resp) => {
+      clearTimeout(timeout)
+      resp.on('data', (chunk) => { data += chunk.toString() })
+      resp.on('end', () => resolve({ body: data, status: resp.statusCode }))
+      resp.on('error', reject)
+    })
+    req.on('error', (e) => { clearTimeout(timeout); reject(e) })
+    req.end()
+  })
+}
 import { spawn, spawnSync } from 'child_process'
 import { platform } from 'os'
 import { join } from 'path'
@@ -1269,20 +1286,20 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
   ipcMain.handle('model:list', async () => {
     try {
       const fetchUrl = 'https://clawlite.ai/api/models'
-      let resp: Response
+      let httpResp: { body: string; status: number }
       try {
-        resp = await fetch(fetchUrl, { signal: AbortSignal.timeout(15000) })
+        httpResp = await httpGet(fetchUrl, 15000)
       } catch (fetchErr) {
         console.error('[model:list] fetch error:', fetchErr)
         return { success: false, models: [], error: String(fetchErr) }
       }
 
-      console.log(`[model:list] fetched ${fetchUrl}, status=${resp.status}`)
-      if (!resp.ok) {
-        return { success: false, models: [], error: `http_${resp.status}` }
+      console.log(`[model:list] fetched ${fetchUrl}, status=${httpResp.status}`)
+      if (httpResp.status !== 200) {
+        return { success: false, models: [], error: `http_${httpResp.status}` }
       }
 
-      const data = (await resp.json()) as { ok: boolean; models?: Array<{ id: string; name: string; provider: string; contextWindow: number; inputPer1M: number; outputPer1M: number }>; error?: string }
+      const data = JSON.parse(httpResp.body) as { ok: boolean; models?: Array<{ id: string; name: string; provider: string; contextWindow: number; inputPer1M: number; outputPer1M: number }>; error?: string }
 
       console.log(`[model:list] parsed ${data.models?.length ?? 0} models, ok=${data.ok}`)
       if (!data.ok || !data.models) {

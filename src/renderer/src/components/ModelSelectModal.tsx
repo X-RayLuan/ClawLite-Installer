@@ -82,9 +82,11 @@ export default function ModelSelectModal({
   useEffect(() => {
     setLoading(true)
     setError(null)
+    console.log('[ModelSelectModal] calling model.list()...')
     window.electronAPI.model
       .list()
       .then((r) => {
+        console.log('[ModelSelectModal] model.list() result:', JSON.stringify(r))
         if (r.success) {
           setModels(r.models)
           // Auto-select current model if not set
@@ -106,6 +108,9 @@ export default function ModelSelectModal({
     if (provider === 'minimax') return m.provider === 'minimax'
     return false
   })
+
+  // DEBUG
+  console.log('[ModelSelectModal] provider=', provider, 'models=', models.length, 'filtered=', filteredModels.length, filteredModels.map(m => m.id))
 
   const handleSwitch = async (): Promise<void> => {
     if (!selectedModelId) return

@@ -96,10 +96,10 @@ export default function ModelConfigStep({ onNext }: Props): React.JSX.Element {
         if (!selectedModelId && r.models.length > 0) {
           const first = r.models.find((m) =>
             provider === 'openai'
-              ? m.id.startsWith('openai/')
+              ? m.provider === 'openai'
               : provider === 'anthropic'
-              ? m.id.includes('claude')
-              : m.id.startsWith('minimax/')
+              ? m.provider === 'anthropic'
+              : m.provider === 'minimax'
           )
           if (first) setSelectedModelId(first.id)
         }
@@ -110,9 +110,9 @@ export default function ModelConfigStep({ onNext }: Props): React.JSX.Element {
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const filteredModels = models.filter((m) => {
-    if (provider === 'openai') return m.id.startsWith('openai/')
-    if (provider === 'anthropic') return m.id.includes('claude')
-    if (provider === 'minimax') return m.id.startsWith('minimax/')
+    if (provider === 'openai') return m.provider === 'openai'
+    if (provider === 'anthropic') return m.provider === 'anthropic'
+    if (provider === 'minimax') return m.provider === 'minimax'
     return false
   })
 
