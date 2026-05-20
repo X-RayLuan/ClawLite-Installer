@@ -89,13 +89,7 @@ export default function ModelSelectModal({
           setModels(r.models)
           // Auto-select current model if not set
           if (!selectedModelId && r.models.length > 0) {
-            const first = r.models.find(
-              (m) =>
-                m.provider === provider ||
-                (provider === 'openai' && !m.provider.includes('claude') && !m.provider.includes('minimax')) ||
-                (provider === 'anthropic' && m.provider.includes('claude')) ||
-                (provider === 'minimax' && m.provider.toLowerCase().includes('minimax'))
-            )
+            const first = r.models.find((m) => m.provider === provider)
             if (first) setSelectedModelId(first.id)
           }
         } else {
@@ -107,10 +101,9 @@ export default function ModelSelectModal({
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const filteredModels = models.filter((m) => {
-    const idLower = m.id.toLowerCase()
-    if (provider === 'openai') return !idLower.includes('claude') && !idLower.includes('minimax')
-    if (provider === 'anthropic') return idLower.includes('claude')
-    if (provider === 'minimax') return idLower.includes('minimax')
+    if (provider === 'openai') return m.provider === 'openai'
+    if (provider === 'anthropic') return m.provider === 'anthropic'
+    if (provider === 'minimax') return m.provider === 'minimax'
     return false
   })
 
@@ -182,12 +175,11 @@ export default function ModelSelectModal({
                 setProvider(tab.id)
                 // Select first model of this provider
                 const first = models.find((m) => {
-                  const idLower = m.id.toLowerCase()
                   return tab.id === 'openai'
-                    ? !idLower.includes('claude') && !idLower.includes('minimax')
+                    ? m.provider === 'openai'
                     : tab.id === 'anthropic'
-                    ? idLower.includes('claude')
-                    : idLower.includes('minimax')
+                    ? m.provider === 'anthropic'
+                    : m.provider === 'minimax'
                 })
                 setSelectedModelId(first?.id ?? null)
               }}
