@@ -5,7 +5,7 @@ import Button from './Button'
 
 // ── Shared Model UI (same as ModelConfigStep) ──────────────────────────────
 
-type ProviderId = 'openai' | 'anthropic'
+type ProviderId = 'openai' | 'anthropic' | 'minimax'
 
 const PROVIDER_TABS: { id: ProviderId; label: string; logo: React.ReactNode }[] = [
   {
@@ -25,6 +25,11 @@ const PROVIDER_TABS: { id: ProviderId; label: string; logo: React.ReactNode }[] 
         <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
       </svg>
     )
+  },
+  {
+    id: 'minimax',
+    label: 'MiniMax',
+    logo: <span className="text-white text-xs font-black">M</span>
   }
 ]
 
@@ -61,7 +66,8 @@ function ModelSelectorInline({
   useEffect(() => {
     if (currentModelId) {
       const isAnthropic = currentModelId.includes('claude') || currentModelId.includes('anthropic')
-      setProvider(isAnthropic ? 'anthropic' : 'openai')
+      const isMiniMax = currentModelId.startsWith('MiniMax-') || currentModelId.toLowerCase().includes('minimax')
+      setProvider(isAnthropic ? 'anthropic' : isMiniMax ? 'minimax' : 'openai')
       setSelectedModelId(currentModelId)
     }
   }, [currentModelId])
@@ -74,7 +80,11 @@ function ModelSelectorInline({
         setModels(r.models)
         if (!selectedModelId && r.models.length > 0) {
           const first = r.models.find((m) =>
-            provider === 'openai' ? !m.id.includes('claude') : m.id.includes('claude')
+            provider === 'openai'
+              ? m.provider === 'openai'
+              : provider === 'anthropic'
+              ? m.provider === 'anthropic'
+              : m.provider === 'minimax'
           )
           if (first) setSelectedModelId(first.id)
         }
@@ -85,8 +95,9 @@ function ModelSelectorInline({
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const filteredModels = models.filter((m) => {
-    if (provider === 'openai') return !m.id.includes('claude')
-    if (provider === 'anthropic') return m.id.includes('claude')
+    if (provider === 'openai') return m.provider === 'openai'
+    if (provider === 'anthropic') return m.provider === 'anthropic'
+    if (provider === 'minimax') return m.provider === 'minimax'
     return false
   })
 
@@ -126,7 +137,11 @@ function ModelSelectorInline({
             onClick={() => {
               setProvider(tab.id)
               const first = models.find((m) =>
-                tab.id === 'openai' ? !m.id.includes('claude') : m.id.includes('claude')
+                tab.id === 'openai'
+                  ? m.provider === 'openai'
+                  : tab.id === 'anthropic'
+                  ? m.provider === 'anthropic'
+                  : m.provider === 'minimax'
               )
               setSelectedModelId(first?.id ?? null)
             }}
@@ -134,12 +149,18 @@ function ModelSelectorInline({
               provider === tab.id
                 ? tab.id === 'openai'
                   ? 'bg-primary/10 border-primary/40 text-primary'
-                  : 'bg-[#f25f4c]/10 border-[#f25f4c]/40 text-[#f25f4c]'
+                  : tab.id === 'anthropic'
+                  ? 'bg-[#f25f4c]/10 border-[#f25f4c]/40 text-[#f25f4c]'
+                  : 'bg-[#5B5BD6]/10 border-[#5B5BD6]/40 text-[#5B5BD6]'
                 : 'bg-white/5 border-glass-border hover:border-white/20 text-text-muted'
             }`}
           >
             <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
-              tab.id === 'openai' ? 'bg-black' : 'bg-gradient-to-br from-[#f25f4c] to-[#ff8700]'
+              tab.id === 'openai'
+                ? 'bg-black'
+                : tab.id === 'anthropic'
+                ? 'bg-gradient-to-br from-[#f25f4c] to-[#ff8700]'
+                : 'bg-[#5B5BD6]'
             }`}>
               {tab.logo}
             </div>
@@ -170,7 +191,9 @@ function ModelSelectorInline({
                   isSelected
                     ? provider === 'openai'
                       ? 'bg-primary/10 border-primary/40'
-                      : 'bg-[#f25f4c]/10 border-[#f25f4c]/40'
+                      : provider === 'anthropic'
+                      ? 'bg-[#f25f4c]/10 border-[#f25f4c]/40'
+                      : 'bg-[#5B5BD6]/10 border-[#5B5BD6]/40'
                     : 'bg-white/5 border-glass-border hover:border-white/20'
                 }`}
               >
@@ -178,7 +201,9 @@ function ModelSelectorInline({
                   isSelected
                     ? provider === 'openai'
                       ? 'border-primary bg-primary'
-                      : 'border-[#f25f4c] bg-[#f25f4c]'
+                      : provider === 'anthropic'
+                      ? 'border-[#f25f4c] bg-[#f25f4c]'
+                      : 'border-[#5B5BD6] bg-[#5B5BD6]'
                     : 'border-text-muted/30 bg-transparent'
                 }`}>
                   {isSelected && (
