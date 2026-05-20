@@ -18,6 +18,8 @@
     "openai-codex/gpt-5.3-codex": "Latest Coding (Recommended)",
     "openai-codex/gpt-5.2-codex": "Stable Coding",
     "openai-codex/gpt-5.1-codex": "Legacy",
+    "minimax/MiniMax-M2.7": "Latest Flagship (Recommended)",
+    "minimax/MiniMax-M2.7-highspeed": "High Speed",
     "minimax/MiniMax-M2.5": "Coding/Agent SOTA (Recommended)",
     "minimax/MiniMax-M2.5-highspeed": "High Speed",
     "minimax/MiniMax-M2.1": "Coding Specialized",
