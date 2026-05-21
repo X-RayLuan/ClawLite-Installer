@@ -108,6 +108,13 @@ interface ElectronAPI {
       larkBotToken?: string
       larkBotName?: string
     }) => Promise<{ success: boolean; error?: string }>
+    configureTelegram: (params: { botToken: string }) => Promise<{
+      success: boolean
+      status?: string
+      error?: string
+      logs?: string
+      verifyOutput?: string
+    }>
     larkBeginRegistration: (domain?: 'feishu' | 'lark') => Promise<{
       success: boolean
       deviceCode?: string

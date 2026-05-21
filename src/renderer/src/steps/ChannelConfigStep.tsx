@@ -4,14 +4,22 @@ import QRCode from 'qrcode'
 import LobsterLogo from '../components/LobsterLogo'
 import Button from '../components/Button'
 
-type ChannelPhase = 'idle' | 'starting' | 'qr' | 'polling' | 'installing' | 'success' | 'error'
+type LarkPhase = 'idle' | 'starting' | 'qr' | 'polling' | 'installing' | 'success' | 'error'
+type TelegramPhase = 'idle' | 'configuring' | 'success' | 'error'
+type ActiveTab = 'feishu' | 'lark' | 'telegram'
 
 interface LarkSetup {
-  phase: ChannelPhase
+  phase: LarkPhase
   qrUrl?: string
   message?: string
   installLogs?: string
   domain?: 'feishu' | 'lark'
+}
+
+interface TelegramSetup {
+  phase: TelegramPhase
+  message?: string
+  error?: string
 }
 
 interface Props {
@@ -20,8 +28,11 @@ interface Props {
 
 export default function ChannelConfigStep({ onNext }: Props): React.JSX.Element {
   const { t } = useTranslation('steps')
+  const [activeTab, setActiveTab] = useState<ActiveTab>('feishu')
   const [larkSetup, setLarkSetup] = useState<LarkSetup>({ phase: 'idle' })
-  const [channelSaving, setChannelSaving] = useState(false)
+  const [telegramSetup, setTelegramSetup] = useState<TelegramSetup>({ phase: 'idle' })
+  const [botToken, setBotToken] = useState('')
+  const [tokenError, setTokenError] = useState('')
   const qrCanvasRef = useRef<HTMLCanvasElement>(null)
 
   // Generate QR when larkSetup changes
@@ -32,9 +43,7 @@ export default function ChannelConfigStep({ onNext }: Props): React.JSX.Element 
   }, [larkSetup.qrUrl])
 
   const configureLarkBot = useCallback(async (domain: 'feishu' | 'lark' = 'feishu'): Promise<void> => {
-    if (channelSaving) return
     const brandName = domain === 'lark' ? 'Lark' : 'Feishu'
-    setChannelSaving(true)
     setLarkSetup({ phase: 'starting', message: `正在连接 ${brandName}...`, domain })
 
     // Phase 1: Begin registration
@@ -44,14 +53,12 @@ export default function ChannelConfigStep({ onNext }: Props): React.JSX.Element 
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
       setLarkSetup({ phase: 'error', message: `连接失败：${msg}`, domain })
-      setChannelSaving(false)
       return
     }
 
     if (!beginResult.success || !beginResult.qrUrl || !beginResult.deviceCode) {
       const msg = beginResult.error || `${brandName} 连接失败`
       setLarkSetup({ phase: 'error', message: msg, domain })
-      setChannelSaving(false)
       return
     }
 
@@ -68,7 +75,6 @@ export default function ChannelConfigStep({ onNext }: Props): React.JSX.Element 
     setLarkSetup(prev => ({ ...prev, phase: 'polling', message: `等待授权中` }))
 
     // Phase 3: Complete registration (this polls internally, may take up to 120s)
-    // We show animated waiting state while it blocks
     let completeResult: Awaited<ReturnType<typeof window.electronAPI.channel.larkCompleteRegistration>>
     try {
       completeResult = await window.electronAPI.channel.larkCompleteRegistration({
@@ -79,7 +85,6 @@ export default function ChannelConfigStep({ onNext }: Props): React.JSX.Element 
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
       setLarkSetup({ phase: 'error', message: `授权异常：${msg}`, domain })
-      setChannelSaving(false)
       return
     }
 
@@ -93,7 +98,6 @@ export default function ChannelConfigStep({ onNext }: Props): React.JSX.Element 
       }
       const msg = errorMap[statusMsg] || `授权失败：${statusMsg}`
       setLarkSetup({ phase: 'error', message: msg, domain })
-      setChannelSaving(false)
       return
     }
 
@@ -108,14 +112,67 @@ export default function ChannelConfigStep({ onNext }: Props): React.JSX.Element 
         installLogs: installResult.logs,
         domain
       })
-      setChannelSaving(false)
       return
     }
 
     // Success!
-    setChannelSaving(false)
     setLarkSetup({ phase: 'success', message: `${brandName} 配置成功！`, domain })
-  }, [channelSaving])
+  }, [])
+
+  const validateToken = (token: string): boolean => {
+    const tokenPattern = /^\d{8,12}:[A-Za-z0-9_-]{35,36}$/
+    return tokenPattern.test(token.trim())
+  }
+
+  const handleTokenChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.trim()
+    setBotToken(value)
+    setTokenError('')
+    if (value && !validateToken(value)) {
+      setTokenError(t('channelConfig.tokenFormatError'))
+    }
+  }, [t])
+
+  const configureTelegram = useCallback(async (): Promise<void> => {
+    const trimmedToken = botToken.trim()
+    
+    if (!trimmedToken) {
+      setTokenError(t('channelConfig.tokenRequired'))
+      return
+    }
+    
+    if (!validateToken(trimmedToken)) {
+      setTokenError(t('channelConfig.tokenFormatError'))
+      return
+    }
+
+    setTelegramSetup({ phase: 'configuring', message: t('channelConfig.configuring') })
+    setTokenError('')
+
+    try {
+      const result = await window.electronAPI.channel.configureTelegram({ botToken: trimmedToken })
+      
+      if (result.success) {
+        setTelegramSetup({
+          phase: 'success',
+          message: t('channelConfig.success')
+        })
+      } else {
+        setTelegramSetup({
+          phase: 'error',
+          message: t('channelConfig.failed'),
+          error: result.status || result.error
+        })
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      setTelegramSetup({
+        phase: 'error',
+        message: t('channelConfig.failed'),
+        error: msg
+      })
+    }
+  }, [botToken, t])
 
   // Auto-navigate when channel config succeeds
   useEffect(() => {
@@ -125,11 +182,16 @@ export default function ChannelConfigStep({ onNext }: Props): React.JSX.Element 
   }, [larkSetup.phase, onNext])
 
   const handleRetry = useCallback((): void => {
-    setLarkSetup({ phase: 'idle' })
-    setChannelSaving(false)
-  }, [])
+    if (activeTab === 'telegram') {
+      setTelegramSetup({ phase: 'idle' })
+    } else {
+      setLarkSetup({ phase: 'idle' })
+    }
+  }, [activeTab])
 
-  const isConfiguring = larkSetup.phase !== 'idle'
+  const isLarkConfiguring = larkSetup.phase !== 'idle' && larkSetup.phase !== 'success'
+  const isTelegramConfiguring = telegramSetup.phase === 'configuring'
+  const isAnySuccess = larkSetup.phase === 'success' || telegramSetup.phase === 'success'
 
   return (
     <div className="flex-1 flex flex-col min-h-0 px-8 pt-6">
@@ -138,8 +200,8 @@ export default function ChannelConfigStep({ onNext }: Props): React.JSX.Element 
         <div className="flex items-center gap-3 mb-6">
           <LobsterLogo
             state={
-              larkSetup.phase === 'success' ? 'success' :
-              larkSetup.phase === 'starting' || larkSetup.phase === 'installing' ? 'loading' : 'idle'
+              isAnySuccess ? 'success' :
+              isLarkConfiguring || isTelegramConfiguring ? 'loading' : 'idle'
             }
             size={48}
           />
@@ -149,164 +211,175 @@ export default function ChannelConfigStep({ onNext }: Props): React.JSX.Element 
           </div>
         </div>
 
-        {/* Platform cards */}
-        <div className="space-y-3">
-          {/* Feishu */}
-          <button
-            onClick={() => configureLarkBot('feishu')}
-            disabled={channelSaving || isConfiguring}
-            className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border transition-all duration-200 cursor-pointer ${
-              larkSetup.phase !== 'idle' && larkSetup.domain === 'feishu'
-                ? 'border-primary/40 bg-primary/10'
-                : 'border-glass-border bg-white/5 hover:bg-white/10 hover:border-primary/40'
-            } disabled:opacity-50`}
-          >
-            <div className="w-10 h-10 rounded-lg bg-[#1677FF]/20 flex items-center justify-center shrink-0">
-              <svg viewBox="0 0 24 24" className="w-6 h-6" fill="#1677FF">
-                <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.22l-2.477 10.65c-.127.47-.455.79-.877.79H9.46c-.422 0-.75-.32-.877-.79L6.106 8.22a.94.94 0 0 1 .877-1.28h10.034c.522 0 .922.516.877 1.28z" />
-              </svg>
-            </div>
-            <div className="flex-1 text-left">
-              <span className="text-sm font-bold">{t('channelConfig.feishu')}</span>
-              <p className="text-[11px] text-text-muted/60">{t('channelConfig.feishuDesc')}</p>
-            </div>
-            {larkSetup.domain === 'feishu' && larkSetup.phase === 'success' && (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-            )}
-            {larkSetup.domain === 'feishu' && isConfiguring && (
-              <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-            )}
-            {!isConfiguring && larkSetup.domain !== 'feishu' && <span className="text-text-muted text-lg">›</span>}
-          </button>
-
-          {/* Lark */}
-          <button
-            onClick={() => configureLarkBot('lark')}
-            disabled={channelSaving || isConfiguring}
-            className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border transition-all duration-200 cursor-pointer ${
-              larkSetup.phase !== 'idle' && larkSetup.domain === 'lark'
-                ? 'border-primary/40 bg-primary/10'
-                : 'border-glass-border bg-white/5 hover:bg-white/10 hover:border-primary/40'
-            } disabled:opacity-50`}
-          >
-            <div className="w-10 h-10 rounded-lg bg-[#1475E7]/20 flex items-center justify-center shrink-0">
-              <svg viewBox="0 0 24 24" className="w-6 h-6" fill="#1475E7">
-                <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.22l-2.477 10.65c-.127.47-.455.79-.877.79H9.46c-.422 0-.75-.32-.877-.79L6.106 8.22a.94.94 0 0 1 .877-1.28h10.034c.522 0 .922.516.877 1.28z" />
-              </svg>
-            </div>
-            <div className="flex-1 text-left">
-              <span className="text-sm font-bold">{t('channelConfig.lark')}</span>
-              <p className="text-[11px] text-text-muted/60">{t('channelConfig.larkDesc')}</p>
-            </div>
-            {larkSetup.domain === 'lark' && larkSetup.phase === 'success' && (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-            )}
-            {larkSetup.domain === 'lark' && isConfiguring && (
-              <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-            )}
-            {!isConfiguring && larkSetup.domain !== 'lark' && <span className="text-text-muted text-lg">›</span>}
-          </button>
-
-          {/* Skip */}
-          <button
-            onClick={onNext}
-            disabled={channelSaving}
-            className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border border-glass-border bg-white/5 hover:bg-white/10 hover:border-white/20 cursor-pointer transition-all duration-200 disabled:opacity-50"
-          >
-            <span className="text-lg">⏭️</span>
-            <div className="flex-1 text-left">
-              <span className="text-sm font-bold">{t('channelConfig.skip')}</span>
-              <p className="text-[11px] text-text-muted/60">{t('channelConfig.skipDesc')}</p>
-            </div>
-          </button>
+        {/* Tab buttons */}
+        <div className="flex gap-1 p-1 rounded-xl bg-white/5 border border-glass-border mb-4">
+          {(['feishu', 'lark', 'telegram'] as ActiveTab[]).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              disabled={isLarkConfiguring || isTelegramConfiguring}
+              className={`flex-1 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
+                activeTab === tab
+                  ? 'bg-primary text-white'
+                  : 'text-text-muted hover:text-text hover:bg-white/5'
+              } disabled:opacity-50`}
+            >
+              {tab === 'feishu' && '飞书'}
+              {tab === 'lark' && 'Lark'}
+              {tab === 'telegram' && 'Telegram'}
+            </button>
+          ))}
         </div>
 
-        {/* Starting state */}
-        {larkSetup.phase === 'starting' && (
-          <div className="mt-4 flex items-center gap-3 px-4 py-4 rounded-xl border border-glass-border bg-white/[0.03]">
-            <div className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-            <span className="text-sm font-medium text-text">{larkSetup.message}</span>
+        {/* Feishu tab */}
+        {activeTab === 'feishu' && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-3 px-4 py-3.5 rounded-xl border border-glass-border bg-white/5">
+              <div className="w-10 h-10 rounded-lg bg-[#1677FF]/20 flex items-center justify-center shrink-0">
+                <svg viewBox="0 0 24 24" className="w-6 h-6" fill="#1677FF">
+                  <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.22l-2.477 10.65c-.127.47-.455.79-.877.79H9.46c-.422 0-.75-.32-.877-.79L6.106 8.22a.94.94 0 0 1 .877-1.28h10.034c.522 0 .922.516.877 1.28z"/>
+                </svg>
+              </div>
+              <div className="flex-1">
+                <span className="text-sm font-bold">{t('channelConfig.feishu')}</span>
+                <p className="text-[11px] text-text-muted/60">{t('channelConfig.feishuDesc')}</p>
+              </div>
+              {larkSetup.phase === 'success' && larkSetup.domain === 'feishu' && (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+              )}
+            </div>
+            <button
+              onClick={() => configureLarkBot('feishu')}
+              disabled={isLarkConfiguring || larkSetup.phase === 'success'}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary hover:bg-primary-light disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-semibold"
+            >
+              {isLarkConfiguring ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>
+                  <span>{larkSetup.message || t('channelConfig.configuring')}</span>
+                </>
+              ) : (
+                <span>{larkSetup.phase === 'success' ? t('channelConfig.success') : t('channelConfig.connectBtn')}</span>
+              )}
+            </button>
           </div>
         )}
 
-        {/* QR Code modal */}
-        {(larkSetup.phase === 'qr' || larkSetup.phase === 'polling') && larkSetup.qrUrl && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-            <div className="rounded-2xl border border-primary/30 bg-[#0f1923] overflow-hidden shadow-2xl max-w-sm w-full mx-4">
-              {/* Animated gradient border */}
-              <div className="h-1 bg-gradient-to-r from-transparent via-primary to-transparent animate-[slide-gradient_2s_linear_infinite]" style={{ backgroundSize: '200% 100%' }} />
-              <div className="p-6 text-center">
-                <div className="relative inline-block">
-                  <canvas ref={qrCanvasRef} className="mx-auto h-[180px] w-[180px] rounded-lg bg-white p-2" />
-                  {/* Pulsing ring when waiting */}
-                  {larkSetup.phase === 'polling' && (
-                    <div className="absolute inset-0 rounded-lg border-2 border-primary/40 animate-ping pointer-events-none" />
-                  )}
+        {/* Lark tab */}
+        {activeTab === 'lark' && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-3 px-4 py-3.5 rounded-xl border border-glass-border bg-white/5">
+              <div className="w-10 h-10 rounded-lg bg-[#1475E7]/20 flex items-center justify-center shrink-0">
+                <svg viewBox="0 0 24 24" className="w-6 h-6" fill="#1475E7">
+                  <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.22l-2.477 10.65c-.127.47-.455.79-.877.79H9.46c-.422 0-.75-.32-.877-.79L6.106 8.22a.94.94 0 0 1 .877-1.28h10.034c.522 0 .922.516.877 1.28z"/>
+                </svg>
+              </div>
+              <div className="flex-1">
+                <span className="text-sm font-bold">{t('channelConfig.lark')}</span>
+                <p className="text-[11px] text-text-muted/60">{t('channelConfig.larkDesc')}</p>
+              </div>
+              {larkSetup.phase === 'success' && larkSetup.domain === 'lark' && (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+              )}
+            </div>
+            <button
+              onClick={() => configureLarkBot('lark')}
+              disabled={isLarkConfiguring || larkSetup.phase === 'success'}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary hover:bg-primary-light disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-semibold"
+            >
+              {isLarkConfiguring ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>
+                  <span>{larkSetup.message || t('channelConfig.configuring')}</span>
+                </>
+              ) : (
+                <span>{larkSetup.phase === 'success' ? t('channelConfig.success') : t('channelConfig.connectBtn')}</span>
+              )}
+            </button>
+          </div>
+        )}
+
+        {/* Telegram tab */}
+        {activeTab === 'telegram' && (
+          <div className="space-y-3">
+            <div className="px-4 py-4 rounded-xl border border-glass-border bg-white/5">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-lg bg-[#26A5E4]/20 flex items-center justify-center shrink-0">
+                  <svg viewBox="0 0 24 24" className="w-6 h-6" fill="#26A5E4">
+                    <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+                  </svg>
                 </div>
-                <p className="mt-4 text-sm text-text font-medium">{larkSetup.message}</p>
-                {larkSetup.phase === 'polling' && (
-                  <div className="mt-3 flex items-center justify-center gap-2">
-                    <div className="flex gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '150ms' }} />
-                      <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '300ms' }} />
-                    </div>
-                    <span className="text-xs text-text-muted/60">请在 App 中确认授权</span>
-                  </div>
+                <div>
+                  <span className="text-sm font-bold">{t('channelConfig.telegram')}</span>
+                  <p className="text-[11px] text-text-muted/60">{t('channelConfig.telegramDesc')}</p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-text-muted">{t('channelConfig.botToken')}</label>
+                <input
+                  type="text"
+                  value={botToken}
+                  onChange={handleTokenChange}
+                  placeholder={t('channelConfig.tokenPlaceholder')}
+                  disabled={isTelegramConfiguring}
+                  className={`w-full px-3 py-2.5 rounded-lg bg-white/5 border text-sm text-text placeholder:text-text-muted/40 focus:outline-none focus:border-primary/50 transition-colors ${
+                    tokenError ? 'border-error/50' : 'border-glass-border'
+                  } disabled:opacity-50`}
+                />
+                {tokenError && (
+                  <p className="text-[11px] text-error">{tokenError}</p>
                 )}
               </div>
-              <div className="h-1 bg-gradient-to-r from-transparent via-primary to-transparent animate-[slide-gradient_2s_linear_infinite]" style={{ backgroundSize: '200% 100%' }} />
-              <div className="px-6 pb-5 flex justify-center">
-                <button
-                  onClick={handleRetry}
-                  className="px-5 py-2 rounded-xl border border-glass-border text-sm font-semibold hover:border-white/20 hover:bg-white/5 transition-all cursor-pointer"
-                >
-                  {t('common:button.close')}
-                </button>
-              </div>
+
+              <button
+                onClick={configureTelegram}
+                disabled={isTelegramConfiguring || !botToken.trim()}
+                className="mt-3 w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary hover:bg-primary-light disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-semibold"
+              >
+                {isTelegramConfiguring ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>
+                    <span>{t('channelConfig.configuring')}</span>
+                  </>
+                ) : (
+                  <span>{t('channelConfig.configureBtn')}</span>
+                )}
+              </button>
             </div>
           </div>
         )}
 
-        {/* Installing status */}
-        {larkSetup.phase === 'installing' && (
-          <div className="mt-4 flex flex-col gap-3 px-4 py-4 rounded-xl border border-primary/20 bg-primary/5">
-            <div className="flex items-center gap-3">
-              <div className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-              <span className="text-sm font-medium text-primary">{larkSetup.message}</span>
-            </div>
-            <div className="h-1 bg-white/10 rounded-full overflow-hidden">
-              <div className="h-full bg-primary rounded-full animate-[slide_1.5s_ease-in-out_infinite]" style={{ width: '60%' }} />
-            </div>
-          </div>
-        )}
-
-        {/* Success */}
-        {larkSetup.phase === 'success' && (
+        {/* Success state */}
+        {(larkSetup.phase === 'success' || telegramSetup.phase === 'success') && (
           <div className="mt-4 flex items-center gap-2 px-4 py-3 rounded-xl bg-success/10 border border-success/30">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-success">
-              <polyline points="20 6 9 17 4 12" />
+              <polyline points="20 6 9 17 4 12"/>
             </svg>
-            <span className="text-sm font-medium text-success">{larkSetup.message}</span>
+            <span className="text-sm font-medium text-success">
+              {larkSetup.phase === 'success' ? larkSetup.message : telegramSetup.message}
+            </span>
           </div>
         )}
 
-        {/* Error with retry */}
-        {larkSetup.phase === 'error' && (
+        {/* Error state */}
+        {(larkSetup.phase === 'error' || telegramSetup.phase === 'error') && (
           <div className="mt-4 flex flex-col gap-2 px-4 py-3 rounded-xl bg-error/10 border border-error/20">
             <div className="flex items-start gap-2">
               <span className="text-sm">⚠️</span>
-              <span className="text-xs text-error flex-1">{larkSetup.message}</span>
+              <span className="text-xs text-error flex-1">
+                {larkSetup.phase === 'error' ? larkSetup.message : telegramSetup.message}
+              </span>
             </div>
             <button
               onClick={handleRetry}
-              className="mt-1 px-3 py-1.5 rounded-lg bg-error/10 border border-error/20 text-xs font-medium text-error hover:bg-error/20 transition-colors cursor-pointer"
+              className="mt-1 px-3 py-1.5 rounded-lg bg-error/10 border border-error/20 text-xs font-medium text-error hover:bg-error/20 transition-colors cursor-pointer self-start"
             >
-              重试
+              {t('common:button.retry')}
             </button>
           </div>
         )}
@@ -318,11 +391,48 @@ export default function ChannelConfigStep({ onNext }: Props): React.JSX.Element 
           variant="primary"
           size="lg"
           onClick={onNext}
-          disabled={isConfiguring}
+          disabled={isLarkConfiguring || isTelegramConfiguring}
         >
-          {larkSetup.phase === 'success' ? t('common:button.continue') : t('channelConfig.saveBtn')}
+          {t('channelConfig.saveBtn')}
         </Button>
       </div>
+
+      {/* QR Code modal for Lark */}
+      {(larkSetup.phase === 'qr' || larkSetup.phase === 'polling') && larkSetup.qrUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="rounded-2xl border border-primary/30 bg-[#0f1923] overflow-hidden shadow-2xl max-w-sm w-full mx-4">
+            <div className="h-1 bg-gradient-to-r from-transparent via-primary to-transparent animate-[slide-gradient_2s_linear_infinite]" style={{ backgroundSize: '200% 100%' }}/>
+            <div className="p-6 text-center">
+              <div className="relative inline-block">
+                <canvas ref={qrCanvasRef} className="mx-auto h-[180px] w-[180px] rounded-lg bg-white p-2"/>
+                {larkSetup.phase === 'polling' && (
+                  <div className="absolute inset-0 rounded-lg border-2 border-primary/40 animate-ping pointer-events-none"/>
+                )}
+              </div>
+              <p className="mt-4 text-sm text-text font-medium">{larkSetup.message}</p>
+              {larkSetup.phase === 'polling' && (
+                <div className="mt-3 flex items-center justify-center gap-2">
+                  <div className="flex gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '0ms' }}/>
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '150ms' }}/>
+                    <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '300ms' }}/>
+                  </div>
+                  <span className="text-xs text-text-muted/60">请在 App 中确认授权</span>
+                </div>
+              )}
+            </div>
+            <div className="h-1 bg-gradient-to-r from-transparent via-primary to-transparent animate-[slide-gradient_2s_linear_infinite]" style={{ backgroundSize: '200% 100%' }}/>
+            <div className="px-6 pb-5 flex justify-center">
+              <button
+                onClick={handleRetry}
+                className="px-5 py-2 rounded-xl border border-glass-border text-sm font-semibold hover:border-white/20 hover:bg-white/5 transition-all cursor-pointer"
+              >
+                {t('common:button.close')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
