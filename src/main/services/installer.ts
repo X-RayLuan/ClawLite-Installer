@@ -198,7 +198,7 @@ export const installNodeWsl = async (win: BrowserWindow): Promise<void> => {
 
   log(t('installer.nodeWslInstalling'))
   await runInWsl(
-    'curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && apt-get install -y nodejs',
+    'curl -fsSL https://deb.nodesource.com/setup_24.x | bash - && apt-get install -y nodejs',
     300000
   )
 
@@ -267,7 +267,7 @@ export const installOpenClawWsl = async (win: BrowserWindow): Promise<void> => {
 
 export const installNodeMac = async (win: BrowserWindow): Promise<void> => {
   const log = (msg: string): void => sendProgress(win, msg)
-  const url = `https://nodejs.org/dist/v22.16.0/node-v22.16.0.pkg`
+  const url = `https://nodejs.org/dist/v24.15.0/node-v24.15.0.pkg`
   const dest = join(tmpdir(), 'node-installer.pkg')
 
   log(t('installer.nodeDownloading'))
