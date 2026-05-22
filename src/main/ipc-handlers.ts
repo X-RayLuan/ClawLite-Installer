@@ -1319,7 +1319,7 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (ocConfig.models as any)?.providers?.clawlite?.apiKey ?? ''
 
-        const apiBaseUrl = 'https://clawlite.ai/v1'
+        const apiBaseUrl = 'https://clawlite.ai/api/v1'
         const api = 'openai-completions'
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
