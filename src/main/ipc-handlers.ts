@@ -1,21 +1,5 @@
-import { ipcMain, BrowserWindow, app, net } from 'electron'
+import { ipcMain, BrowserWindow, app } from 'electron'
 
-// ─── Helper: HTTP GET using Electron's net (respects system proxy) ───
-async function httpGet(url: string, timeoutMs = 15000): Promise<{ body: string; status: number }> {
-  return new Promise((resolve, reject) => {
-    const req = net.request({ url, method: 'GET' })
-    const timeout = setTimeout(() => { req.abort(); reject(new Error('timeout')) }, timeoutMs)
-    let data = ''
-    req.on('response', (resp) => {
-      clearTimeout(timeout)
-      resp.on('data', (chunk) => { data += chunk.toString() })
-      resp.on('end', () => resolve({ body: data, status: resp.statusCode }))
-      resp.on('error', reject)
-    })
-    req.on('error', (e) => { clearTimeout(timeout); reject(e) })
-    req.end()
-  })
-}
 import { spawn, spawnSync } from 'child_process'
 import { platform } from 'os'
 import { join } from 'path'
@@ -1301,32 +1285,27 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
 
   // ─── Model list ────────────────────────────────────────────────────────────────────
   ipcMain.handle('model:list', async () => {
-    try {
-      const fetchUrl = 'https://clawlite.ai/api/models'
-      let httpResp: { body: string; status: number }
-      try {
-        httpResp = await httpGet(fetchUrl, 15000)
-      } catch (fetchErr) {
-        console.error('[model:list] fetch error:', fetchErr)
-        return { success: false, models: [], error: String(fetchErr) }
-      }
-
-      console.log(`[model:list] fetched ${fetchUrl}, status=${httpResp.status}`)
-      if (httpResp.status !== 200) {
-        return { success: false, models: [], error: `http_${httpResp.status}` }
-      }
-
-      const data = JSON.parse(httpResp.body) as { ok: boolean; models?: Array<{ id: string; name: string; provider: string; contextWindow: number; inputPer1M: number; outputPer1M: number }>; error?: string }
-
-      console.log(`[model:list] parsed ${data.models?.length ?? 0} models, ok=${data.ok}`)
-      if (!data.ok || !data.models) {
-        return { success: false, models: [], error: data.error || 'fetch_failed' }
-      }
-
-      return { success: true, models: data.models }
-    } catch (e) {
-      return { success: false, models: [], error: String(e) }
-    }
+    // Static model list covering all providers (replaces API fetch which only returned MiniMax models)
+    const STATIC_MODELS: Array<{ id: string; name: string; provider: string; contextWindow: number; inputPer1M: number; outputPer1M: number }> = [
+      // Anthropic
+      { id: 'anthropic/claude-sonnet-4-6', name: 'Claude Sonnet 4.6', provider: 'anthropic', contextWindow: 200000, inputPer1M: 3, outputPer1M: 15 },
+      { id: 'anthropic/claude-opus-4-6', name: 'Claude Opus 4.6', provider: 'anthropic', contextWindow: 200000, inputPer1M: 5, outputPer1M: 25 },
+      { id: 'anthropic/claude-sonnet-4-5', name: 'Claude Sonnet 4.5', provider: 'anthropic', contextWindow: 200000, inputPer1M: 3, outputPer1M: 15 },
+      { id: 'anthropic/claude-opus-4-5', name: 'Claude Opus 4.5', provider: 'anthropic', contextWindow: 200000, inputPer1M: 5, outputPer1M: 25 },
+      { id: 'anthropic/claude-haiku-4-5', name: 'Claude Haiku 4.5', provider: 'anthropic', contextWindow: 200000, inputPer1M: 1, outputPer1M: 5 },
+      // OpenAI
+      { id: 'openai/gpt-5.2', name: 'GPT-5.2', provider: 'openai', contextWindow: 1000000, inputPer1M: 1.75, outputPer1M: 14 },
+      { id: 'openai/gpt-5.2-codex', name: 'GPT-5.2 Codex', provider: 'openai', contextWindow: 1000000, inputPer1M: 1.75, outputPer1M: 14 },
+      { id: 'openai/gpt-5', name: 'GPT-5', provider: 'openai', contextWindow: 1000000, inputPer1M: 1.25, outputPer1M: 10 },
+      { id: 'openai/gpt-5-mini', name: 'GPT-5 Mini', provider: 'openai', contextWindow: 1000000, inputPer1M: 0.25, outputPer1M: 2 },
+      { id: 'openai/o4-mini', name: 'o4-mini', provider: 'openai', contextWindow: 1000000, inputPer1M: 1.1, outputPer1M: 4.4 },
+      // MiniMax
+      { id: 'minimax/MiniMax-M2.7', name: 'MiniMax M2.7', provider: 'minimax', contextWindow: 1024000, inputPer1M: 0.3, outputPer1M: 1.2 },
+      { id: 'minimax/MiniMax-M2.7-highspeed', name: 'M2.7 Highspeed', provider: 'minimax', contextWindow: 1024000, inputPer1M: 0.6, outputPer1M: 2.4 },
+      { id: 'minimax/MiniMax-M2.5', name: 'MiniMax M2.5', provider: 'minimax', contextWindow: 1024000, inputPer1M: 0.3, outputPer1M: 1.2 },
+      { id: 'minimax/MiniMax-M2.5-highspeed', name: 'M2.5 Highspeed', provider: 'minimax', contextWindow: 1024000, inputPer1M: 0.6, outputPer1M: 2.4 },
+    ]
+    return { success: true, models: STATIC_MODELS }
   })
 
   // ─── Model switch (lightweight — just update baseUrl/api/model in openclaw.json) ───

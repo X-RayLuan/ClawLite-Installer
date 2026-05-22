@@ -71,7 +71,7 @@ export default function ModelConfigStep({ onNext }: Props): React.JSX.Element {
     window.electronAPI.config.read().then((r) => {
       if (r.success && r.config?.model) {
         setCurrentModelId(r.config.model)
-        const isAnthropic = r.config.model.includes('claude') || r.config.model.includes('anthropic')
+        const isAnthropic = r.config.model.startsWith('anthropic/')
         const isMiniMax = r.config.model.startsWith('minimax/')
         setProvider(isAnthropic ? 'anthropic' : isMiniMax ? 'minimax' : 'openai')
         setSelectedModelId(r.config.model)
@@ -165,7 +165,7 @@ export default function ModelConfigStep({ onNext }: Props): React.JSX.Element {
                   tab.id === 'openai'
                     ? m.id.startsWith('openai/')
                     : tab.id === 'anthropic'
-                    ? m.id.includes('claude')
+                    ? m.id.startsWith('anthropic/')
                     : m.id.startsWith('minimax/')
                 )
                 setSelectedModelId(first?.id ?? null)
@@ -234,7 +234,10 @@ export default function ModelConfigStep({ onNext }: Props): React.JSX.Element {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-bold text-text truncate">{m.name}</div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-mono text-text-muted/50 shrink-0">{m.provider}/</span>
+                      <span className="text-sm font-bold text-text truncate">{m.id.replace(/^(openai|anthropic|minimax)\//, '')}</span>
+                    </div>
                     <div className="flex items-center gap-3 mt-0.5">
                       <span className="text-[10px] text-text-muted/60 font-mono">ctx:{formatCtx(m.contextWindow)}</span>
                       <span className="text-[10px] text-text-muted/40 font-mono">in ${m.inputPer1M.toFixed(3)} / out ${m.outputPer1M.toFixed(3)}</span>
