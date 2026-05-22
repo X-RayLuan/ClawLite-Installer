@@ -181,15 +181,7 @@ const pollFeishuRegistration = async (params: {
       continue
     }
 
-    const tenantBrand = pollRes.user_info?.tenant_brand
-    if (!domainSwitched && tenantBrand === 'lark') {
-      domain = 'lark'
-      domainSwitched = true
-      // Poll again with the correct domain (do NOT skip checking this response)
-      continue
-    }
-
-    // FIX: Check for success BEFORE domain switch logic — first poll response may already have client_id
+    // Check for success FIRST — the current response may already contain client_id
     if (pollRes.client_id && pollRes.client_secret) {
       return {
         status: 'success',
@@ -200,6 +192,15 @@ const pollFeishuRegistration = async (params: {
           openId: pollRes.user_info?.open_id ? String(pollRes.user_info.open_id) : undefined
         }
       }
+    }
+
+    // Then handle domain switch — do NOT continue without checking this response
+    const tenantBrand = pollRes.user_info?.tenant_brand
+    if (!domainSwitched && tenantBrand === 'lark') {
+      domain = 'lark'
+      domainSwitched = true
+      // Re-poll immediately with the correct domain (do not skip this response)
+      continue
     }
 
     const error = pollRes.error ? String(pollRes.error) : ''
