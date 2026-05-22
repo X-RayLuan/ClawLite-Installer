@@ -1285,34 +1285,28 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
 
   // ─── Model list ────────────────────────────────────────────────────────────────────
   ipcMain.handle('model:list', async () => {
-    // Static model list covering all providers (replaces API fetch which only returned MiniMax models)
-    const STATIC_MODELS: Array<{ id: string; name: string; provider: string; contextWindow: number; inputPer1M: number; outputPer1M: number }> = [
-      // Anthropic
-      { id: 'anthropic/claude-sonnet-4-6', name: 'Claude Sonnet 4.6', provider: 'anthropic', contextWindow: 200000, inputPer1M: 3, outputPer1M: 15 },
-      { id: 'anthropic/claude-opus-4-6', name: 'Claude Opus 4.6', provider: 'anthropic', contextWindow: 200000, inputPer1M: 5, outputPer1M: 25 },
-      { id: 'anthropic/claude-sonnet-4-5', name: 'Claude Sonnet 4.5', provider: 'anthropic', contextWindow: 200000, inputPer1M: 3, outputPer1M: 15 },
-      { id: 'anthropic/claude-opus-4-5', name: 'Claude Opus 4.5', provider: 'anthropic', contextWindow: 200000, inputPer1M: 5, outputPer1M: 25 },
-      { id: 'anthropic/claude-haiku-4-5', name: 'Claude Haiku 4.5', provider: 'anthropic', contextWindow: 200000, inputPer1M: 1, outputPer1M: 5 },
-      // OpenAI
-      { id: 'openai/gpt-5.2', name: 'GPT-5.2', provider: 'openai', contextWindow: 1000000, inputPer1M: 1.75, outputPer1M: 14 },
-      { id: 'openai/gpt-5.2-codex', name: 'GPT-5.2 Codex', provider: 'openai', contextWindow: 1000000, inputPer1M: 1.75, outputPer1M: 14 },
-      { id: 'openai/gpt-5', name: 'GPT-5', provider: 'openai', contextWindow: 1000000, inputPer1M: 1.25, outputPer1M: 10 },
-      { id: 'openai/gpt-5-mini', name: 'GPT-5 Mini', provider: 'openai', contextWindow: 1000000, inputPer1M: 0.25, outputPer1M: 2 },
-      { id: 'openai/o4-mini', name: 'o4-mini', provider: 'openai', contextWindow: 1000000, inputPer1M: 1.1, outputPer1M: 4.4 },
-      // MiniMax
-      { id: 'minimax/MiniMax-M2.7', name: 'MiniMax M2.7', provider: 'minimax', contextWindow: 1024000, inputPer1M: 0.3, outputPer1M: 1.2 },
-      { id: 'minimax/MiniMax-M2.7-highspeed', name: 'M2.7 Highspeed', provider: 'minimax', contextWindow: 1024000, inputPer1M: 0.6, outputPer1M: 2.4 },
-      { id: 'minimax/MiniMax-M2.5', name: 'MiniMax M2.5', provider: 'minimax', contextWindow: 1024000, inputPer1M: 0.3, outputPer1M: 1.2 },
-      { id: 'minimax/MiniMax-M2.5-highspeed', name: 'M2.5 Highspeed', provider: 'minimax', contextWindow: 1024000, inputPer1M: 0.6, outputPer1M: 2.4 },
-    ]
-    return { success: true, models: STATIC_MODELS }
+    try {
+      const response = await fetch('https://clawlite.ai/api/models')
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
+      }
+      const data = await response.json()
+      if (!data.ok || !Array.isArray(data.models)) {
+        throw new Error('Invalid API response')
+      }
+      return { success: true, models: data.models }
+    } catch (err) {
+      console.error('[model:list] fetch failed:', err)
+      return { success: false, error: String(err) }
+    }
   })
 
   // ─── Model switch (lightweight — just update baseUrl/api/model in openclaw.json) ───
   ipcMain.handle(
     'model:switch',
-    (_e, params: { provider: 'openai' | 'anthropic' | 'minimax'; modelId: string }) => {
-      const { provider, modelId } = params
+    (_e, params: { provider: string; modelId: string }) => {
+      const { modelId } = params
+      // NOTE: provider param reserved for future per-provider routing (baseUrl/api already unified)
       try {
         const openClawDir = join(app.getPath('home'), '.openclaw')
         const openClawConfigPath = join(openClawDir, 'openclaw.json')
@@ -1325,18 +1319,8 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (ocConfig.models as any)?.providers?.clawlite?.apiKey ?? ''
 
-        const apiBaseUrl =
-          provider === 'openai'
-            ? 'https://clawlite.ai/api/openai/v1'
-            : provider === 'anthropic'
-            ? 'https://clawlite.ai/api/claude'
-            : 'https://clawlite.ai/api/minimax/v1'
-        const api =
-          provider === 'openai'
-            ? 'openai-completions'
-            : provider === 'anthropic'
-            ? 'anthropic-messages'
-            : 'openai-completions'
+        const apiBaseUrl = 'https://clawlite.ai/v1'
+        const api = 'openai-completions'
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const m = (ocConfig.models = ocConfig.models || {}) as any
