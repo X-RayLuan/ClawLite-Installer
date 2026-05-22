@@ -64,7 +64,7 @@ interface FeishuRegistrationOutcome {
 const FEISHU_ACCOUNTS_URL = 'https://accounts.feishu.cn'
 const LARK_ACCOUNTS_URL = 'https://accounts.larksuite.com'
 const FEISHU_REGISTRATION_PATH = '/oauth/v1/app/registration'
-const FEISHU_REGISTRATION_TIMEOUT_MS = 30000
+const FEISHU_REGISTRATION_TIMEOUT_MS = 90000
 const DEFAULT_FEISHU_POLL_INTERVAL_SECONDS = 5
 const DEFAULT_FEISHU_REGISTRATION_EXPIRE_SECONDS = 600
 
@@ -174,7 +174,7 @@ const pollFeishuRegistration = async (params: {
       pollRes = await postFeishuRegistration(domain, {
         action: 'poll',
         device_code: params.deviceCode,
-        tp: params.tp ?? 'ob_app'
+        tp: 'ob_app'
       })
     } catch {
       await sleep(currentInterval * 1000)
