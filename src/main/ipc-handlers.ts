@@ -138,9 +138,10 @@ const beginFeishuRegistration = async (
   }
 
   const qrUrl = new URL(String(res.verification_uri_complete))
-  // Preserve original tp from server; only add from if not already set
+  // Preserve original tp from server; only add 'from' for Feishu (Lark doesn't recognize this param)
   const originalTp = qrUrl.searchParams.get('tp')
-  if (!qrUrl.searchParams.has('from')) {
+  const originalFrom = qrUrl.searchParams.get('from')
+  if (domain === 'feishu' && !qrUrl.searchParams.has('from')) {
     qrUrl.searchParams.set('from', 'clawlite_installer')
   }
 
@@ -151,7 +152,7 @@ const beginFeishuRegistration = async (
     interval: Number(res.interval || DEFAULT_FEISHU_POLL_INTERVAL_SECONDS),
     expireIn: Number(res.expire_in || DEFAULT_FEISHU_REGISTRATION_EXPIRE_SECONDS),
     tp: originalTp ?? undefined,
-    from: qrUrl.searchParams.get('from') ?? undefined
+    from: (domain === 'feishu' ? qrUrl.searchParams.get('from') : originalFrom) ?? undefined
   }
 }
 
