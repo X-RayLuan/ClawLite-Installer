@@ -1,10 +1,9 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
-import QRCode from 'qrcode'
 import LobsterLogo from '../components/LobsterLogo'
 import Button from '../components/Button'
 
-type LarkPhase = 'idle' | 'starting' | 'qr' | 'polling' | 'installing' | 'success' | 'error'
+type LarkPhase = 'idle' | 'starting' | 'qr' | 'polling' | 'installing' | 'success' | 'error' | 'expired'
 type TelegramPhase = 'idle' | 'configuring' | 'success' | 'error'
 type ActiveTab = 'feishu' | 'lark' | 'telegram'
 
@@ -14,6 +13,9 @@ interface LarkSetup {
   message?: string
   installLogs?: string
   domain?: 'feishu' | 'lark'
+  expireIn?: number
+  deviceCode?: string
+  startTime?: number
 }
 
 interface TelegramSetup {
@@ -26,6 +28,101 @@ interface Props {
   onNext: () => void
 }
 
+// ─── QR Code Modal (extracted to separate component for clarity) ────────────────────────
+function QrModal({
+  qrCanvasRef,
+  larkSetup,
+  onRefresh,
+  onClose
+}: {
+  qrCanvasRef: RefObject<HTMLCanvasElement | null>
+  larkSetup: LarkSetup
+  onRefresh: () => void
+  onClose: () => void
+}): React.JSX.Element {
+  const { t } = useTranslation('steps')
+  const [remaining, setRemaining] = useState<number | null>(null)
+
+  // Tick countdown while QR is visible
+  useEffect(() => {
+    if ((larkSetup.phase !== 'qr' && larkSetup.phase !== 'polling' && larkSetup.phase !== 'expired') || larkSetup.expireIn == null || larkSetup.startTime == null) return
+    const { expireIn, startTime } = larkSetup
+    const tick = (): void => {
+      const elapsed = (Date.now() - startTime) / 1000
+      setRemaining(Math.max(0, Math.ceil(expireIn - elapsed)))
+    }
+    tick()
+    const id = setInterval(tick, 1000)
+    return () => clearInterval(id)
+  }, [larkSetup.phase, larkSetup.expireIn, larkSetup.startTime])
+
+  const isExpired = larkSetup.phase === 'expired'
+  const mins = remaining !== null ? Math.floor(remaining / 60) : null
+  const secs = remaining !== null ? remaining % 60 : null
+  const timeLabel = mins !== null && secs !== null ? `${mins}:${String(secs).padStart(2, '0')}` : null
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div className="rounded-2xl border border-primary/30 bg-[#0f1923] overflow-hidden shadow-2xl max-w-sm w-full mx-4">
+        <div className="h-1 bg-gradient-to-r from-transparent via-primary to-transparent animate-[slide-gradient_2s_linear_infinite]" style={{ backgroundSize: '200% 100%' }}/>
+        <div className="p-6 text-center">
+          <div className="relative inline-block">
+            <canvas ref={qrCanvasRef} className="mx-auto h-[180px] w-[180px] rounded-lg bg-white p-2"/>
+            {larkSetup.phase === 'polling' && (
+              <div className="absolute inset-0 rounded-lg border-2 border-primary/40 animate-ping pointer-events-none"/>
+            )}
+            {isExpired && (
+              <div className="absolute inset-0 rounded-lg bg-black/60 flex flex-col items-center justify-center gap-1">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="8" x2="12" y2="12"/>
+                  <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                <span className="text-xs text-error font-semibold">已失效</span>
+              </div>
+            )}
+          </div>
+          <p className="mt-4 text-sm text-text font-medium">{isExpired ? '二维码已失效' : larkSetup.message}</p>
+          {timeLabel && !isExpired && (
+            <p className="mt-1 text-[11px] text-text-muted/50">剩余 {timeLabel}</p>
+          )}
+          {larkSetup.phase === 'polling' && (
+            <div className="mt-3 flex items-center justify-center gap-2">
+              <div className="flex gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '0ms' }}/>
+                <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '150ms' }}/>
+                <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '300ms' }}/>
+              </div>
+              <span className="text-xs text-text-muted/60">请在 App 中确认授权</span>
+            </div>
+          )}
+          {isExpired && (
+            <button
+              onClick={onRefresh}
+              className="mt-3 flex items-center justify-center gap-2 mx-auto px-4 py-2 rounded-lg bg-primary hover:bg-primary-light transition-colors text-sm font-semibold"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="23 4 23 10 17 10"/>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+              </svg>
+              刷新二维码
+            </button>
+          )}
+        </div>
+        <div className="h-1 bg-gradient-to-r from-transparent via-primary to-transparent animate-[slide-gradient_2s_linear_infinite]" style={{ backgroundSize: '200% 100%' }}/>
+        <div className="px-6 pb-5 flex justify-center">
+          <button
+            onClick={onClose}
+            className="px-5 py-2 rounded-xl border border-glass-border text-sm font-semibold hover:border-white/20 hover:bg-white/5 transition-all cursor-pointer"
+          >
+            {t('common:button.close')}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function ChannelConfigStep({ onNext }: Props): React.JSX.Element {
   const { t } = useTranslation('steps')
   const [activeTab, setActiveTab] = useState<ActiveTab>('feishu')
@@ -35,12 +132,7 @@ export default function ChannelConfigStep({ onNext }: Props): React.JSX.Element 
   const [tokenError, setTokenError] = useState('')
   const qrCanvasRef = useRef<HTMLCanvasElement>(null)
 
-  // Generate QR when larkSetup changes
-  useEffect(() => {
-    if (!larkSetup.qrUrl || !qrCanvasRef.current) return
-    const canvas = qrCanvasRef.current
-    QRCode.toCanvas(canvas, larkSetup.qrUrl, { margin: 1, width: 180 }).catch(() => {})
-  }, [larkSetup.qrUrl])
+  // QR generation + countdown + auto-expire are handled inside QrModal
 
   const configureLarkBot = useCallback(async (domain: 'feishu' | 'lark' = 'feishu'): Promise<void> => {
     const brandName = domain === 'lark' ? 'Lark' : 'Feishu'
@@ -67,7 +159,10 @@ export default function ChannelConfigStep({ onNext }: Props): React.JSX.Element 
       phase: 'qr',
       qrUrl: beginResult.qrUrl,
       message: `请使用 ${brandName} 手机 App 扫描二维码`,
-      domain
+      domain,
+      expireIn: beginResult.expireIn,
+      deviceCode: beginResult.deviceCode,
+      startTime: Date.now()
     })
 
     // Small delay to let QR render, then switch to polling/waiting state
@@ -90,9 +185,13 @@ export default function ChannelConfigStep({ onNext }: Props): React.JSX.Element 
 
     if (!completeResult.success) {
       const statusMsg = completeResult.status || 'error'
+      // expired → keep QR visible with refresh option (not a fatal error)
+      if (statusMsg === 'expired') {
+        setLarkSetup(prev => ({ ...prev, phase: 'expired' }))
+        return
+      }
       const errorMap: Record<string, string> = {
         'access_denied': '您拒绝了授权请求',
-        'expired': '授权码已过期，请重试',
         'timeout': '授权超时，请重试',
         'error': completeResult.error || '授权失败'
       }
@@ -118,6 +217,77 @@ export default function ChannelConfigStep({ onNext }: Props): React.JSX.Element 
     // Success!
     setLarkSetup({ phase: 'success', message: `${brandName} 配置成功！`, domain })
   }, [])
+
+  // Refresh QR code when expired — re-call larkBeginRegistration to get a fresh QR
+  const refreshQr = useCallback(async (): Promise<void> => {
+    const domain = larkSetup.domain || 'feishu'
+    const brandName = domain === 'lark' ? 'Lark' : 'Feishu'
+    setLarkSetup(prev => ({ ...prev, phase: 'starting', message: `正在刷新二维码...` }))
+
+    try {
+      const result = await window.electronAPI.channel.larkBeginRegistration(domain)
+      if (!result.success || !result.qrUrl || !result.deviceCode) {
+        setLarkSetup(prev => ({
+          ...prev,
+          phase: 'error',
+          message: result.error || `${brandName} 二维码刷新失败`
+        }))
+        return
+      }
+      setLarkSetup({
+        phase: 'qr',
+        qrUrl: result.qrUrl,
+        message: `请使用 ${brandName} 手机 App 扫描二维码`,
+        domain,
+        expireIn: result.expireIn,
+        deviceCode: result.deviceCode,
+        startTime: Date.now()
+      })
+
+      await new Promise(resolve => setTimeout(resolve, 500))
+      setLarkSetup(prev => ({ ...prev, phase: 'polling', message: `等待授权中` }))
+
+      // Start polling again with the new device code
+      const completeResult = await window.electronAPI.channel.larkCompleteRegistration({
+        deviceCode: result.deviceCode,
+        interval: result.interval,
+        expireIn: result.expireIn
+      })
+
+      if (!completeResult.success) {
+        const statusMsg = completeResult.status || 'error'
+        if (statusMsg === 'expired') {
+          setLarkSetup(prev => ({ ...prev, phase: 'expired' }))
+          return
+        }
+        const errorMap: Record<string, string> = {
+          'access_denied': '您拒绝了授权请求',
+          'timeout': '授权超时，请重试',
+          'error': completeResult.error || '授权失败'
+        }
+        const msg = errorMap[statusMsg] || `授权失败：${statusMsg}`
+        setLarkSetup(prev => ({ ...prev, phase: 'error', message: msg }))
+        return
+      }
+
+      // Phase 4: Install plugin
+      setLarkSetup(prev => ({ ...prev, phase: 'installing', message: `正在安装 ${brandName} 插件...` }))
+      const installResult = await window.electronAPI.channel.larkInstallPlugin(domain)
+      if (!installResult.success) {
+        setLarkSetup({
+          phase: 'error',
+          message: `插件安装失败：${installResult.status}`,
+          installLogs: installResult.logs,
+          domain
+        })
+        return
+      }
+      setLarkSetup({ phase: 'success', message: `${brandName} 配置成功！`, domain })
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      setLarkSetup(prev => ({ ...prev, phase: 'error', message: `刷新失败：${msg}` }))
+    }
+  }, [larkSetup.domain])
 
   const validateToken = (token: string): boolean => {
     const tokenPattern = /^\d{8,12}:[A-Za-z0-9_-]{35,36}$/
@@ -334,6 +504,19 @@ export default function ChannelConfigStep({ onNext }: Props): React.JSX.Element 
                 {tokenError && (
                   <p className="text-[11px] text-error">{tokenError}</p>
                 )}
+                <a
+                  href="https://docs.openclaw.ai/channels/telegram"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-[11px] text-primary/70 hover:text-primary transition-colors"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="8" x2="12" y2="12"/>
+                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                  </svg>
+                  {t('channelConfig.telegramHelpLink') || '如何获取 Bot Token？'}
+                </a>
               </div>
 
               <button
@@ -398,40 +581,13 @@ export default function ChannelConfigStep({ onNext }: Props): React.JSX.Element 
       </div>
 
       {/* QR Code modal for Lark */}
-      {(larkSetup.phase === 'qr' || larkSetup.phase === 'polling') && larkSetup.qrUrl && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="rounded-2xl border border-primary/30 bg-[#0f1923] overflow-hidden shadow-2xl max-w-sm w-full mx-4">
-            <div className="h-1 bg-gradient-to-r from-transparent via-primary to-transparent animate-[slide-gradient_2s_linear_infinite]" style={{ backgroundSize: '200% 100%' }}/>
-            <div className="p-6 text-center">
-              <div className="relative inline-block">
-                <canvas ref={qrCanvasRef} className="mx-auto h-[180px] w-[180px] rounded-lg bg-white p-2"/>
-                {larkSetup.phase === 'polling' && (
-                  <div className="absolute inset-0 rounded-lg border-2 border-primary/40 animate-ping pointer-events-none"/>
-                )}
-              </div>
-              <p className="mt-4 text-sm text-text font-medium">{larkSetup.message}</p>
-              {larkSetup.phase === 'polling' && (
-                <div className="mt-3 flex items-center justify-center gap-2">
-                  <div className="flex gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '0ms' }}/>
-                    <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '150ms' }}/>
-                    <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '300ms' }}/>
-                  </div>
-                  <span className="text-xs text-text-muted/60">请在 App 中确认授权</span>
-                </div>
-              )}
-            </div>
-            <div className="h-1 bg-gradient-to-r from-transparent via-primary to-transparent animate-[slide-gradient_2s_linear_infinite]" style={{ backgroundSize: '200% 100%' }}/>
-            <div className="px-6 pb-5 flex justify-center">
-              <button
-                onClick={handleRetry}
-                className="px-5 py-2 rounded-xl border border-glass-border text-sm font-semibold hover:border-white/20 hover:bg-white/5 transition-all cursor-pointer"
-              >
-                {t('common:button.close')}
-              </button>
-            </div>
-          </div>
-        </div>
+      {(larkSetup.phase === 'qr' || larkSetup.phase === 'polling' || larkSetup.phase === 'expired') && larkSetup.qrUrl && (
+        <QrModal
+          qrCanvasRef={qrCanvasRef}
+          larkSetup={larkSetup}
+          onRefresh={refreshQr}
+          onClose={handleRetry}
+        />
       )}
     </div>
   )

@@ -173,7 +173,7 @@ export const installWsl = async (win: BrowserWindow): Promise<{ needsReboot: boo
   return { needsReboot: true }
 }
 
-/** Install Node.js 22 LTS inside WSL Ubuntu (NodeSource apt repo) */
+/** Install Node.js 24 LTS inside WSL Ubuntu (NodeSource apt repo) */
 export const installNodeWsl = async (win: BrowserWindow): Promise<void> => {
   const log = (msg: string): void => sendProgress(win, msg)
 
