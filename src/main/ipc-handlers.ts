@@ -833,6 +833,7 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
         deviceCode: string
         interval?: number
         expireIn?: number
+        domain?: 'feishu' | 'lark'
       }
     ) => {
       try {

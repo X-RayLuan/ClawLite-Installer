@@ -128,6 +128,7 @@ interface ElectronAPI {
       deviceCode: string
       interval?: number
       expireIn?: number
+      domain?: 'feishu' | 'lark'
     }) => Promise<{
       success: boolean
       status?: 'success' | 'access_denied' | 'expired' | 'timeout' | 'error'

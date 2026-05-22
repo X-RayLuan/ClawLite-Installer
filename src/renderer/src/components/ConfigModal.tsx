@@ -442,7 +442,8 @@ export default function ConfigModal({ onClose, onDone }: Props): React.JSX.Eleme
       completeResult = await window.electronAPI.channel.larkCompleteRegistration({
         deviceCode: beginResult.deviceCode,
         interval: beginResult.interval,
-        expireIn: beginResult.expireIn
+        expireIn: beginResult.expireIn,
+        domain
       })
     } catch (e) {
       setLarkSetup({ phase: 'error', message: `授权异常：${e instanceof Error ? e.message : String(e)}`, domain })
