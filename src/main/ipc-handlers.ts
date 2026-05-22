@@ -838,7 +838,7 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
     ) => {
       try {
         if (!params.deviceCode) throw new Error('deviceCode is required')
-        const outcome = await pollFeishuRegistration(params)
+        const outcome = await pollFeishuRegistration({ ...params, initialDomain: params.domain })
         if (outcome.status !== 'success' || !outcome.result) {
           return { success: false, status: outcome.status, error: outcome.message || outcome.status }
         }
