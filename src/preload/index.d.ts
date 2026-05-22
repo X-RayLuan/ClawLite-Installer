@@ -122,6 +122,8 @@ interface ElectronAPI {
       userCode?: string
       interval?: number
       expireIn?: number
+      tp?: string
+      from?: string
       error?: string
     }>
     larkCompleteRegistration: (params: {
@@ -129,6 +131,8 @@ interface ElectronAPI {
       interval?: number
       expireIn?: number
       domain?: 'feishu' | 'lark'
+      tp?: string
+      from?: string
     }) => Promise<{
       success: boolean
       status?: 'success' | 'access_denied' | 'expired' | 'timeout' | 'error'

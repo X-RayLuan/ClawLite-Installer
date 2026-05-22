@@ -443,7 +443,9 @@ export default function ConfigModal({ onClose, onDone }: Props): React.JSX.Eleme
         deviceCode: beginResult.deviceCode,
         interval: beginResult.interval,
         expireIn: beginResult.expireIn,
-        domain
+        domain,
+        tp: beginResult.tp,
+        from: beginResult.from
       })
     } catch (e) {
       setLarkSetup({ phase: 'error', message: `授权异常：${e instanceof Error ? e.message : String(e)}`, domain })

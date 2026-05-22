@@ -183,7 +183,10 @@ export default function ChannelConfigStep({ onNext }: Props): React.JSX.Element 
       completeResult = await window.electronAPI.channel.larkCompleteRegistration({
         deviceCode: beginResult.deviceCode,
         interval: beginResult.interval,
-        expireIn: beginResult.expireIn
+        expireIn: beginResult.expireIn,
+        domain,
+        tp: beginResult.tp,
+        from: beginResult.from
       })
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
@@ -259,7 +262,10 @@ export default function ChannelConfigStep({ onNext }: Props): React.JSX.Element 
       const completeResult = await window.electronAPI.channel.larkCompleteRegistration({
         deviceCode: result.deviceCode,
         interval: result.interval,
-        expireIn: result.expireIn
+        expireIn: result.expireIn,
+        domain,
+        tp: result.tp,
+        from: result.from
       })
 
       if (!completeResult.success) {

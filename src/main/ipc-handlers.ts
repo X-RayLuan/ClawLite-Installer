@@ -43,6 +43,9 @@ interface FeishuRegistrationBegin {
   userCode?: string
   interval: number
   expireIn: number
+  /** Original tp/from from the Lark/Feishu server, used in poll requests */
+  tp?: string
+  from?: string
 }
 
 interface FeishuRegistrationResult {
@@ -61,7 +64,7 @@ interface FeishuRegistrationOutcome {
 const FEISHU_ACCOUNTS_URL = 'https://accounts.feishu.cn'
 const LARK_ACCOUNTS_URL = 'https://accounts.larksuite.com'
 const FEISHU_REGISTRATION_PATH = '/oauth/v1/app/registration'
-const FEISHU_REGISTRATION_TIMEOUT_MS = 10000
+const FEISHU_REGISTRATION_TIMEOUT_MS = 30000
 const DEFAULT_FEISHU_POLL_INTERVAL_SECONDS = 5
 const DEFAULT_FEISHU_REGISTRATION_EXPIRE_SECONDS = 600
 
@@ -135,15 +138,20 @@ const beginFeishuRegistration = async (
   }
 
   const qrUrl = new URL(String(res.verification_uri_complete))
-  qrUrl.searchParams.set('from', 'clawlite_installer')
-  qrUrl.searchParams.set('tp', 'ob_cli_app')
+  // Preserve original tp from server; only add from if not already set
+  const originalTp = qrUrl.searchParams.get('tp')
+  if (!qrUrl.searchParams.has('from')) {
+    qrUrl.searchParams.set('from', 'clawlite_installer')
+  }
 
   return {
     deviceCode: String(res.device_code),
     qrUrl: qrUrl.toString(),
     userCode: res.user_code ? String(res.user_code) : undefined,
     interval: Number(res.interval || DEFAULT_FEISHU_POLL_INTERVAL_SECONDS),
-    expireIn: Number(res.expire_in || DEFAULT_FEISHU_REGISTRATION_EXPIRE_SECONDS)
+    expireIn: Number(res.expire_in || DEFAULT_FEISHU_REGISTRATION_EXPIRE_SECONDS),
+    tp: originalTp ?? undefined,
+    from: qrUrl.searchParams.get('from') ?? undefined
   }
 }
 
@@ -152,6 +160,8 @@ const pollFeishuRegistration = async (params: {
   interval?: number
   expireIn?: number
   initialDomain?: 'feishu' | 'lark'
+  tp?: string
+  from?: string
 }): Promise<FeishuRegistrationOutcome> => {
   let currentInterval = params.interval || DEFAULT_FEISHU_POLL_INTERVAL_SECONDS
   let domain: 'feishu' | 'lark' = params.initialDomain || 'feishu'
@@ -164,7 +174,7 @@ const pollFeishuRegistration = async (params: {
       pollRes = await postFeishuRegistration(domain, {
         action: 'poll',
         device_code: params.deviceCode,
-        tp: 'ob_app'
+        tp: params.tp ?? 'ob_app'
       })
     } catch {
       await sleep(currentInterval * 1000)
@@ -175,9 +185,11 @@ const pollFeishuRegistration = async (params: {
     if (!domainSwitched && tenantBrand === 'lark') {
       domain = 'lark'
       domainSwitched = true
+      // Poll again with the correct domain (do NOT skip checking this response)
       continue
     }
 
+    // FIX: Check for success BEFORE domain switch logic — first poll response may already have client_id
     if (pollRes.client_id && pollRes.client_secret) {
       return {
         status: 'success',
@@ -834,11 +846,13 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
         interval?: number
         expireIn?: number
         domain?: 'feishu' | 'lark'
+        tp?: string
+        from?: string
       }
     ) => {
       try {
         if (!params.deviceCode) throw new Error('deviceCode is required')
-        const outcome = await pollFeishuRegistration({ ...params, initialDomain: params.domain })
+        const outcome = await pollFeishuRegistration({ ...params, initialDomain: params.domain, tp: params.tp, from: params.from })
         if (outcome.status !== 'success' || !outcome.result) {
           return { success: false, status: outcome.status, error: outcome.message || outcome.status }
         }
