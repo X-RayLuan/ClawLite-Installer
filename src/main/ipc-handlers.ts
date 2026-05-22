@@ -159,7 +159,7 @@ const pollFeishuRegistration = async (params: {
       pollRes = await postFeishuRegistration(domain, {
         action: 'poll',
         device_code: params.deviceCode,
-        tp: 'ob_app'
+        tp: params.tp ?? 'ob_app'
       })
     } catch {
       await sleep(currentInterval * 1000)

@@ -43,26 +43,36 @@ function QrModal({
 }): React.JSX.Element {
   const { t } = useTranslation('steps')
   const [remaining, setRemaining] = useState<number | null>(null)
+  // Persists across effect re-runs — prevents concurrent auto-refresh calls
+  const refreshing = useRef(false)
 
   // Draw QR code onto canvas whenever qrUrl changes
   useEffect(() => {
     if (!larkSetup.qrUrl || !qrCanvasRef.current) return
     const canvas = qrCanvasRef.current
     QRCode.toCanvas(canvas, larkSetup.qrUrl, { margin: 1, width: 180 }).catch(() => {})
+    // New QR loaded — reset auto-refresh guard so next cycle can trigger
+    refreshing.current = false
   }, [larkSetup.qrUrl, qrCanvasRef])
 
-  // Tick countdown while QR is visible
+  // Tick countdown while QR is visible + auto-refresh before expiry
   useEffect(() => {
     if ((larkSetup.phase !== 'qr' && larkSetup.phase !== 'polling' && larkSetup.phase !== 'expired') || larkSetup.expireIn == null || larkSetup.startTime == null) return
     const { expireIn, startTime } = larkSetup
     const tick = (): void => {
       const elapsed = (Date.now() - startTime) / 1000
-      setRemaining(Math.max(0, Math.ceil(expireIn - elapsed)))
+      const remaining = Math.max(0, Math.ceil(expireIn - elapsed))
+      setRemaining(remaining)
+      // Auto-refresh QR when 30 seconds left (only during qr/polling phase, skip if already refreshing)
+      if (larkSetup.phase !== 'expired' && remaining > 0 && remaining <= 30 && !refreshing.current) {
+        refreshing.current = true
+        onRefresh()
+      }
     }
     tick()
     const id = setInterval(tick, 1000)
     return () => clearInterval(id)
-  }, [larkSetup.phase, larkSetup.expireIn, larkSetup.startTime])
+  }, [larkSetup.phase, larkSetup.expireIn, larkSetup.startTime, onRefresh])
 
   const isExpired = larkSetup.phase === 'expired'
   const mins = remaining !== null ? Math.floor(remaining / 60) : null
@@ -301,7 +311,7 @@ export default function ChannelConfigStep({ onNext }: Props): React.JSX.Element 
       const msg = e instanceof Error ? e.message : String(e)
       setLarkSetup(prev => ({ ...prev, phase: 'error', message: `刷新失败：${msg}` }))
     }
-  }, [larkSetup.domain])
+  }, [larkSetup.domain, larkSetup])
 
   const validateToken = (token: string): boolean => {
     const tokenPattern = /^\d{8,12}:[A-Za-z0-9_-]{35,36}$/
