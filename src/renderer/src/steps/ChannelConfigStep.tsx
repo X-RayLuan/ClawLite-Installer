@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
+import QRCode from 'qrcode'
 import LobsterLogo from '../components/LobsterLogo'
 import Button from '../components/Button'
 
@@ -42,6 +43,13 @@ function QrModal({
 }): React.JSX.Element {
   const { t } = useTranslation('steps')
   const [remaining, setRemaining] = useState<number | null>(null)
+
+  // Draw QR code onto canvas whenever qrUrl changes
+  useEffect(() => {
+    if (!larkSetup.qrUrl || !qrCanvasRef.current) return
+    const canvas = qrCanvasRef.current
+    QRCode.toCanvas(canvas, larkSetup.qrUrl, { margin: 1, width: 180 }).catch(() => {})
+  }, [larkSetup.qrUrl, qrCanvasRef])
 
   // Tick countdown while QR is visible
   useEffect(() => {
