@@ -1,6 +1,122 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef, RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
+import QRCode from 'qrcode'
 import Button from './Button'
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+type LarkPhase = 'idle' | 'starting' | 'qr' | 'polling' | 'installing' | 'success' | 'error' | 'expired'
+type TelegramPhase = 'idle' | 'configuring' | 'success' | 'error'
+type ChannelTab = 'feishu' | 'lark' | 'telegram'
+
+interface LarkSetup {
+  phase: LarkPhase
+  qrUrl?: string
+  message?: string
+  domain?: 'feishu' | 'lark'
+  expireIn?: number
+  deviceCode?: string
+  startTime?: number
+}
+
+// ─── QR Code Modal ──────────────────────────────────────────────────────────────
+function QrModal({
+  qrCanvasRef,
+  larkSetup,
+  onRefresh,
+  onClose
+}: {
+  qrCanvasRef: RefObject<HTMLCanvasElement | null>
+  larkSetup: LarkSetup
+  onRefresh: () => void
+  onClose: () => void
+}): React.JSX.Element {
+  const { t } = useTranslation('steps')
+  const [remaining, setRemaining] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (!larkSetup.qrUrl || !qrCanvasRef.current) return
+    const canvas = qrCanvasRef.current
+    QRCode.toCanvas(canvas, larkSetup.qrUrl, { margin: 1, width: 180 }).catch(() => {})
+  }, [larkSetup.qrUrl, qrCanvasRef])
+
+  useEffect(() => {
+    if ((larkSetup.phase !== 'qr' && larkSetup.phase !== 'polling' && larkSetup.phase !== 'expired') || larkSetup.expireIn == null || larkSetup.startTime == null) return
+    const { expireIn, startTime } = larkSetup
+    const tick = (): void => {
+      const elapsed = (Date.now() - startTime) / 1000
+      setRemaining(Math.max(0, Math.ceil(expireIn - elapsed)))
+    }
+    tick()
+    const id = setInterval(tick, 1000)
+    return () => clearInterval(id)
+  }, [larkSetup.phase, larkSetup.expireIn, larkSetup.startTime])
+
+  const isExpired = larkSetup.phase === 'expired'
+  const mins = remaining !== null ? Math.floor(remaining / 60) : null
+  const secs = remaining !== null ? remaining % 60 : null
+  const timeLabel = mins !== null && secs !== null ? `${mins}:${String(secs).padStart(2, '0')}` : null
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div className="rounded-2xl border border-primary/30 bg-[#0f1923] overflow-hidden shadow-2xl max-w-sm w-full mx-4">
+        <div className="h-1 bg-gradient-to-r from-transparent via-primary to-transparent animate-[slide-gradient_2s_linear_infinite]" style={{ backgroundSize: '200% 100%' }}/>
+        <div className="p-6 text-center">
+          <div className="relative inline-block">
+            <canvas ref={qrCanvasRef} className="mx-auto h-[180px] w-[180px] rounded-lg bg-white p-2"/>
+            {larkSetup.phase === 'polling' && (
+              <div className="absolute inset-0 rounded-lg border-2 border-primary/40 animate-ping pointer-events-none"/>
+            )}
+            {isExpired && (
+              <div className="absolute inset-0 rounded-lg bg-black/60 flex flex-col items-center justify-center gap-1">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/>
+                  <line x1="12" y1="8" x2="12" y2="12"/>
+                  <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                <span className="text-xs text-error font-semibold">已失效</span>
+              </div>
+            )}
+          </div>
+          <p className="mt-4 text-sm text-text font-medium">{isExpired ? '二维码已失效' : larkSetup.message}</p>
+          {timeLabel && !isExpired && (
+            <p className="mt-1 text-[11px] text-text-muted/50">剩余 {timeLabel}</p>
+          )}
+          {larkSetup.phase === 'polling' && (
+            <div className="mt-3 flex items-center justify-center gap-2">
+              <div className="flex gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '0ms' }}/>
+                <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '150ms' }}/>
+                <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: '300ms' }}/>
+              </div>
+              <span className="text-xs text-text-muted/60">请在 App 中确认授权</span>
+            </div>
+          )}
+          {isExpired && (
+            <button
+              onClick={onRefresh}
+              className="mt-3 flex items-center justify-center gap-2 mx-auto px-4 py-2 rounded-lg bg-primary hover:bg-primary-light transition-colors text-sm font-semibold"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="23 4 23 10 17 10"/>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+              </svg>
+              刷新二维码
+            </button>
+          )}
+        </div>
+        <div className="h-1 bg-gradient-to-r from-transparent via-primary to-transparent animate-[slide-gradient_2s_linear_infinite]" style={{ backgroundSize: '200% 100%' }}/>
+        <div className="px-6 pb-5 flex justify-center">
+          <button
+            onClick={onClose}
+            className="px-5 py-2 rounded-xl border border-glass-border text-sm font-semibold hover:border-white/20 hover:bg-white/5 transition-all cursor-pointer"
+          >
+            {t('common:button.close')}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 // ── Shared Model UI (same as ModelConfigStep) ──────────────────────────────
 
@@ -262,8 +378,6 @@ function ModelSelectorInline({
   )
 }
 
-type TelegramPhase = 'idle' | 'configuring' | 'success' | 'error'
-
 interface Props {
   onClose: () => void
   onDone: () => void
@@ -272,20 +386,92 @@ interface Props {
 export default function ConfigModal({ onClose, onDone }: Props): React.JSX.Element {
   const { t } = useTranslation('steps')
   const [view, setView] = useState<'home' | 'model' | 'channel'>('home')
+  const [channelTab, setChannelTab] = useState<ChannelTab>('feishu')
+  const [larkSetup, setLarkSetup] = useState<LarkSetup>({ phase: 'idle' })
   const [telegramPhase, setTelegramPhase] = useState<TelegramPhase>('idle')
   const [telegramError, setTelegramError] = useState<string | null>(null)
   const [botToken, setBotToken] = useState('')
   const [currentModel, setCurrentModel] = useState<string | null>(null)
+  const qrCanvasRef = useRef<HTMLCanvasElement>(null)
+
   // Load current config
   useEffect(() => {
     window.electronAPI.config.read().then((r) => {
       if (r.success && r.config) {
         setCurrentModel(r.config.model || null)
         if (r.config.hasTelegram) setTelegramPhase('success')
+        const hasLark = r.config.channels?.enabled === 'lark' || r.config.channels?.lark?.enabled
+        if (hasLark) setLarkSetup({ phase: 'success', message: '已配置' })
       }
     })
   }, [])
 
+  // ── Lark / Feishu ──────────────────────────────────────────────────────────
+  const configureLarkBot = useCallback(async (domain: 'feishu' | 'lark' = 'feishu'): Promise<void> => {
+    const brandName = domain === 'lark' ? 'Lark' : 'Feishu'
+    setLarkSetup({ phase: 'starting', message: `正在连接 ${brandName}...`, domain })
+
+    let beginResult: Awaited<ReturnType<typeof window.electronAPI.channel.larkBeginRegistration>>
+    try {
+      beginResult = await window.electronAPI.channel.larkBeginRegistration(domain)
+    } catch (e) {
+      setLarkSetup({ phase: 'error', message: `连接失败：${e instanceof Error ? e.message : String(e)}`, domain })
+      return
+    }
+
+    if (!beginResult.success || !beginResult.qrUrl || !beginResult.deviceCode) {
+      setLarkSetup({ phase: 'error', message: beginResult.error || `${brandName} 连接失败`, domain })
+      return
+    }
+
+    setLarkSetup({
+      phase: 'qr',
+      qrUrl: beginResult.qrUrl,
+      message: `请使用 ${brandName} 手机 App 扫描二维码`,
+      domain,
+      expireIn: beginResult.expireIn,
+      deviceCode: beginResult.deviceCode,
+      startTime: Date.now()
+    })
+
+    await new Promise(resolve => setTimeout(resolve, 500))
+    setLarkSetup(prev => ({ ...prev, phase: 'polling', message: '等待授权中' }))
+
+    let completeResult: Awaited<ReturnType<typeof window.electronAPI.channel.larkCompleteRegistration>>
+    try {
+      completeResult = await window.electronAPI.channel.larkCompleteRegistration({
+        deviceCode: beginResult.deviceCode,
+        interval: beginResult.interval,
+        expireIn: beginResult.expireIn
+      })
+    } catch (e) {
+      setLarkSetup({ phase: 'error', message: `授权异常：${e instanceof Error ? e.message : String(e)}`, domain })
+      return
+    }
+
+    if (!completeResult.success) {
+      const statusMsg = completeResult.status || 'error'
+      if (statusMsg === 'expired') {
+        setLarkSetup(prev => ({ ...prev, phase: 'expired' }))
+        return
+      }
+      setLarkSetup({ phase: 'error', message: completeResult.error || `授权失败：${statusMsg}`, domain })
+      return
+    }
+
+    setLarkSetup({ phase: 'success', message: `${brandName} 配置成功` })
+    window.dispatchEvent(new CustomEvent('config-updated'))
+  }, [])
+
+  const handleLarkRefresh = useCallback((): void => {
+    if (larkSetup.domain) configureLarkBot(larkSetup.domain)
+  }, [larkSetup.domain, configureLarkBot])
+
+  const handleCloseQrModal = useCallback((): void => {
+    setLarkSetup({ phase: 'idle' })
+  }, [])
+
+  // ── Telegram ────────────────────────────────────────────────────────────────
   const configureTelegram = async (): Promise<void> => {
     if (!botToken.trim()) return
     setTelegramPhase('configuring')
@@ -398,71 +584,158 @@ export default function ConfigModal({ onClose, onDone }: Props): React.JSX.Eleme
             <div className="space-y-4">
               <p className="text-xs text-white/50">{t('channelConfig.desc')}</p>
 
-              {/* Telegram Bot Token */}
-              <div className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center text-sm">✈️</div>
-                  <div>
-                    <p className="text-sm font-bold text-white">Telegram</p>
-                    <p className="text-[10px] text-white/40">{t('channel.telegramSubtitle')}</p>
-                  </div>
-                  {telegramPhase === 'success' && (
-                    <span className="ml-auto text-[10px] text-green-400 font-bold">已配置</span>
+              {/* Channel tabs */}
+              <div className="flex rounded-xl bg-white/5 border border-white/10 overflow-hidden">
+                {(['feishu', 'lark', 'telegram'] as ChannelTab[]).map((tab) => {
+                  const icons: Record<ChannelTab, string> = { feishu: '📎', lark: '🔵', telegram: '✈️' }
+                  const labels: Record<ChannelTab, string> = { feishu: 'Feishu', lark: 'Lark', telegram: 'Telegram' }
+                  return (
+                    <button
+                      key={tab}
+                      onClick={() => setChannelTab(tab)}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold transition-all cursor-pointer ${
+                        channelTab === tab
+                          ? 'bg-primary/15 text-primary border-t-2 border-primary'
+                          : 'text-text-muted hover:bg-white/5'
+                      }`}
+                    >
+                      <span>{icons[tab]}</span>
+                      <span>{labels[tab]}</span>
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* ── Feishu / Lark ── */}
+              {(channelTab === 'feishu' || channelTab === 'lark') && (
+                <div className="space-y-3">
+                  {larkSetup.phase === 'success' ? (
+                    <div className="flex items-center gap-3 px-4 py-4 rounded-xl border border-success/30 bg-success/10">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                      <div>
+                        <p className="text-sm font-bold text-success">{channelTab === 'feishu' ? 'Feishu' : 'Lark'} 已配置</p>
+                        <p className="text-[10px] text-white/50">{larkSetup.message}</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="text-center py-2">
+                        <p className="text-sm font-semibold text-white mb-1">
+                          {channelTab === 'feishu' ? '飞书 (Feishu)' : 'Lark'}
+                        </p>
+                        <p className="text-xs text-white/40">
+                          {channelTab === 'feishu'
+                            ? '使用飞书扫码授权，适合中国大陆用户'
+                            : '使用 Lark 扫码授权，适合海外用户'}
+                        </p>
+                      </div>
+
+                      {larkSetup.phase === 'idle' && (
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          className="w-full"
+                          onClick={() => configureLarkBot(channelTab === 'lark' ? 'lark' : 'feishu')}
+                        >
+                          {channelTab === 'feishu' ? '连接飞书' : '连接 Lark'}
+                        </Button>
+                      )}
+
+                      {(larkSetup.phase === 'starting') && (
+                        <div className="flex items-center justify-center gap-2 py-3 text-xs text-white/50">
+                          <div className="w-3 h-3 border border-primary/30 border-t-primary rounded-full animate-spin" />
+                          {larkSetup.message || '连接中...'}
+                        </div>
+                      )}
+
+                      {(larkSetup.phase === 'error') && (
+                        <div className="flex flex-col gap-2 px-3 py-2 rounded-lg bg-error/10 border border-error/20">
+                          <div className="flex items-start gap-2">
+                            <span className="text-xs">⚠️</span>
+                            <span className="text-xs text-error flex-1">{larkSetup.message}</span>
+                          </div>
+                          <button
+                            onClick={() => configureLarkBot(channelTab === 'lark' ? 'lark' : 'feishu')}
+                            className="self-start px-3 py-1 rounded-lg bg-error/10 border border-error/20 text-xs font-medium text-error hover:bg-error/20 transition-colors cursor-pointer"
+                          >
+                            重试
+                          </button>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
+              )}
 
-                {telegramPhase !== 'success' && (
-                  <>
-                    <input
-                      type="text"
-                      value={botToken}
-                      onChange={(e) => setBotToken(e.target.value)}
-                      placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
-                      className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-primary/50"
-                    />
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={configureTelegram}
-                      disabled={!botToken.trim() || telegramPhase === 'configuring'}
-                      loading={telegramPhase === 'configuring'}
-                    >
-                      {telegramPhase === 'configuring' ? '配置中...' : '配置 Telegram'}
-                    </Button>
-                  </>
-                )}
-
-                {telegramPhase === 'configuring' && (
-                  <div className="flex items-center gap-2 text-xs text-white/50">
-                    <div className="w-3 h-3 border border-primary/30 border-t-primary rounded-full animate-spin" />
-                    正在配置 Telegram...
-                  </div>
-                )}
-
-                {telegramPhase === 'success' && (
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-success/10 border border-success/30">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                    <span className="text-xs text-success">Telegram 配置成功</span>
-                  </div>
-                )}
-
-                {telegramPhase === 'error' && (
-                  <div className="flex flex-col gap-2 px-3 py-2 rounded-lg bg-error/10 border border-error/20">
-                    <div className="flex items-start gap-2">
-                      <span className="text-xs">⚠️</span>
-                      <span className="text-xs text-error flex-1">{telegramError || '配置失败'}</span>
+              {/* ── Telegram ── */}
+              {channelTab === 'telegram' && (
+                <div className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center text-sm">✈️</div>
+                    <div>
+                      <p className="text-sm font-bold text-white">Telegram</p>
+                      <p className="text-[10px] text-white/40">{t('channel.telegramSubtitle')}</p>
                     </div>
-                    <button
-                      onClick={resetTelegram}
-                      className="self-start px-3 py-1 rounded-lg bg-error/10 border border-error/20 text-xs font-medium text-error hover:bg-error/20 transition-colors cursor-pointer"
-                    >
-                      重试
-                    </button>
+                    {telegramPhase === 'success' && (
+                      <span className="ml-auto text-[10px] text-green-400 font-bold">已配置</span>
+                    )}
                   </div>
-                )}
-              </div>
+
+                  {telegramPhase !== 'success' && (
+                    <>
+                      <input
+                        type="text"
+                        value={botToken}
+                        onChange={(e) => setBotToken(e.target.value)}
+                        placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
+                        className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-primary/50"
+                      />
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={configureTelegram}
+                        disabled={!botToken.trim() || telegramPhase === 'configuring'}
+                        loading={telegramPhase === 'configuring'}
+                      >
+                        {telegramPhase === 'configuring' ? '配置中...' : '配置 Telegram'}
+                      </Button>
+                    </>
+                  )}
+
+                  {telegramPhase === 'configuring' && (
+                    <div className="flex items-center gap-2 text-xs text-white/50">
+                      <div className="w-3 h-3 border border-primary/30 border-t-primary rounded-full animate-spin" />
+                      正在配置 Telegram...
+                    </div>
+                  )}
+
+                  {telegramPhase === 'success' && (
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-success/10 border border-success/30">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                      <span className="text-xs text-success">Telegram 配置成功</span>
+                    </div>
+                  )}
+
+                  {telegramPhase === 'error' && (
+                    <div className="flex flex-col gap-2 px-3 py-2 rounded-lg bg-error/10 border border-error/20">
+                      <div className="flex items-start gap-2">
+                        <span className="text-xs">⚠️</span>
+                        <span className="text-xs text-error flex-1">{telegramError || '配置失败'}</span>
+                      </div>
+                      <button
+                        onClick={resetTelegram}
+                        className="self-start px-3 py-1 rounded-lg bg-error/10 border border-error/20 text-xs font-medium text-error hover:bg-error/20 transition-colors cursor-pointer"
+                      >
+                        重试
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Done */}
               <div className="flex justify-end pt-2">
@@ -474,6 +747,16 @@ export default function ConfigModal({ onClose, onDone }: Props): React.JSX.Eleme
           )}
         </div>
       </div>
+
+      {/* QR Code Modal for Lark/Feishu */}
+      {(larkSetup.phase === 'qr' || larkSetup.phase === 'polling' || larkSetup.phase === 'expired') && (
+        <QrModal
+          qrCanvasRef={qrCanvasRef}
+          larkSetup={larkSetup}
+          onRefresh={handleLarkRefresh}
+          onClose={handleCloseQrModal}
+        />
+      )}
     </div>
   )
 }
