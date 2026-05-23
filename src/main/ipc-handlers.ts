@@ -1305,8 +1305,7 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
   ipcMain.handle(
     'model:switch',
     (_e, params: { provider: string; modelId: string }) => {
-      const { modelId } = params
-      // NOTE: provider param reserved for future per-provider routing (baseUrl/api already unified)
+      const { provider, modelId } = params
       try {
         const openClawDir = join(app.getPath('home'), '.openclaw')
         const openClawConfigPath = join(openClawDir, 'openclaw.json')
@@ -1321,6 +1320,8 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
 
         const apiBaseUrl = 'https://clawlite.ai/api/v1'
         const api = 'openai-completions'
+        // Model ID must include provider prefix so backend can route correctly
+        const fullModelId = `${provider}/${modelId}`
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const m = (ocConfig.models = ocConfig.models || {}) as any
@@ -1331,8 +1332,8 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
           api,
           models: [
             {
-              id: modelId,
-              name: modelId,
+              id: fullModelId,
+              name: fullModelId,
               input: ['text', 'image'],
               cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
               contextWindow: 200000,
@@ -1344,7 +1345,7 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const a = ocConfig.agents as any
         a.defaults = a.defaults || {}
-        a.defaults.model = `clawlite/${modelId}`
+        a.defaults.model = `clawlite/${fullModelId}`
 
         writeFileSync(openClawConfigPath, JSON.stringify(ocConfig, null, 2), { mode: 0o600 })
         return { success: true }
