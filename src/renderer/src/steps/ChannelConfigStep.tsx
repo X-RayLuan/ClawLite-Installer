@@ -368,12 +368,14 @@ export default function ChannelConfigStep({ onNext }: Props): React.JSX.Element 
     }
   }, [botToken, t])
 
-  // Auto-navigate when channel config succeeds
+  // Auto-navigate when any channel config succeeds
   useEffect(() => {
-    if (larkSetup.phase !== 'success') return
-    const timer = setTimeout(() => onNext(), 800)
-    return () => clearTimeout(timer)
-  }, [larkSetup.phase, onNext])
+    if (larkSetup.phase === 'success' || telegramSetup.phase === 'success') {
+      const timer = setTimeout(() => onNext(), 800)
+      return () => clearTimeout(timer)
+    }
+    return undefined
+  }, [larkSetup.phase, telegramSetup.phase, onNext])
 
   const handleRetry = useCallback((): void => {
     if (activeTab === 'telegram') {

@@ -406,6 +406,15 @@ export default function ConfigModal({ onClose, onDone }: Props): React.JSX.Eleme
     })
   }, [])
 
+  // Auto-close modal when Telegram config succeeds
+  useEffect(() => {
+    if (telegramPhase === 'success') {
+      const timer = setTimeout(() => onDone(), 800)
+      return () => clearTimeout(timer)
+    }
+    return undefined
+  }, [telegramPhase, onDone])
+
   // ── Lark / Feishu ──────────────────────────────────────────────────────────
   const configureLarkBot = useCallback(async (domain: 'feishu' | 'lark' = 'feishu'): Promise<void> => {
     const brandName = domain === 'lark' ? 'Lark' : 'Feishu'
