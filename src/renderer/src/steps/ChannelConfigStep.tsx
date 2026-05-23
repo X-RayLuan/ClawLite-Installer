@@ -6,7 +6,7 @@ import Button from '../components/Button'
 
 type LarkPhase = 'idle' | 'starting' | 'qr' | 'polling' | 'installing' | 'success' | 'error' | 'expired'
 type TelegramPhase = 'idle' | 'configuring' | 'success' | 'error'
-type ActiveTab = 'feishu' | 'lark' | 'telegram'
+type ActiveTab = 'feishu' | 'telegram'
 
 interface LarkSetup {
   phase: LarkPhase
@@ -407,7 +407,7 @@ export default function ChannelConfigStep({ onNext }: Props): React.JSX.Element 
 
         {/* Tab buttons */}
         <div className="flex gap-1 p-1 rounded-xl bg-white/5 border border-glass-border mb-4">
-          {(['feishu', 'lark', 'telegram'] as ActiveTab[]).map((tab) => (
+          {(['feishu', 'telegram'] as ActiveTab[]).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -419,7 +419,6 @@ export default function ChannelConfigStep({ onNext }: Props): React.JSX.Element 
               } disabled:opacity-50`}
             >
               {tab === 'feishu' && '飞书'}
-              {tab === 'lark' && 'Lark'}
               {tab === 'telegram' && 'Telegram'}
             </button>
           ))}
@@ -461,41 +460,7 @@ export default function ChannelConfigStep({ onNext }: Props): React.JSX.Element 
           </div>
         )}
 
-        {/* Lark tab */}
-        {activeTab === 'lark' && (
-          <div className="space-y-3">
-            <div className="flex items-center gap-3 px-4 py-3.5 rounded-xl border border-glass-border bg-white/5">
-              <div className="w-10 h-10 rounded-lg bg-[#1475E7]/20 flex items-center justify-center shrink-0">
-                <svg viewBox="0 0 24 24" className="w-6 h-6" fill="#1475E7">
-                  <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.22l-2.477 10.65c-.127.47-.455.79-.877.79H9.46c-.422 0-.75-.32-.877-.79L6.106 8.22a.94.94 0 0 1 .877-1.28h10.034c.522 0 .922.516.877 1.28z"/>
-                </svg>
-              </div>
-              <div className="flex-1">
-                <span className="text-sm font-bold">{t('channelConfig.lark')}</span>
-                <p className="text-[11px] text-text-muted/60">{t('channelConfig.larkDesc')}</p>
-              </div>
-              {larkSetup.phase === 'success' && larkSetup.domain === 'lark' && (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="20 6 9 17 4 12"/>
-                </svg>
-              )}
-            </div>
-            <button
-              onClick={() => configureLarkBot('lark')}
-              disabled={isLarkConfiguring || larkSetup.phase === 'success'}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-primary hover:bg-primary-light disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-semibold"
-            >
-              {isLarkConfiguring ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>
-                  <span>{larkSetup.message || t('channelConfig.configuring')}</span>
-                </>
-              ) : (
-                <span>{larkSetup.phase === 'success' ? t('channelConfig.success') : t('channelConfig.connectBtn')}</span>
-              )}
-            </button>
-          </div>
-        )}
+
 
         {/* Telegram tab */}
         {activeTab === 'telegram' && (

@@ -6,7 +6,7 @@ import Button from './Button'
 // ─── Types ───────────────────────────────────────────────────────────────────
 type LarkPhase = 'idle' | 'starting' | 'qr' | 'polling' | 'installing' | 'success' | 'error' | 'expired'
 type TelegramPhase = 'idle' | 'configuring' | 'success' | 'error'
-type ChannelTab = 'feishu' | 'lark' | 'telegram'
+type ChannelTab = 'feishu' | 'telegram'
 
 interface LarkSetup {
   phase: LarkPhase
@@ -589,9 +589,9 @@ export default function ConfigModal({ onClose, onDone }: Props): React.JSX.Eleme
 
               {/* Channel tabs */}
               <div className="flex rounded-xl bg-white/5 border border-white/10 overflow-hidden">
-                {(['feishu', 'lark', 'telegram'] as ChannelTab[]).map((tab) => {
-                  const icons: Record<ChannelTab, string> = { feishu: '📎', lark: '🔵', telegram: '✈️' }
-                  const labels: Record<ChannelTab, string> = { feishu: 'Feishu', lark: 'Lark', telegram: 'Telegram' }
+                {(['feishu', 'telegram'] as ChannelTab[]).map((tab) => {
+                  const icons: Record<ChannelTab, string> = { feishu: '📎', telegram: '✈️' }
+                  const labels: Record<ChannelTab, string> = { feishu: '飞书', telegram: 'Telegram' }
                   return (
                     <button
                       key={tab}
@@ -609,8 +609,8 @@ export default function ConfigModal({ onClose, onDone }: Props): React.JSX.Eleme
                 })}
               </div>
 
-              {/* ── Feishu / Lark ── */}
-              {(channelTab === 'feishu' || channelTab === 'lark') && (
+              {/* ── Feishu ── */}
+              {channelTab === 'feishu' && (
                 <div className="space-y-3">
                   {larkSetup.phase === 'success' ? (
                     <div className="flex items-center gap-3 px-4 py-4 rounded-xl border border-success/30 bg-success/10">
@@ -618,21 +618,15 @@ export default function ConfigModal({ onClose, onDone }: Props): React.JSX.Eleme
                         <polyline points="20 6 9 17 4 12" />
                       </svg>
                       <div>
-                        <p className="text-sm font-bold text-success">{channelTab === 'feishu' ? 'Feishu' : 'Lark'} 已配置</p>
+                        <p className="text-sm font-bold text-success">飞书已配置</p>
                         <p className="text-[10px] text-white/50">{larkSetup.message}</p>
                       </div>
                     </div>
                   ) : (
                     <>
                       <div className="text-center py-2">
-                        <p className="text-sm font-semibold text-white mb-1">
-                          {channelTab === 'feishu' ? '飞书 (Feishu)' : 'Lark'}
-                        </p>
-                        <p className="text-xs text-white/40">
-                          {channelTab === 'feishu'
-                            ? '使用飞书扫码授权，适合中国大陆用户'
-                            : '使用 Lark 扫码授权，适合海外用户'}
-                        </p>
+                        <p className="text-sm font-semibold text-white mb-1">飞书 (Feishu)</p>
+                        <p className="text-xs text-white/40">使用飞书扫码授权，适合中国大陆用户</p>
                       </div>
 
                       {larkSetup.phase === 'idle' && (
@@ -640,27 +634,27 @@ export default function ConfigModal({ onClose, onDone }: Props): React.JSX.Eleme
                           variant="primary"
                           size="sm"
                           className="w-full"
-                          onClick={() => configureLarkBot(channelTab === 'lark' ? 'lark' : 'feishu')}
+                          onClick={() => configureLarkBot('feishu')}
                         >
-                          {channelTab === 'feishu' ? '连接飞书' : '连接 Lark'}
+                          连接飞书
                         </Button>
                       )}
 
-                      {(larkSetup.phase === 'starting') && (
+                      {larkSetup.phase === 'starting' && (
                         <div className="flex items-center justify-center gap-2 py-3 text-xs text-white/50">
                           <div className="w-3 h-3 border border-primary/30 border-t-primary rounded-full animate-spin" />
                           {larkSetup.message || '连接中...'}
                         </div>
                       )}
 
-                      {(larkSetup.phase === 'error') && (
+                      {larkSetup.phase === 'error' && (
                         <div className="flex flex-col gap-2 px-3 py-2 rounded-lg bg-error/10 border border-error/20">
                           <div className="flex items-start gap-2">
                             <span className="text-xs">⚠️</span>
                             <span className="text-xs text-error flex-1">{larkSetup.message}</span>
                           </div>
                           <button
-                            onClick={() => configureLarkBot(channelTab === 'lark' ? 'lark' : 'feishu')}
+                            onClick={() => configureLarkBot('feishu')}
                             className="self-start px-3 py-1 rounded-lg bg-error/10 border border-error/20 text-xs font-medium text-error hover:bg-error/20 transition-colors cursor-pointer"
                           >
                             重试
