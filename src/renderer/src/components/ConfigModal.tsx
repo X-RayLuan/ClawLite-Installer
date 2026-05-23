@@ -735,7 +735,13 @@ export default function ConfigModal({ onClose, onDone }: Props): React.JSX.Eleme
               )}
 
               {/* Done */}
-              <div className="flex justify-end pt-2">
+              <div className="flex justify-between pt-2">
+                <button
+                  onClick={onDone}
+                  className="px-4 py-1.5 rounded-lg text-xs font-medium text-text-muted hover:text-text hover:bg-white/5 transition-colors"
+                >
+                  跳过
+                </button>
                 <Button variant="secondary" size="sm" onClick={onDone}>
                   完成
                 </Button>

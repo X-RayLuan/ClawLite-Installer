@@ -558,7 +558,14 @@ export default function ChannelConfigStep({ onNext }: Props): React.JSX.Element 
       </div>
 
       {/* Action footer */}
-      <div className="shrink-0 flex justify-end py-3">
+      <div className="shrink-0 flex justify-between py-3">
+        <button
+          onClick={onNext}
+          disabled={isLarkConfiguring || isTelegramConfiguring}
+          className="px-5 py-2.5 rounded-lg text-sm font-semibold text-text-muted hover:text-text hover:bg-white/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          跳过
+        </button>
         <Button
           variant="primary"
           size="lg"
