@@ -48,7 +48,7 @@ interface FeishuRegistrationOutcome {
 const FEISHU_ACCOUNTS_URL = 'https://accounts.feishu.cn'
 const LARK_ACCOUNTS_URL = 'https://accounts.larksuite.com'
 const FEISHU_REGISTRATION_PATH = '/oauth/v1/app/registration'
-const FEISHU_REGISTRATION_TIMEOUT_MS = 90000
+const FEISHU_REGISTRATION_TIMEOUT_MS = 120000  // 2 min — gives slow networks (China) more time
 const DEFAULT_FEISHU_POLL_INTERVAL_SECONDS = 5
 const DEFAULT_FEISHU_REGISTRATION_EXPIRE_SECONDS = 900  // 15 minutes — gives users more time to scan
 
@@ -211,6 +211,31 @@ const pollFeishuRegistration = async (params: {
   return { status: 'timeout' }
 }
 
+/**
+ * Deep-merge `patch` into `base`, returning a new object.
+ * Arrays are replaced (not concatenated). Mutates neither argument.
+ */
+function deepMerge<T extends Record<string, unknown>>(base: T, patch: Partial<T>): T {
+  const result: Record<string, unknown> = { ...base }
+  for (const [key, patchVal] of Object.entries(patch)) {
+    if (patchVal === undefined) continue
+    const baseVal = (base as Record<string, unknown>)[key]
+    if (
+      patchVal !== null &&
+      typeof patchVal === 'object' &&
+      !Array.isArray(patchVal) &&
+      baseVal !== null &&
+      typeof baseVal === 'object' &&
+      !Array.isArray(baseVal)
+    ) {
+      result[key] = deepMerge(baseVal as Record<string, unknown>, patchVal as Record<string, unknown>)
+    } else {
+      result[key] = patchVal
+    }
+  }
+  return result as T
+}
+
 const applyFeishuOpenClawConfig = async (result: FeishuRegistrationResult): Promise<void> => {
   // Complete base config for Feishu channel + gateway settings
   const patch = {
@@ -241,11 +266,29 @@ const applyFeishuOpenClawConfig = async (result: FeishuRegistrationResult): Prom
     }
   }
 
-  // Windows: openclaw runs inside WSL
+  // Windows: write to the correct location based on installType.
+  // WSL mode → WSL Ubuntu filesystem (via writeWslOpenClawConfig)
+  // Native mode → Windows filesystem (direct write, same as macOS/Linux)
   if (platform() === 'win32') {
-    const json = JSON.stringify(patch)
-    // Use a temp file to pass JSON to openclaw via WSL stdin
-    await runInWsl(`cat << 'PATCHEOF' | openclaw config patch --stdin\n${json}\nPATCHEOF`)
+    const settings = getSettings()
+    const installType = settings.installType as 'wsl' | 'native' | undefined
+    if (installType === 'native') {
+      // Native Windows: openclaw config lives at %USERPROFILE%\.openclaw\openclaw.json
+      const homeDir = homedir().replace(/\\+$/, '')
+      const openClawDir = join(homeDir, '.openclaw')
+      if (!existsSync(openClawDir)) mkdirSync(openClawDir, { recursive: true })
+      const configPath = join(openClawDir, 'openclaw.json')
+      const existing: Record<string, unknown> = existsSync(configPath)
+        ? JSON.parse(readFileSync(configPath, 'utf-8'))
+        : {}
+      const merged = deepMerge(existing, patch)
+      writeFileSync(configPath, JSON.stringify(merged, null, 2), { mode: 0o600 })
+    } else {
+      // WSL mode: openclaw config inside WSL Ubuntu
+      const existing = await readWslOpenClawConfig()
+      const merged = deepMerge(existing, patch)
+      await writeWslOpenClawConfig(merged)
+    }
     return
   }
   // macOS / Linux
@@ -317,6 +360,8 @@ const writeSettings = (patch: Record<string, unknown>): void => {
   const settings = { ...readSettings(), ...patch }
   writeFileSync(getSettingsPath(), JSON.stringify(settings, null, 2))
 }
+
+const getSettings = (): Record<string, unknown> => readSettings()
 
 export const getSavedLocale = (): string => {
   const settings = readSettings()
@@ -406,6 +451,9 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
       } else {
         await installNodeMac(win())
       }
+      // Persist installType so that later IPC calls (model:switch, feishu config)
+      // know which path layout to use on Windows.
+      if (installType) writeSettings({ installType })
       return { success: true }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
@@ -430,6 +478,9 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
       } else {
         await installOpenClaw(win())
       }
+      // Persist installType so that later IPC calls (model:switch, feishu config)
+      // know which path layout to use on Windows.
+      if (installType) writeSettings({ installType })
       return { success: true }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
@@ -1439,8 +1490,8 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
         const apiBaseUrl = 'https://clawlite.ai/api/v1'
         const fullModelId = `${provider}/${modelId}`
 
-        if (isWindows) {
-          const ocConfig = await readWslOpenClawConfig()
+        // Build the model config object once
+        const patchConfig = (ocConfig: Record<string, unknown>): void => {
           const existingApiKey =
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (ocConfig.models as any)?.providers?.clawlite?.apiKey ?? ''
@@ -1467,42 +1518,38 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
           const a = (ocConfig.agents = ocConfig.agents || {}) as any
           a.defaults = a.defaults || {}
           a.defaults.model = `clawlite/${fullModelId}`
-          await writeWslOpenClawConfig(ocConfig)
+        }
+
+        if (isWindows) {
+          const settings = getSettings()
+          const installType = settings.installType as 'wsl' | 'native' | undefined
+          if (installType === 'native') {
+            // Native Windows: openclaw config at %USERPROFILE%\.openclaw\openclaw.json
+            const homeDir = homedir().replace(/\\+$/, '')
+            const openClawDir = join(homeDir, '.openclaw')
+            if (!existsSync(openClawDir)) mkdirSync(openClawDir, { recursive: true })
+            const configPath = join(openClawDir, 'openclaw.json')
+            const ocConfig: Record<string, unknown> = existsSync(configPath)
+              ? JSON.parse(readFileSync(configPath, 'utf-8'))
+              : {}
+            patchConfig(ocConfig)
+            writeFileSync(configPath, JSON.stringify(ocConfig, null, 2), { mode: 0o600 })
+          } else {
+            // WSL mode: openclaw config inside WSL Ubuntu
+            const ocConfig = await readWslOpenClawConfig()
+            patchConfig(ocConfig)
+            await writeWslOpenClawConfig(ocConfig)
+          }
         } else {
-          const homeDir = app.getPath('home').replace(/\\+$/, '')  // strip trailing backslashes
+          // macOS/Linux
+          const homeDir = app.getPath('home').replace(/\\+$/, '')
           const openClawDir = join(homeDir, '.openclaw')
           mkdirSync(openClawDir, { recursive: true })
           const openClawConfigPath = join(openClawDir, 'openclaw.json')
-          let ocConfig: Record<string, unknown> = {}
-          if (existsSync(openClawConfigPath)) {
-            ocConfig = JSON.parse(readFileSync(openClawConfigPath, 'utf-8'))
-          }
-          const existingApiKey =
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (ocConfig.models as any)?.providers?.clawlite?.apiKey ?? ''
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const m = (ocConfig.models = ocConfig.models || {}) as any
-          m.providers = m.providers || {}
-          m.providers.clawlite = {
-            baseUrl: apiBaseUrl,
-            apiKey: existingApiKey,
-            api: 'openai-completions',
-            models: [
-              {
-                id: fullModelId,
-                name: fullModelId,
-                input: ['text', 'image'],
-                cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-                contextWindow: 200000,
-                maxTokens: 32000,
-                reasoning: true
-              }
-            ]
-          }
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const a = (ocConfig.agents = ocConfig.agents || {}) as any
-          a.defaults = a.defaults || {}
-          a.defaults.model = `clawlite/${fullModelId}`
+          const ocConfig: Record<string, unknown> = existsSync(openClawConfigPath)
+            ? JSON.parse(readFileSync(openClawConfigPath, 'utf-8'))
+            : {}
+          patchConfig(ocConfig)
           writeFileSync(openClawConfigPath, JSON.stringify(ocConfig, null, 2), { mode: 0o600 })
         }
         return { success: true }
