@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { execFileSync } from 'child_process'
-import { existsSync } from 'fs'
+import { existsSync, readFileSync } from 'fs'
 import { basename, join } from 'path'
 
 const [, , expectedVersionArg, dmgPath, appPathArg] = process.argv
@@ -9,7 +9,7 @@ const [, , expectedVersionArg, dmgPath, appPathArg] = process.argv
 // Resolve expected version from package.json if not provided
 const resolveVersion = () => {
   try {
-    const pkg = JSON.parse(require('fs').readFileSync('package.json', 'utf8'))
+    const pkg = JSON.parse(readFileSync('package.json', 'utf8'))
     return pkg.version
   } catch {
     return null
