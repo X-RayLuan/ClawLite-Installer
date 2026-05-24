@@ -286,7 +286,7 @@ import {
   getGatewayStatus,
   setGatewayLogCallback
 } from './services/gateway'
-import { checkWslState, spawnInWsl, runInWsl } from './services/wsl-utils'
+import { checkWslState, spawnInWsl, runInWsl, readWslOpenClawConfig, writeWslOpenClawConfig } from './services/wsl-utils'
 import { checkForUpdates, downloadUpdate, installUpdate } from './services/updater'
 import { uninstallOpenClaw } from './services/uninstaller'
 import { exportBackup, importBackup } from './services/backup'
@@ -1206,7 +1206,7 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
 
   ipcMain.handle(
     'activation:save',
-    (
+    async (
       _e,
       info: {
         email: string
@@ -1215,52 +1215,81 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
         apiKey: string
         baseUrl: string
       }
-    ) => {
+    ): Promise<{ success: boolean }> => {
       try {
         const path = getActivationPath()
         writeFileSync(path, JSON.stringify(info, null, 2))
 
-        // Also write clawlite provider config to ~/.openclaw/openclaw.json
+        // Also write clawlite provider config to WSL ~/.openclaw/openclaw.json
         try {
-          const openClawDir = join(app.getPath('home'), '.openclaw')
-          const openClawConfigPath = join(openClawDir, 'openclaw.json')
-          let ocConfig: Record<string, any> = {}
-          if (existsSync(openClawConfigPath)) {
-            ocConfig = JSON.parse(readFileSync(openClawConfigPath, 'utf-8'))
+          const isWindows = platform() === 'win32'
+          if (isWindows) {
+            const ocConfig = await readWslOpenClawConfig()
+            ocConfig.models = ocConfig.models || {}
+            ocConfig.models.providers = ocConfig.models.providers || {}
+            ocConfig.models.providers.clawlite = {
+              baseUrl: info.baseUrl,
+              apiKey: info.apiKey,
+              api: 'openai-completions',
+              models: [
+                {
+                  id: 'gpt-5.4',
+                  name: 'GPT-5.4',
+                  input: ['text', 'image'],
+                  cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+                  contextWindow: 200000,
+                  maxTokens: 32000,
+                  reasoning: true
+                }
+              ]
+            }
+            ocConfig.agents = ocConfig.agents || {}
+            ocConfig.agents.defaults = ocConfig.agents.defaults || {}
+            ocConfig.agents.defaults.model = 'clawlite/gpt-5.4'
+            if (!ocConfig.gateway) ocConfig.gateway = {}
+            if (!ocConfig.gateway.auth) ocConfig.gateway.auth = {}
+            if (!ocConfig.gateway.auth.token) {
+              ocConfig.gateway.auth.token = randomBytes(32).toString('hex')
+            }
+            await writeWslOpenClawConfig(ocConfig)
+          } else {
+            const openClawDir = join(app.getPath('home'), '.openclaw')
+            const openClawConfigPath = join(openClawDir, 'openclaw.json')
+            let ocConfig: Record<string, any> = {}
+            if (existsSync(openClawConfigPath)) {
+              ocConfig = JSON.parse(readFileSync(openClawConfigPath, 'utf-8'))
+            }
+            ocConfig.models = ocConfig.models || {}
+            ocConfig.models.providers = ocConfig.models.providers || {}
+            ocConfig.models.providers.clawlite = {
+              baseUrl: info.baseUrl,
+              apiKey: info.apiKey,
+              api: 'openai-completions',
+              models: [
+                {
+                  id: 'gpt-5.4',
+                  name: 'GPT-5.4',
+                  input: ['text', 'image'],
+                  cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+                  contextWindow: 200000,
+                  maxTokens: 32000,
+                  reasoning: true
+                }
+              ]
+            }
+            ocConfig.agents = ocConfig.agents || {}
+            ocConfig.agents.defaults = ocConfig.agents.defaults || {}
+            ocConfig.agents.defaults.model = 'clawlite/gpt-5.4'
+            if (!ocConfig.gateway) ocConfig.gateway = {}
+            if (!ocConfig.gateway.auth) ocConfig.gateway.auth = {}
+            if (!ocConfig.gateway.auth.token) {
+              ocConfig.gateway.auth.token = randomBytes(32).toString('hex')
+            }
+            if (!existsSync(openClawDir)) {
+              mkdirSync(openClawDir, { recursive: true })
+            }
+            writeFileSync(openClawConfigPath, JSON.stringify(ocConfig, null, 2), { mode: 0o600 })
           }
-          // Ensure models.providers.clawlite entry
-          ocConfig.models = ocConfig.models || {}
-          ocConfig.models.providers = ocConfig.models.providers || {}
-          ocConfig.models.providers.clawlite = {
-            baseUrl: info.baseUrl,
-            apiKey: info.apiKey,
-            api: 'openai-completions',
-            models: [
-              {
-                id: 'gpt-5.4',
-                name: 'GPT-5.4',
-                input: ['text', 'image'],
-                cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-                contextWindow: 200000,
-                maxTokens: 32000,
-                reasoning: true
-              }
-            ]
-          }
-          // Set default agent to clawlite
-          ocConfig.agents = ocConfig.agents || {}
-          ocConfig.agents.defaults = ocConfig.agents.defaults || {}
-          ocConfig.agents.defaults.model = 'clawlite/gpt-5.4'
-          // Generate and write gateway token if not already present
-          if (!ocConfig.gateway) ocConfig.gateway = {}
-          if (!ocConfig.gateway.auth) ocConfig.gateway.auth = {}
-          if (!ocConfig.gateway.auth.token) {
-            ocConfig.gateway.auth.token = randomBytes(32).toString('hex')
-          }
-          if (!existsSync(openClawDir)) {
-            mkdirSync(openClawDir, { recursive: true })
-          }
-          writeFileSync(openClawConfigPath, JSON.stringify(ocConfig, null, 2), { mode: 0o600 })
         } catch (writeErr) {
           console.error('[activation:save] failed to write openclaw config:', writeErr)
         }
@@ -1287,7 +1316,7 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
 
   ipcMain.handle(
     'installer:save-activate',
-    (
+    async (
       _e,
       data: {
         accountId: string
@@ -1295,7 +1324,7 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
         apiKey: string
         baseUrl: string
       }
-    ) => {
+    ): Promise<{ success: boolean }> => {
       try {
         // Write activate.json
         const activatePath = getActivatePath()
@@ -1303,42 +1332,74 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
 
         // Also write clawlite config to ~/.openclaw/openclaw.json
         try {
-          const openClawDir = join(app.getPath('home'), '.openclaw')
-          const openClawConfigPath = join(openClawDir, 'openclaw.json')
-          let ocConfig: Record<string, any> = {}
-          if (existsSync(openClawConfigPath)) {
-            ocConfig = JSON.parse(readFileSync(openClawConfigPath, 'utf-8'))
+          const isWindows = platform() === 'win32'
+          if (isWindows) {
+            const ocConfig = await readWslOpenClawConfig()
+            ocConfig.models = ocConfig.models || {}
+            ocConfig.models.providers = ocConfig.models.providers || {}
+            ocConfig.models.providers.clawlite = {
+              baseUrl: data.baseUrl,
+              apiKey: data.apiKey,
+              api: 'openai-completions',
+              models: [
+                {
+                  id: 'gpt-5.4',
+                  name: 'GPT-5.4',
+                  input: ['text', 'image'],
+                  cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+                  contextWindow: 200000,
+                  maxTokens: 32000,
+                  reasoning: true
+                }
+              ]
+            }
+            ocConfig.agents = ocConfig.agents || {}
+            ocConfig.agents.defaults = ocConfig.agents.defaults || {}
+            ocConfig.agents.defaults.model = 'clawlite/gpt-5.4'
+            if (!ocConfig.gateway) ocConfig.gateway = {}
+            if (!ocConfig.gateway.auth) ocConfig.gateway.auth = {}
+            if (!ocConfig.gateway.auth.token) {
+              ocConfig.gateway.auth.token = randomBytes(32).toString('hex')
+            }
+            await writeWslOpenClawConfig(ocConfig)
+          } else {
+            const openClawDir = join(app.getPath('home'), '.openclaw')
+            const openClawConfigPath = join(openClawDir, 'openclaw.json')
+            let ocConfig: Record<string, any> = {}
+            if (existsSync(openClawConfigPath)) {
+              ocConfig = JSON.parse(readFileSync(openClawConfigPath, 'utf-8'))
+            }
+            ocConfig.models = ocConfig.models || {}
+            ocConfig.models.providers = ocConfig.models.providers || {}
+            ocConfig.models.providers.clawlite = {
+              baseUrl: data.baseUrl,
+              apiKey: data.apiKey,
+              api: 'openai-completions',
+              models: [
+                {
+                  id: 'gpt-5.4',
+                  name: 'GPT-5.4',
+                  input: ['text', 'image'],
+                  cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+                  contextWindow: 200000,
+                  maxTokens: 32000,
+                  reasoning: true
+                }
+              ]
+            }
+            ocConfig.agents = ocConfig.agents || {}
+            ocConfig.agents.defaults = ocConfig.agents.defaults || {}
+            ocConfig.agents.defaults.model = 'clawlite/gpt-5.4'
+            if (!ocConfig.gateway) ocConfig.gateway = {}
+            if (!ocConfig.gateway.auth) ocConfig.gateway.auth = {}
+            if (!ocConfig.gateway.auth.token) {
+              ocConfig.gateway.auth.token = randomBytes(32).toString('hex')
+            }
+            if (!existsSync(openClawDir)) {
+              mkdirSync(openClawDir, { recursive: true })
+            }
+            writeFileSync(openClawConfigPath, JSON.stringify(ocConfig, null, 2), { mode: 0o600 })
           }
-          ocConfig.models = ocConfig.models || {}
-          ocConfig.models.providers = ocConfig.models.providers || {}
-          ocConfig.models.providers.clawlite = {
-            baseUrl: data.baseUrl,
-            apiKey: data.apiKey,
-            api: 'openai-completions',
-            models: [
-              {
-                id: 'gpt-5.4',
-                name: 'GPT-5.4',
-                input: ['text', 'image'],
-                cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-                contextWindow: 200000,
-                maxTokens: 32000,
-                reasoning: true
-              }
-            ]
-          }
-          ocConfig.agents = ocConfig.agents || {}
-          ocConfig.agents.defaults = ocConfig.agents.defaults || {}
-          ocConfig.agents.defaults.model = 'clawlite/gpt-5.4'
-          if (!ocConfig.gateway) ocConfig.gateway = {}
-          if (!ocConfig.gateway.auth) ocConfig.gateway.auth = {}
-          if (!ocConfig.gateway.auth.token) {
-            ocConfig.gateway.auth.token = randomBytes(32).toString('hex')
-          }
-          if (!existsSync(openClawDir)) {
-            mkdirSync(openClawDir, { recursive: true })
-          }
-          writeFileSync(openClawConfigPath, JSON.stringify(ocConfig, null, 2), { mode: 0o600 })
         } catch (writeErr) {
           console.error('[installer:save-activate] failed to write openclaw config:', writeErr)
         }
@@ -1371,52 +1432,79 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
   // ─── Model switch (lightweight — just update baseUrl/api/model in openclaw.json) ───
   ipcMain.handle(
     'model:switch',
-    (_e, params: { provider: string; modelId: string }) => {
+    async (_e, params: { provider: string; modelId: string }) => {
       const { provider, modelId } = params
       try {
-        const homeDir = app.getPath('home').replace(/\\+$/, '')  // strip trailing backslashes
-        const openClawDir = join(homeDir, '.openclaw')
-        mkdirSync(openClawDir, { recursive: true })
-        const openClawConfigPath = join(openClawDir, 'openclaw.json')
-        let ocConfig: Record<string, unknown> = {}
-        if (existsSync(openClawConfigPath)) {
-          ocConfig = JSON.parse(readFileSync(openClawConfigPath, 'utf-8'))
-        }
-
-        const existingApiKey =
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (ocConfig.models as any)?.providers?.clawlite?.apiKey ?? ''
-
+        const isWindows = platform() === 'win32'
         const apiBaseUrl = 'https://clawlite.ai/api/v1'
-        const api = 'openai-completions'
-        // Model ID must include provider prefix so backend can route correctly
         const fullModelId = `${provider}/${modelId}`
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const m = (ocConfig.models = ocConfig.models || {}) as any
-        m.providers = m.providers || {}
-        m.providers.clawlite = {
-          baseUrl: apiBaseUrl,
-          apiKey: existingApiKey,
-          api,
-          models: [
-            {
-              id: fullModelId,
-              name: fullModelId,
-              input: ['text', 'image'],
-              cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-              contextWindow: 200000,
-              maxTokens: 32000,
-              reasoning: true
-            }
-          ]
+        if (isWindows) {
+          const ocConfig = await readWslOpenClawConfig()
+          const existingApiKey =
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (ocConfig.models as any)?.providers?.clawlite?.apiKey ?? ''
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const m = (ocConfig.models = ocConfig.models || {}) as any
+          m.providers = m.providers || {}
+          m.providers.clawlite = {
+            baseUrl: apiBaseUrl,
+            apiKey: existingApiKey,
+            api: 'openai-completions',
+            models: [
+              {
+                id: fullModelId,
+                name: fullModelId,
+                input: ['text', 'image'],
+                cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+                contextWindow: 200000,
+                maxTokens: 32000,
+                reasoning: true
+              }
+            ]
+          }
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const a = (ocConfig.agents = ocConfig.agents || {}) as any
+          a.defaults = a.defaults || {}
+          a.defaults.model = `clawlite/${fullModelId}`
+          await writeWslOpenClawConfig(ocConfig)
+        } else {
+          const homeDir = app.getPath('home').replace(/\\+$/, '')  // strip trailing backslashes
+          const openClawDir = join(homeDir, '.openclaw')
+          mkdirSync(openClawDir, { recursive: true })
+          const openClawConfigPath = join(openClawDir, 'openclaw.json')
+          let ocConfig: Record<string, unknown> = {}
+          if (existsSync(openClawConfigPath)) {
+            ocConfig = JSON.parse(readFileSync(openClawConfigPath, 'utf-8'))
+          }
+          const existingApiKey =
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (ocConfig.models as any)?.providers?.clawlite?.apiKey ?? ''
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const m = (ocConfig.models = ocConfig.models || {}) as any
+          m.providers = m.providers || {}
+          m.providers.clawlite = {
+            baseUrl: apiBaseUrl,
+            apiKey: existingApiKey,
+            api: 'openai-completions',
+            models: [
+              {
+                id: fullModelId,
+                name: fullModelId,
+                input: ['text', 'image'],
+                cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+                contextWindow: 200000,
+                maxTokens: 32000,
+                reasoning: true
+              }
+            ]
+          }
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const a = (ocConfig.agents = ocConfig.agents || {}) as any
+          a.defaults = a.defaults || {}
+          a.defaults.model = `clawlite/${fullModelId}`
+          writeFileSync(openClawConfigPath, JSON.stringify(ocConfig, null, 2), { mode: 0o600 })
         }
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const a = (ocConfig.agents = ocConfig.agents || {}) as any
-        a.defaults = a.defaults || {}
-        a.defaults.model = `clawlite/${fullModelId}`
-
-        writeFileSync(openClawConfigPath, JSON.stringify(ocConfig, null, 2), { mode: 0o600 })
         return { success: true }
       } catch (e) {
         console.error('[model:switch] failed:', e)
