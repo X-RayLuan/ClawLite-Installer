@@ -190,16 +190,14 @@ export const readWslOpenClawConfig = async (): Promise<Record<string, any>> => {
 }
 
 /**
- * Write the WSL openclaw config file (atomic via temp file + mv).
+ * Write the WSL openclaw config file.
  * Ensures the state dir exists and sets correct permissions (0600).
  */
 export const writeWslOpenClawConfig = async (config: Record<string, any>): Promise<void> => {
   const configPath = await resolveWslOpenClawConfigPath()
   const stateDir = pathPosix.dirname(configPath)
   await runInWsl(`mkdir -p ${stateDir} && chmod 700 ${stateDir}`)
-  // Write via temp file + atomic mv to avoid partial writes
   const json = JSON.stringify(config, null, 2)
-  const tmpPath = `${stateDir}/.openclaw_tmp.$$.json`
-  await writeWslFile(tmpPath, json)
-  await runInWsl(`chmod 600 ${tmpPath} && mv ${tmpPath} ${configPath}`)
+  await writeWslFile(configPath, json)
+  await runInWsl(`chmod 600 ${configPath}`)
 }
