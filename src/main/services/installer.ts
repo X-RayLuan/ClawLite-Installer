@@ -178,7 +178,7 @@ export const installNodeWsl = async (win: BrowserWindow): Promise<void> => {
   const log = (msg: string): void => sendProgress(win, msg)
 
   log(t('installer.wslPackages'))
-  
+
   // Use Tsinghua mirror for apt sources (faster in China)
   log('Configuring apt sources for faster downloads...')
   try {
@@ -189,18 +189,26 @@ export const installNodeWsl = async (win: BrowserWindow): Promise<void> => {
   } catch {
     log('Mirror configuration failed, using default sources')
   }
-  
+
   try {
     await runInWsl('apt-get update && apt-get install -y curl ca-certificates gnupg', 120000)
   } catch {
     log(t('installer.aptFailed'))
   }
 
+  // Remove any previously installed nodejs (apt-installed old versions take PATH priority)
+  log('Removing old Node.js versions...')
+  await runInWsl('apt-get remove -y nodejs || true', 30000)
+
   log(t('installer.nodeWslInstalling'))
   await runInWsl(
     'curl -fsSL https://deb.nodesource.com/setup_24.x | bash - && apt-get install -y nodejs',
     300000
   )
+
+  // Verify Node 24 is the active version
+  const nodeVersion = await runInWsl('node --version', 15000)
+  log(`Node.js version: ${nodeVersion}`)
 
   log(t('installer.nodeWslDone'))
 }
