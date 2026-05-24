@@ -245,17 +245,27 @@ export const installOpenClawWsl = async (win: BrowserWindow): Promise<void> => {
     log('Registry detection failed, using default')
   }
   
-  try {
-    log(`Installing ${OPENCLAW_PACKAGE_SPEC} from ${fastestRegistry}...`)
-    await runInWsl(
-      `npm install -g ${OPENCLAW_PACKAGE_SPEC} --registry=${fastestRegistry} --verbose`,
-      300000
-    )
-  } catch (err) {
-    // Fallback to official registry
-    log('Retrying with official npm registry...')
-    await runInWsl(`npm install -g ${OPENCLAW_PACKAGE_SPEC} --verbose`, 300000)
+  const registriesFallback = [
+    { name: 'npm official', url: 'https://registry.npmjs.org' },
+    { name: 'npmmirror (China)', url: 'https://registry.npmmirror.com' }
+  ]
+
+  let lastErr: Error | undefined
+  for (const reg of [fastestRegistry, ...registriesFallback.filter(r => r.url !== fastestRegistry)]) {
+    try {
+      log(`Installing ${OPENCLAW_PACKAGE_SPEC} from ${reg}...`)
+      await runInWsl(
+        `npm install -g ${OPENCLAW_PACKAGE_SPEC} --registry=${reg.url} --verbose`,
+        300000
+      )
+      lastErr = undefined
+      break
+    } catch (err) {
+      lastErr = err instanceof Error ? err : new Error(String(err))
+      log(`Install failed with ${reg.name} (${reg.url}): ${lastErr.message.slice(0, 100)}`)
+    }
   }
+  if (lastErr) throw lastErr
 
   // Initialize OpenClaw config so that gateway.mode is present.
   // Without this, `openclaw gateway start` fails with:
