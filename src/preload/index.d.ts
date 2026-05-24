@@ -60,6 +60,9 @@ interface ElectronAPI {
   devices: {
     autoApprove: () => Promise<{ success: boolean; approved: number; error?: string }>
   }
+  pairing: {
+    autoApprove: (channel?: string) => Promise<{ success: boolean; approved: number; error?: string }>
+  }
   wsl: {
     check: () => Promise<WslState>
     install: () => Promise<{ success: boolean; needsReboot?: boolean; error?: string }>

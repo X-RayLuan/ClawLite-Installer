@@ -73,6 +73,34 @@ export default function DoneStep({
     return () => window.removeEventListener('config-updated', handler)
   }, [loadCurrentConfig])
 
+  // Poll for pending Telegram (or other channel) DM pairing requests and auto-approve them.
+  // This runs continuously while the DoneStep is shown so the user can pair by simply
+  // sending a message to the bot without touching the CLI.
+  useEffect(() => {
+    if (!hasTelegram) return
+
+    let intervalId: ReturnType<typeof setInterval>
+
+    const poll = async (): Promise<void> => {
+      try {
+        const r = await window.electronAPI.pairing.autoApprove('telegram')
+        if (r.success && r.approved > 0) {
+          console.log(`[pairing poll] auto-approved ${r.approved} Telegram pairing request(s)`)
+        }
+      } catch {
+        // non-fatal polling
+      }
+    }
+
+    // Start polling immediately, then every 5 seconds
+    poll()
+    intervalId = setInterval(poll, 5000)
+
+    return () => {
+      clearInterval(intervalId)
+    }
+  }, [hasTelegram])
+
   const openWebChat = async (): Promise<void> => {
     const base = 'http://127.0.0.1:18789/'
     const appendLog = (msg: string): void => {

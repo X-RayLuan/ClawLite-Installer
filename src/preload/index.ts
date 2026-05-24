@@ -77,6 +77,10 @@ const electronAPI = {
     autoApprove: (): Promise<{ success: boolean; approved: number; error?: string }> =>
       ipcRenderer.invoke('devices:auto-approve')
   },
+  pairing: {
+    autoApprove: (channel?: string): Promise<{ success: boolean; approved: number; error?: string }> =>
+      ipcRenderer.invoke('pairing:auto-approve', channel)
+  },
   wsl: {
     check: (): Promise<
       'not_available' | 'not_installed' | 'needs_reboot' | 'no_distro' | 'not_initialized' | 'ready'
