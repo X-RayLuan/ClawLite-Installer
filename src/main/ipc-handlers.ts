@@ -50,7 +50,7 @@ const LARK_ACCOUNTS_URL = 'https://accounts.larksuite.com'
 const FEISHU_REGISTRATION_PATH = '/oauth/v1/app/registration'
 const FEISHU_REGISTRATION_TIMEOUT_MS = 90000
 const DEFAULT_FEISHU_POLL_INTERVAL_SECONDS = 5
-const DEFAULT_FEISHU_REGISTRATION_EXPIRE_SECONDS = 600
+const DEFAULT_FEISHU_REGISTRATION_EXPIRE_SECONDS = 900  // 15 minutes — gives users more time to scan
 
 const getInstallerConfigPath = (): string =>
   join(homedir(), '.config', 'clawlite-installer', 'config.json')
@@ -151,9 +151,12 @@ const pollFeishuRegistration = async (params: {
   let currentInterval = params.interval || DEFAULT_FEISHU_POLL_INTERVAL_SECONDS
   let domain: 'feishu' | 'lark' = params.initialDomain || 'feishu'
   let domainSwitched = false
-  const deadline = Date.now() + (params.expireIn || DEFAULT_FEISHU_REGISTRATION_EXPIRE_SECONDS) * 1000
+  const deadlineSecs = params.expireIn || DEFAULT_FEISHU_REGISTRATION_EXPIRE_SECONDS
+  const deadline = Date.now() + deadlineSecs * 1000
+  console.log(`[pollFeishu] starting poll: domain=${domain}, deviceCode=${params.deviceCode}, interval=${currentInterval}s, deadline=${deadlineSecs}s`)
 
   while (Date.now() < deadline) {
+    const remaining = Math.round((deadline - Date.now()) / 1000)
     let pollRes: Record<string, any>
     try {
       pollRes = await postFeishuRegistration(domain, {
@@ -161,7 +164,9 @@ const pollFeishuRegistration = async (params: {
         device_code: params.deviceCode,
         tp: params.tp ?? 'ob_app'
       })
-    } catch {
+    } catch (e) {
+      // Log network errors but keep polling — short network hiccups should not fail the flow
+      console.warn(`[pollFeishu] poll failed (${remaining}s left, will retry): ${e instanceof Error ? e.message : String(e)}`)
       await sleep(currentInterval * 1000)
       continue
     }
@@ -202,6 +207,7 @@ const pollFeishuRegistration = async (params: {
     await sleep(currentInterval * 1000)
   }
 
+  console.warn(`[pollFeishu] poll timed out after ${deadlineSecs}s without success`)
   return { status: 'timeout' }
 }
 
