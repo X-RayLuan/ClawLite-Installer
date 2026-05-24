@@ -272,7 +272,9 @@ const applyFeishuOpenClawConfig = async (result: FeishuRegistrationResult): Prom
   if (platform() === 'win32') {
     const settings = getSettings()
     const installType = settings.installType as 'wsl' | 'native' | undefined
-    if (installType === 'native') {
+    // Default to 'native' for Windows if installType is not persisted yet
+    const effectiveInstallType = installType ?? 'native'
+    if (effectiveInstallType === 'native') {
       // Native Windows: openclaw config lives at %USERPROFILE%\.openclaw\openclaw.json
       const homeDir = homedir().replace(/\\+$/, '')
       const openClawDir = join(homeDir, '.openclaw')
@@ -1523,7 +1525,11 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
         if (isWindows) {
           const settings = getSettings()
           const installType = settings.installType as 'wsl' | 'native' | undefined
-          if (installType === 'native') {
+          // Default to 'native' for Windows if installType is not persisted yet
+          // (e.g. fresh install, or upgraded installer without prior settings).
+          // WSL mode must be explicitly selected, so absent installType = native on Windows.
+          const effectiveInstallType = installType ?? 'native'
+          if (effectiveInstallType === 'native') {
             // Native Windows: openclaw config at %USERPROFILE%\.openclaw\openclaw.json
             const homeDir = homedir().replace(/\\+$/, '')
             const openClawDir = join(homeDir, '.openclaw')
