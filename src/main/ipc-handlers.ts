@@ -1393,7 +1393,7 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
           ]
         }
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const a = ocConfig.agents as any
+        const a = (ocConfig.agents = ocConfig.agents || {}) as any
         a.defaults = a.defaults || {}
         a.defaults.model = `clawlite/${fullModelId}`
 
