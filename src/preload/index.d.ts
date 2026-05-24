@@ -27,8 +27,8 @@ interface ElectronAPI {
     }>
   }
   install: {
-    node: () => Promise<{ success: boolean; error?: string }>
-    openclaw: () => Promise<{ success: boolean; error?: string }>
+    node: (installType?: 'wsl' | 'native') => Promise<{ success: boolean; error?: string }>
+    openclaw: (installType?: 'wsl' | 'native') => Promise<{ success: boolean; error?: string }>
     onProgress: (cb: (msg: string) => void) => () => void
     onError: (cb: (msg: string) => void) => () => void
   }

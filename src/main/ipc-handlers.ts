@@ -268,7 +268,9 @@ import {
   installOpenClaw,
   installWsl,
   installNodeWsl,
-  installOpenClawWsl
+  installOpenClawWsl,
+  installNodeWin,
+  installOpenClawWin
 } from './services/installer'
 import { runOnboard, readCurrentConfig, switchProvider } from './services/onboarder'
 import {
@@ -387,10 +389,14 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
     }
   })
 
-  ipcMain.handle('install:node', async () => {
+  ipcMain.handle('install:node', async (_e, installType?: 'wsl' | 'native') => {
     try {
       if (platform() === 'win32') {
-        await installNodeWsl(win())
+        if (installType === 'native') {
+          await installNodeWin(win())
+        } else {
+          await installNodeWsl(win())
+        }
       } else {
         await installNodeMac(win())
       }
@@ -406,10 +412,15 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
     }
   })
 
-  ipcMain.handle('install:openclaw', async () => {
+  ipcMain.handle('install:openclaw', async (_e, installType?: 'wsl' | 'native') => {
     try {
       if (platform() === 'win32') {
-        await installOpenClawWsl(win())
+        if (installType === 'native') {
+          await installOpenClawWin(win())
+        } else {
+          // Default to WSL for Windows
+          await installOpenClawWsl(win())
+        }
       } else {
         await installOpenClaw(win())
       }
@@ -1357,7 +1368,9 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
     (_e, params: { provider: string; modelId: string }) => {
       const { provider, modelId } = params
       try {
-        const openClawDir = join(app.getPath('home'), '.openclaw')
+        const homeDir = app.getPath('home').replace(/\\+$/, '')  // strip trailing backslashes
+        const openClawDir = join(homeDir, '.openclaw')
+        mkdirSync(openClawDir, { recursive: true })
         const openClawConfigPath = join(openClawDir, 'openclaw.json')
         let ocConfig: Record<string, unknown> = {}
         if (existsSync(openClawConfigPath)) {

@@ -52,6 +52,19 @@
     "nextBtn": "下一步",
     "installBtn": "安装所需组件"
   },
+  "installType": {
+    "title": "选择安装路径",
+    "subtitle": "OpenClaw 应该以哪种方式安装到您的系统？",
+    "native": {
+      "title": "Windows（原生）",
+      "desc": "直接安装在 Windows 上，无需 WSL。"
+    },
+    "wsl": {
+      "title": "WSL（Linux）",
+      "desc": "安装在 WSL Ubuntu 内，需要启用 WSL。"
+    },
+    "next": "继续"
+  },
   "wslSetup": {
     "title": "WSL 设置",
     "notAvailable": "此功能需要 Windows 10 2004 或更高版本。",

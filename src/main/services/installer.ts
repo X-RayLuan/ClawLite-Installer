@@ -287,6 +287,100 @@ export const installOpenClawWsl = async (win: BrowserWindow): Promise<void> => {
 
 // ─── macOS installation functions ───
 
+// ─── Windows Native installation functions ───────────────────────────────────────
+
+/** Download a file from URL to dest path on Windows */
+const downloadFileWin = (url: string, dest: string): Promise<void> =>
+  new Promise((resolve, reject) => {
+    const file = createWriteStream(dest)
+    https.get(url, (response) => {
+      if (response.statusCode === 301 || response.statusCode === 302) {
+        const redirectUrl = response.headers.location
+        if (redirectUrl) {
+          https.get(redirectUrl, (r2) => {
+            r2.pipe(file)
+            file.on('finish', () => { file.close(); resolve() })
+          }).on('error', (e) => { file.close(); reject(e) })
+          return
+        }
+      }
+      response.pipe(file)
+      file.on('finish', () => { file.close(); resolve() })
+    }).on('error', (e) => { file.close(); reject(e) })
+  })
+
+/** Run a PowerShell script and return stdout */
+const runPs = (script: string, timeout = 60000): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const child = spawn('powershell', ['-NoProfile', '-Command', script], { timeout })
+    let stdout = ''
+    let stderr = ''
+    child.stdout.on('data', (d) => { stdout += d.toString() })
+    child.stderr.on('data', (d) => { stderr += d.toString() })
+    child.on('close', (code) => {
+      if (code === 0) resolve(stdout.trim())
+      else reject(new Error(stderr.trim() || `PowerShell exited ${code}`))
+    })
+    child.on('error', reject)
+  })
+
+/** Install Node.js 24 on Windows Native via official MSI installer */
+export const installNodeWin = async (win: BrowserWindow): Promise<void> => {
+  const log = (msg: string): void => sendProgress(win, msg)
+  const url = 'https://nodejs.org/dist/v24.15.0/node-v24.15.0-x64.msi'
+  const dest = join(tmpdir(), 'node-installer.msi')
+
+  log(t('installer.nodeDownloading'))
+  await downloadFileWin(url, dest)
+  log(t('installer.nodeInstallerOpening'))
+  // /i = install, /quiet = silent, /qn = no UI
+  await runPs(`Start-Process msiexec -ArgumentList '/i','${dest}','/quiet','/qn' -Wait -NoNewWindow`)
+  log(t('installer.nodeDone'))
+}
+
+/** Install openclaw globally on Windows Native via npm */
+export const installOpenClawWin = async (win: BrowserWindow): Promise<void> => {
+  const log = (msg: string): void => sendProgress(win, msg)
+
+  // Find npm path on Windows
+  const npmPath = join(process.env.APPDATA || 'C:\\Users\\Public\\AppData\\Roaming', 'npm', 'npm.cmd')
+  const npmCmd = existsSync(npmPath) ? npmPath : 'npm'
+
+  log(t('installer.ocInstalling'))
+  // Use npmmirror in China, fallback to official
+  const registries = [
+    'https://registry.npmmirror.com',
+    'https://registry.npmjs.org'
+  ]
+  let lastErr: Error | undefined
+  for (const reg of registries) {
+    try {
+      log(`Installing openclaw from ${reg}...`)
+      await runPs(
+        `& { ${npmCmd} install -g openclaw --registry=${reg} --verbose 2>&1 | Out-String }`,
+        300000
+      )
+      lastErr = undefined
+      break
+    } catch (err) {
+      lastErr = err instanceof Error ? err : new Error(String(err))
+      log(`Failed with ${reg}: ${lastErr.message.slice(0, 80)}`)
+    }
+  }
+  if (lastErr) throw lastErr
+
+  // Initialize config
+  log(t('installer.ocInit'))
+  try {
+    await runPs(`& { openclaw onboard --mode local --yes --non-interactive 2>&1 | Out-String }`, 60000)
+  } catch {
+    await runPs(`& { openclaw config set gateway.mode local 2>&1 | Out-String }`, 30000)
+  }
+  log(t('installer.ocDone'))
+}
+
+// ─── macOS installation functions ───────────────────────────────────────
+
 export const installNodeMac = async (win: BrowserWindow): Promise<void> => {
   const log = (msg: string): void => sendProgress(win, msg)
   const url = `https://nodejs.org/dist/v24.15.0/node-v24.15.0.pkg`

@@ -10,16 +10,20 @@ interface InstallNeeds {
   needOpenclaw: boolean
 }
 
-export default function InstallStep({
-  needs,
-  onDone,
-  onActivationCheck
-}: {
+interface InstallStepProps {
   needs: InstallNeeds
+  installType?: 'wsl' | 'native'
   onDone: () => void
   /** Called when installation completes. Triggers the Activation Gate. */
   onActivationCheck?: () => void
-}): React.JSX.Element {
+}
+
+export default function InstallStep({
+  needs,
+  installType,
+  onDone,
+  onActivationCheck
+}: InstallStepProps): React.JSX.Element {
   const { t } = useTranslation('steps')
   const { logs, error, clearLogs } = useInstallLogs()
   const [installing, setInstalling] = useState(false)
@@ -32,11 +36,11 @@ export default function InstallStep({
     clearLogs()
     try {
       if (needs.needNode) {
-        const r = await window.electronAPI.install.node()
+        const r = await window.electronAPI.install.node(installType)
         if (!r.success) throw new Error(r.error)
       }
       if (needs.needOpenclaw) {
-        const r = await window.electronAPI.install.openclaw()
+        const r = await window.electronAPI.install.openclaw(installType)
         if (!r.success) {
           // Don't immediately block — the error event may be a false positive.
           // Verify by checking if the gateway is actually running.

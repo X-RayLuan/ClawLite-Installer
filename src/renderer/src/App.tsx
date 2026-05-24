@@ -5,6 +5,7 @@ import UpdateBanner from './components/UpdateBanner'
 import { useWizard } from './hooks/useWizard'
 import WelcomeStep from './steps/WelcomeStep'
 import EnvCheckStep from './steps/EnvCheckStep'
+import InstallTypeStep from './steps/InstallTypeStep'
 import WslSetupStep from './steps/WslSetupStep'
 import InstallStep from './steps/InstallStep'
 import ActivateStep from './steps/ActivateStep'
@@ -67,6 +68,7 @@ function App(): React.JSX.Element {
   })
   const [isWindows, setIsWindows] = useState(false)
   const [wslState, setWslState] = useState<WslState>('ready')
+  const [installType, setInstallType] = useState<'wsl' | 'native'>('native')
   const [version, setVersion] = useState('')
   const [showConfigModal, setShowConfigModal] = useState(false)
 
@@ -97,6 +99,12 @@ function App(): React.JSX.Element {
       return
     }
 
+    // Windows needs install → let user choose install type
+    if (env.os === 'windows' && (!env.nodeVersionOk || !env.openclawInstalled)) {
+      goTo('installType')
+      return
+    }
+
     goTo('install')
   }
 
@@ -105,6 +113,20 @@ function App(): React.JSX.Element {
     window.electronAPI.wizard.clearState()
     goTo('envCheck')
   }, [goTo])
+
+  const handleInstallTypeSelect = useCallback((type: 'wsl' | 'native'): void => {
+    setInstallType(type)
+    if (type === 'wsl') {
+      // If WSL is not ready, go to WSL setup first
+      if (wslState !== 'ready') {
+        goTo('wslSetup')
+      } else {
+        goTo('install')
+      }
+    } else {
+      goTo('install')
+    }
+  }, [goTo, wslState])
 
   // ─── Render ───────────────────────────────────────────────────────────────────
 
@@ -128,12 +150,16 @@ function App(): React.JSX.Element {
             {currentStep === 'envCheck' && (
               <EnvCheckStep onNext={() => goTo('install')} onNeedInstall={handleEnvCheckDone} />
             )}
+            {currentStep === 'installType' && (
+              <InstallTypeStep onSelect={handleInstallTypeSelect} />
+            )}
             {currentStep === 'wslSetup' && (
               <WslSetupStep wslState={wslState} onReady={handleWslReady} />
             )}
             {currentStep === 'install' && (
               <InstallStep
                 needs={installNeeds}
+                installType={installType}
                 onDone={() => goTo('activate')}
                 onActivationCheck={() => goTo('activate')}
               />
