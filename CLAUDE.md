@@ -151,7 +151,7 @@ Check all related files when changing:
 
 | Item                    | Value     | Key locations                                               |
 | ----------------------- | --------- | ----------------------------------------------------------- |
-| Node.js minimum version | `22.16.0` | `env-checker.ts`                                            |
+| Node.js minimum version | `24.15.0` | `env-checker.ts`                                            |
 | Gateway port            | `18789`   | `troubleshooter.ts`, `onboarder.ts`, `TroubleshootStep.tsx` |
 | Reboot recovery expiry  | 24 hours  | `ipc-handlers.ts`                                           |
 | Tray polling interval   | 10 sec    | `tray-manager.ts`                                           |
