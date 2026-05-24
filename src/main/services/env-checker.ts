@@ -70,7 +70,16 @@ const semverGte = (version: string, min: string): boolean => {
   return a3 >= b3
 }
 
-const fetchLatestVersion = (_pkg: string): Promise<string> => Promise.resolve(TARGET_OPENCLAW_VERSION)
+const fetchLatestVersion = async (_pkg: string): Promise<string> => {
+  try {
+    const res = await fetch(`https://registry.npmjs.org/${_pkg}/latest`)
+    if (!res.ok) return TARGET_OPENCLAW_VERSION
+    const json = (await res.json()) as { version?: string }
+    return json.version ?? TARGET_OPENCLAW_VERSION
+  } catch {
+    return TARGET_OPENCLAW_VERSION
+  }
+}
 
 const checkNodeAndOpenclaw = async (
   run: (cmd: string, args: string[]) => Promise<string>
