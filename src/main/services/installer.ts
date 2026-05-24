@@ -225,35 +225,39 @@ export const installOpenClawWsl = async (win: BrowserWindow): Promise<void> => {
     { name: 'npm official', url: 'https://registry.npmjs.org' },
     { name: 'Tencent Cloud (China)', url: 'https://mirrors.cloud.tencent.com/npm/' }
   ]
-  
+
   let fastestRegistry = registries[1].url // default to official
+  let fastestName = registries[1].name
+  let fastestIdx = 1
   try {
     // Quick ping test to find fastest registry
-    const testCmd = registries.map(r => 
+    const testCmd = registries.map(r =>
       `curl -o /dev/null -s -w '%{time_total}' -m 3 ${r.url} || echo 999`
     ).join(' & ')
-    
+
     const times = await runInWsl(`bash -c "${testCmd}; wait"`, 15000)
     const latencies = times.split('\n').map(t => parseFloat(t.trim()))
-    const fastestIdx = latencies.indexOf(Math.min(...latencies))
-    
+    fastestIdx = latencies.indexOf(Math.min(...latencies))
+
     if (fastestIdx >= 0 && latencies[fastestIdx] < 10) {
       fastestRegistry = registries[fastestIdx].url
-      log(`Using ${registries[fastestIdx].name} (${latencies[fastestIdx].toFixed(2)}s)`)
+      fastestName = registries[fastestIdx].name
+      log(`Using ${fastestName} (${latencies[fastestIdx].toFixed(2)}s)`)
     }
   } catch {
     log('Registry detection failed, using default')
   }
-  
-  const registriesFallback = [
+
+  const registryList = [
+    { name: fastestName, url: fastestRegistry },
     { name: 'npm official', url: 'https://registry.npmjs.org' },
     { name: 'npmmirror (China)', url: 'https://registry.npmmirror.com' }
   ]
 
   let lastErr: Error | undefined
-  for (const reg of [fastestRegistry, ...registriesFallback.filter(r => r.url !== fastestRegistry)]) {
+  for (const reg of registryList) {
     try {
-      log(`Installing ${OPENCLAW_PACKAGE_SPEC} from ${reg}...`)
+      log(`Installing ${OPENCLAW_PACKAGE_SPEC} from ${reg.name} (${reg.url})...`)
       await runInWsl(
         `npm install -g ${OPENCLAW_PACKAGE_SPEC} --registry=${reg.url} --verbose`,
         300000
@@ -262,7 +266,7 @@ export const installOpenClawWsl = async (win: BrowserWindow): Promise<void> => {
       break
     } catch (err) {
       lastErr = err instanceof Error ? err : new Error(String(err))
-      log(`Install failed with ${reg.name} (${reg.url}): ${lastErr.message.slice(0, 100)}`)
+      log(`Install failed with ${reg.name}: ${lastErr.message.slice(0, 100)}`)
     }
   }
   if (lastErr) throw lastErr
