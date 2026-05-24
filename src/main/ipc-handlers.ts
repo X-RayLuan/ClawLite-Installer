@@ -235,6 +235,14 @@ const applyFeishuOpenClawConfig = async (result: FeishuRegistrationResult): Prom
     }
   }
 
+  // Windows: openclaw runs inside WSL
+  if (platform() === 'win32') {
+    const json = JSON.stringify(patch)
+    // Use a temp file to pass JSON to openclaw via WSL stdin
+    await runInWsl(`cat << 'PATCHEOF' | openclaw config patch --stdin\n${json}\nPATCHEOF`)
+    return
+  }
+  // macOS / Linux
   await new Promise<void>((resolve, reject) => {
     const child = spawn(findBin('openclaw'), ['config', 'patch', '--stdin'], {
       env: getPathEnv(),
@@ -504,9 +512,15 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
     'channel:configure-telegram',
     async (_e, params: { botToken: string }) => {
       const stepLogs: string[] = []
+      const isWindows = platform() === 'win32'
 
-      const runCommand = (cmdStr: string): Promise<{ success: boolean; stdout: string; stderr: string; error?: string }> =>
-        new Promise((resolve) => {
+      const runCommand = (cmdStr: string): Promise<{ success: boolean; stdout: string; stderr: string; error?: string }> => {
+        if (isWindows) {
+          return runInWsl(cmdStr)
+            .then((stdout) => ({ success: true, stdout, stderr: '', error: undefined }))
+            .catch((err) => ({ success: false, stdout: '', stderr: err.message, error: err.message }))
+        }
+        return new Promise((resolve) => {
           let stdout = ''
           let stderr = ''
           const child = spawn(cmdStr, { env: getPathEnv(), shell: true })
@@ -517,6 +531,7 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
           })
           child.on('error', (e) => resolve({ success: false, stdout, stderr, error: e.message }))
         })
+      }
 
       try {
         // Step 1: Patch OpenClaw config with Telegram bot token
@@ -530,21 +545,26 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
           }
         }
 
-        await new Promise<void>((resolve, reject) => {
-          const child = spawn(findBin('openclaw'), ['config', 'patch', '--stdin'], {
-            env: getPathEnv(),
-            stdio: ['pipe', 'pipe', 'pipe']
+        if (isWindows) {
+          const json = JSON.stringify(patch)
+          await runInWsl(`cat << 'PATCHEOF' | openclaw config patch --stdin\n${json}\nPATCHEOF`)
+        } else {
+          await new Promise<void>((resolve, reject) => {
+            const child = spawn(findBin('openclaw'), ['config', 'patch', '--stdin'], {
+              env: getPathEnv(),
+              stdio: ['pipe', 'pipe', 'pipe']
+            })
+            let stderr = ''
+            child.stderr.on('data', (d) => { stderr += d.toString() })
+            child.on('error', reject)
+            child.on('close', (code) => {
+              if (code === 0) resolve()
+              else reject(new Error(stderr.trim() || 'config patch exited ' + code))
+            })
+            child.stdin.write(JSON.stringify(patch))
+            child.stdin.end()
           })
-          let stderr = ''
-          child.stderr.on('data', (d) => { stderr += d.toString() })
-          child.on('error', reject)
-          child.on('close', (code) => {
-            if (code === 0) resolve()
-            else reject(new Error(stderr.trim() || 'config patch exited ' + code))
-          })
-          child.stdin.write(JSON.stringify(patch))
-          child.stdin.end()
-        })
+        }
         stepLogs.push('[telegram] Config patch: OK')
 
         // Step 2: Enable telegram plugin
