@@ -270,7 +270,7 @@ import {
   getGatewayStatus,
   setGatewayLogCallback
 } from './services/gateway'
-import { checkWslState } from './services/wsl-utils'
+import { checkWslState, spawnInWsl, runInWsl } from './services/wsl-utils'
 import { checkForUpdates, downloadUpdate, installUpdate } from './services/updater'
 import { uninstallOpenClaw } from './services/uninstaller'
 import { exportBackup, importBackup } from './services/backup'
@@ -602,16 +602,26 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
       let settled = false
       let oauthUrl: string | null = null
 
-      const proc = spawn(findBin('openclaw'), ['channels', 'login', '--channel', selectedDomain], {
-        env: getPathEnv(),
-        stdio: ['pipe', 'pipe', 'pipe']
-      })
+      // Windows: openclaw runs inside WSL; macOS/Linux: spawn directly
+      const isWindows = platform() === 'win32'
+      let proc: ReturnType<typeof spawn>
+      if (isWindows) {
+        const { proc: wslProc, clean } = spawnInWsl(`openclaw channels login --channel ${selectedDomain}`)
+        proc = wslProc
+        // Store clean function for later use
+        ;(proc as any)._wslClean = clean
+      } else {
+        proc = spawn(findBin('openclaw'), ['channels', 'login', '--channel', selectedDomain], {
+          env: getPathEnv(),
+          stdio: ['pipe', 'pipe', 'pipe']
+        })
+      }
 
       // Accept default "Download from npm" plugin install prompt
-      proc.stdin.write('\n')
-      proc.stdin.end()
+      proc.stdin!.write('\n')
+      proc.stdin!.end()
 
-      proc.stdout.on('data', (d) => {
+      proc.stdout!.on('data', (d) => {
         stdout += d.toString()
         // Try to find an HTTP URL in the output (OAuth authorization URL)
         if (!oauthUrl) {
@@ -619,13 +629,14 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
           if (match) oauthUrl = match[1]
         }
       })
-      proc.stderr.on('data', (d) => { stderr += d.toString() })
+      proc.stderr!.on('data', (d) => { stderr += d.toString() })
 
       // Give the process ~8 s to emit the OAuth URL, then return
       const timer = setTimeout(() => {
         if (settled) return
         settled = true
-        proc.kill()
+        if (isWindows) (proc as any)._wslClean()
+        else proc.kill()
         const rawOut = stripAnsi(stdout)
         const rawErr = stripAnsi(stderr)
         if (oauthUrl) {
@@ -687,16 +698,25 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
       let settled = false
 
       // Run a fresh login command — it will exit fast if already authenticated
-      const proc = spawn(findBin('openclaw'), ['channels', 'login', '--channel', selectedDomain], {
-        env: getPathEnv(),
-        stdio: ['pipe', 'pipe', 'pipe']
-      })
+      // Windows: openclaw runs inside WSL; macOS/Linux: spawn directly
+      const isWindows = platform() === 'win32'
+      let proc: ReturnType<typeof spawn>
+      if (isWindows) {
+        const { proc: wslProc, clean } = spawnInWsl(`openclaw channels login --channel ${selectedDomain}`)
+        proc = wslProc
+        ;(proc as any)._wslClean = clean
+      } else {
+        proc = spawn(findBin('openclaw'), ['channels', 'login', '--channel', selectedDomain], {
+          env: getPathEnv(),
+          stdio: ['pipe', 'pipe', 'pipe']
+        })
+      }
 
-      proc.stdin.write('\n')
-      proc.stdin.end()
+      proc.stdin!.write('\n')
+      proc.stdin!.end()
 
-      proc.stdout.on('data', (d) => { stdout += d.toString() })
-      proc.stderr.on('data', (d) => { stderr += d.toString() })
+      proc.stdout!.on('data', (d) => { stdout += d.toString() })
+      proc.stderr!.on('data', (d) => { stderr += d.toString() })
 
       // Poll for up to 120 s — user scans QR in browser during this time
       const deadline = Date.now() + 120_000
@@ -712,14 +732,16 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
         ) {
           clearInterval(checkInterval)
           settled = true
-          proc.kill()
+          if (isWindows) (proc as any)._wslClean()
+          else proc.kill()
           resolve({ success: true, status: 'success', output: rawOut })
           return
         }
         if (Date.now() > deadline) {
           clearInterval(checkInterval)
           settled = true
-          proc.kill()
+          if (isWindows) (proc as any)._wslClean()
+          else proc.kill()
           resolve({ success: false, status: 'timeout', output: rawOut, stderr: stripAnsi(stderr) })
         }
       }, 2000)
@@ -761,9 +783,16 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
 
   ipcMain.handle('channel:lark-install-plugin', async (_e, _domain?: 'feishu' | 'lark') => {
     const stepLogs: string[] = []
+    const isWindows = platform() === 'win32'
 
-    const runCommand = (cmdStr: string): Promise<{ success: boolean; stdout: string; stderr: string; error?: string }> =>
-      new Promise((resolve) => {
+    // Windows: run commands inside WSL; macOS/Linux: spawn directly
+    const runCommand = (cmdStr: string): Promise<{ success: boolean; stdout: string; stderr: string; error?: string }> => {
+      if (isWindows) {
+        return runInWsl(cmdStr)
+          .then((stdout) => ({ success: true, stdout, stderr: '', error: undefined }))
+          .catch((err) => ({ success: false, stdout: '', stderr: err.message, error: err.message }))
+      }
+      return new Promise((resolve) => {
         let stdout = ''
         let stderr = ''
         const child = spawn(cmdStr, { env: getPathEnv(), shell: true })
@@ -774,6 +803,7 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
         })
         child.on('error', (e) => resolve({ success: false, stdout, stderr, error: e.message }))
       })
+    }
 
     // The feishu plugin needs to be installed and enabled.
     // Use npmmirror for faster download in China.

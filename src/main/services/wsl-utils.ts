@@ -107,6 +107,17 @@ export const runInWsl = (script: string, timeout = 30000): Promise<string> =>
     })
   })
 
+/** Spawn a command inside WSL with full stdin/stdout/stderr support (for interactive CLI like openclaw channels login) */
+export const spawnInWsl = (script: string): { proc: ReturnType<typeof spawn>; clean: () => void } => {
+  const proc = spawn('wsl', ['-d', WSL_DISTRO, '-u', WSL_USER, '--', 'bash', '-lc', script], {
+    stdio: ['pipe', 'pipe', 'pipe']
+  })
+  const clean = (): void => {
+    try { proc.kill() } catch { /* ignore */ }
+  }
+  return { proc, clean }
+}
+
 /** Read file inside WSL */
 export const readWslFile = (path: string): Promise<string> =>
   new Promise((resolve, reject) => {
