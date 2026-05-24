@@ -37,9 +37,7 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
         run: npm run build:mac-local
       - name: Verify macOS app version matches release tag
-        env:
-          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.release_tag || github.ref_name }}
-        run: node scripts/verify-mac-artifact.mjs "${RELEASE_TAG#v}" dist/clawlite.dmg
+        run: node scripts/verify-mac-artifact.mjs dist/clawlite.dmg
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
         with:

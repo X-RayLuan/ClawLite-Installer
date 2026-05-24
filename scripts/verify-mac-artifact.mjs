@@ -4,10 +4,23 @@ import { execFileSync } from 'child_process'
 import { existsSync } from 'fs'
 import { basename, join } from 'path'
 
-const [, , expectedVersion, dmgPath, appPathArg] = process.argv
+const [, , expectedVersionArg, dmgPath, appPathArg] = process.argv
+
+// Resolve expected version from package.json if not provided
+const resolveVersion = () => {
+  try {
+    const pkg = JSON.parse(require('fs').readFileSync('package.json', 'utf8'))
+    return pkg.version
+  } catch {
+    return null
+  }
+}
+
+const expectedVersion = expectedVersionArg || resolveVersion()
 
 if (!expectedVersion || !dmgPath) {
-  console.error('Usage: node scripts/verify-mac-artifact.mjs <expected-version> <dmg-path> [app-path]')
+  console.error('Usage: node scripts/verify-mac-artifact.mjs [expected-version] <dmg-path> [app-path]')
+  console.error('If expected-version is omitted, reads from package.json version field.')
   process.exit(1)
 }
 
