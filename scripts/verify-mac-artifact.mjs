@@ -4,7 +4,7 @@ import { execFileSync } from 'child_process'
 import { existsSync, readFileSync } from 'fs'
 import { basename, join } from 'path'
 
-const [, , expectedVersionArg, dmgPath, appPathArg] = process.argv
+const [, , arg1, arg2, arg3] = process.argv
 
 // Resolve expected version from package.json if not provided
 const resolveVersion = () => {
@@ -16,7 +16,30 @@ const resolveVersion = () => {
   }
 }
 
-const expectedVersion = expectedVersionArg || resolveVersion()
+// Support both calling conventions:
+//   node verify-mac-artifact.mjs <dmg-path>
+//   node verify-mac-artifact.mjs <expected-version> <dmg-path>
+let expectedVersion
+let dmgPath
+let appPathArg
+if (arg3 !== undefined) {
+  // Full form: expectedVersion dmgPath appPath
+  expectedVersion = arg1
+  dmgPath = arg2
+  appPathArg = arg3
+} else if (arg1 && arg2) {
+  // Short form: dmgPath [appPath] — auto-detect version from package.json
+  expectedVersion = resolveVersion()
+  dmgPath = arg1
+  appPathArg = arg2
+} else if (arg1) {
+  // Single arg: only dmgPath provided
+  expectedVersion = resolveVersion()
+  dmgPath = arg1
+} else {
+  expectedVersion = null
+  dmgPath = null
+}
 
 if (!expectedVersion || !dmgPath) {
   console.error('Usage: node scripts/verify-mac-artifact.mjs [expected-version] <dmg-path> [app-path]')
