@@ -73,6 +73,10 @@ const electronAPI = {
       ipcRenderer.invoke('troubleshoot:check-port'),
     doctorFix: (): Promise<{ success: boolean }> => ipcRenderer.invoke('troubleshoot:doctor-fix')
   },
+  devices: {
+    autoApprove: (): Promise<{ success: boolean; approved: number; error?: string }> =>
+      ipcRenderer.invoke('devices:auto-approve')
+  },
   wsl: {
     check: (): Promise<
       'not_available' | 'not_installed' | 'needs_reboot' | 'no_distro' | 'not_initialized' | 'ready'

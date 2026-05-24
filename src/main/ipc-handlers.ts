@@ -1418,4 +1418,70 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
       }
     }
   )
+
+  // Auto-approve any pending device pairing requests on the local gateway.
+  // This ensures the installer machine's web UI can connect without manual CLI approval.
+  ipcMain.handle('devices:auto-approve', async () => {
+    const isWindows = platform() === 'win32'
+    const { execSync } = require('child_process')
+
+    const runCmd = (cmd: string): { stdout: string; stderr: string; code: number } => {
+      try {
+        if (isWindows) {
+          // Use runInWsl for Windows
+          const stdout = runInWsl(cmd) as unknown as string
+          return { stdout, stderr: '', code: 0 }
+        } else {
+          const stdout = execSync(cmd, { timeout: 15000, encoding: 'utf8' }) as string
+          return { stdout: stdout || '', stderr: '', code: 0 }
+        }
+      } catch (err: unknown) {
+        const e = err as { stdout?: string; stderr?: string; status?: number }
+        return {
+          stdout: (e.stdout as string) || '',
+          stderr: (e.stderr as string) || '',
+          code: e.status ?? 1
+        }
+      }
+    }
+
+    try {
+      // Get pending requests
+      const listResult = runCmd('openclaw devices list --json')
+      if (listResult.code !== 0) {
+        console.error('[devices:auto-approve] list failed:', listResult.stderr)
+        return { success: false, approved: 0, error: 'list_failed' }
+      }
+
+      let pending: { requestId: string }[] = []
+      try {
+        pending = JSON.parse(listResult.stdout).pending ?? []
+      } catch {
+        return { success: false, approved: 0, error: 'parse_failed' }
+      }
+
+      if (pending.length === 0) {
+        return { success: true, approved: 0 }
+      }
+
+      // Approve each pending request immediately
+      let approved = 0
+      for (const req of pending) {
+        const approveResult = runCmd(`openclaw devices approve ${req.requestId} --json`)
+        if (approveResult.code === 0) {
+          approved++
+          console.log(`[devices:auto-approve] approved: ${req.requestId}`)
+        } else {
+          console.error(`[devices:auto-approve] failed to approve ${req.requestId}:`, approveResult.stderr)
+        }
+        // Small delay between approvals to avoid race condition
+        await new Promise((r) => setTimeout(r, 200))
+      }
+
+      return { success: true, approved }
+    } catch (e) {
+      console.error('[devices:auto-approve] error:', e)
+      return { success: false, approved: 0, error: String(e) }
+    }
+  })
 }

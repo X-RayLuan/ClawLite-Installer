@@ -57,6 +57,9 @@ interface ElectronAPI {
     checkPort: () => Promise<{ inUse: boolean; pid?: string }>
     doctorFix: () => Promise<{ success: boolean }>
   }
+  devices: {
+    autoApprove: () => Promise<{ success: boolean; approved: number; error?: string }>
+  }
   wsl: {
     check: () => Promise<WslState>
     install: () => Promise<{ success: boolean; needsReboot?: boolean; error?: string }>

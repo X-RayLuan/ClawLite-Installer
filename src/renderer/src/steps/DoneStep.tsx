@@ -79,6 +79,19 @@ export default function DoneStep({
       setLogs((prev) => [...prev, msg])
     }
 
+    // Auto-approve pending device pairing requests so web UI can connect without manual approval
+    appendLog('checking for pending device pairing requests...')
+    try {
+      const autoApproveResult = await window.electronAPI.devices.autoApprove()
+      if (autoApproveResult.success && autoApproveResult.approved > 0) {
+        appendLog(`auto-approved ${autoApproveResult.approved} device pairing request(s)`)
+      } else if (!autoApproveResult.success) {
+        appendLog(`device auto-approve: ${autoApproveResult.error || 'failed'} (non-fatal)`)
+      }
+    } catch (e) {
+      appendLog(`device auto-approve error: ${String(e)} (non-fatal)`)
+    }
+
     // Avoid stale UI state blocking WebChat: verify live gateway status once
     if (status !== 'running') {
       const s = await window.electronAPI.gateway.status()
