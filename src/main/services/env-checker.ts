@@ -1,6 +1,6 @@
 import { spawn } from 'child_process'
 import { platform } from 'os'
-import { checkWslState, runInWsl, type WslState } from './wsl-utils'
+import { findBin } from './path-utils'
 
 const TARGET_OPENCLAW_VERSION = '3.13'
 
@@ -12,7 +12,6 @@ export interface EnvCheckResult {
   openclawInstalled: boolean
   openclawVersion: string | null
   openclawLatestVersion: string | null
-  wslState?: WslState
 }
 
 const PATH_EXTENSIONS = [
@@ -143,22 +142,11 @@ export interface OpenclawUpdateInfo {
 }
 
 export const checkOpenclawUpdate = async (): Promise<OpenclawUpdateInfo> => {
-  const os = platform() === 'win32' ? 'windows' : 'other'
-
   const getCurrentVersion = async (): Promise<string | null> => {
     try {
-      if (os === 'windows') {
-        const shellEscape = (s: string): string => `'${s.replace(/'/g, "'\\''")}'`
-        const wslRun = (cmd: string, args: string[]): Promise<string> =>
-          runInWsl(`${cmd} ${args.map(shellEscape).join(' ')}`)
-        const raw = await wslRun('npm', ['list', '-g', 'openclaw', '--json'])
-        const json = JSON.parse(raw)
-        return json.dependencies?.openclaw?.version ?? null
-      } else {
-        const raw = await runCommand('npm', ['list', '-g', 'openclaw', '--json'])
-        const json = JSON.parse(raw)
-        return json.dependencies?.openclaw?.version ?? null
-      }
+      const raw = await runCommand('npm', ['list', '-g', 'openclaw', '--json'])
+      const json = JSON.parse(raw)
+      return json.dependencies?.openclaw?.version ?? null
     } catch {
       return null
     }
@@ -183,7 +171,6 @@ export const checkOpenclawUpdate = async (): Promise<OpenclawUpdateInfo> => {
 export const checkEnvironment = async (): Promise<EnvCheckResult> => {
   const os = platform() === 'darwin' ? 'macos' : platform() === 'win32' ? 'windows' : 'linux'
 
-  let wslState: WslState | undefined
   let nodeInstalled = false
   let nodeVersion: string | null = null
   let nodeVersionOk = false
@@ -191,22 +178,53 @@ export const checkEnvironment = async (): Promise<EnvCheckResult> => {
   let openclawVersion: string | null = null
 
   if (os === 'windows') {
-    // Windows: check WSL state, then check Node.js/OpenClaw inside WSL if ready
-    wslState = await checkWslState()
+    // Windows Native: use findBin to locate node/npm, then check openclaw
+    const nodeBin = findBin('node')
+    const npmBin = findBin('npm')
+    const openclawBin = findBin('openclaw')
 
-    if (wslState === 'ready') {
-      const shellEscape = (s: string): string => `'${s.replace(/'/g, "'\\''")}'`
-      const wslRun = (cmd: string, args: string[]): Promise<string> =>
-        runInWsl(`${cmd} ${args.map(shellEscape).join(' ')}`)
+    const runWindows = async (cmd: string, args: string[]): Promise<string> =>
+      new Promise((resolve, reject) => {
+        const child = spawn(cmd, args)
+        const timer = setTimeout(() => { child.kill(); reject(new Error('timeout')) }, 15000)
+        let stdout = ''
+        let stderr = ''
+        child.stdout.on('data', (d) => { stdout += d.toString() })
+        child.stderr.on('data', (d) => { stderr += d.toString() })
+        child.on('close', (code) => {
+          clearTimeout(timer)
+          if (code === 0) resolve(stdout.trim())
+          else reject(new Error(stderr || `exit ${code}`))
+        })
+        child.on('error', (e) => { clearTimeout(timer); reject(e) })
+      })
 
-      const result = await checkNodeAndOpenclaw(wslRun)
-      nodeInstalled = result.nodeInstalled
-      nodeVersion = result.nodeVersion
-      nodeVersionOk = result.nodeVersionOk
-      openclawInstalled = result.openclawInstalled
-      openclawVersion = result.openclawVersion
+    try {
+      const raw = await runWindows(nodeBin, ['--version'])
+      nodeVersion = parseVersion(raw)
+      nodeInstalled = nodeVersion !== null
+      nodeVersionOk = nodeVersion ? semverGte(nodeVersion, '24.15.0') : false
+    } catch { /* not installed */ }
+
+    try {
+      const raw = await runWindows(npmBin, ['list', '-g', 'openclaw', '--json'])
+      const json = JSON.parse(raw)
+      if (json.dependencies?.openclaw) {
+        openclawInstalled = true
+        openclawVersion = json.dependencies.openclaw.version ?? null
+      }
+    } catch { /* try openclaw bin */ }
+
+    if (!openclawInstalled || !openclawVersion) {
+      try {
+        const raw = await runWindows(openclawBin, ['--version'])
+        const ver = parseVersion(raw)
+        if (ver) {
+          openclawInstalled = true
+          openclawVersion = ver
+        }
+      } catch { /* not found */ }
     }
-    // Keep all false if wslState !== 'ready'
   } else {
     // macOS / Linux
     const result = await checkNodeAndOpenclaw(runCommand)
@@ -232,7 +250,6 @@ export const checkEnvironment = async (): Promise<EnvCheckResult> => {
     nodeVersionOk,
     openclawInstalled,
     openclawVersion,
-    openclawLatestVersion,
-    wslState
+    openclawLatestVersion
   }
 }
