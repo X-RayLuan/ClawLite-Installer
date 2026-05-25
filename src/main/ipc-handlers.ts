@@ -1328,17 +1328,24 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
         const apiBaseUrl = 'https://clawlite.ai/api/v1'
         const fullModelId = `${provider}/${modelId}`
 
+        // Resolve apiKey: prefer activate.json (has real key from backend), fall back to
+        // openclaw config only if activate.json doesn't exist yet.
+        let resolvedApiKey = ''
+        const activatePath = getActivatePath()
+        if (existsSync(activatePath)) {
+          try {
+            const actData = JSON.parse(readFileSync(activatePath, 'utf-8'))
+            resolvedApiKey = actData.apiKey || ''
+          } catch { /* ignore */ }
+        }
         // Build the model config object once
         const patchConfig = (ocConfig: Record<string, unknown>): void => {
-          const existingApiKey =
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (ocConfig.models as any)?.providers?.clawlite?.apiKey ?? ''
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const m = (ocConfig.models = ocConfig.models || {}) as any
           m.providers = m.providers || {}
           m.providers.clawlite = {
             baseUrl: apiBaseUrl,
-            apiKey: existingApiKey,
+            apiKey: resolvedApiKey,
             api: 'openai-completions',
             models: [
               {
