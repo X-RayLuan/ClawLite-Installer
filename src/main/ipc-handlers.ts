@@ -303,6 +303,7 @@ import { checkForUpdates, downloadUpdate, installUpdate } from './services/updat
 import { uninstallOpenClaw } from './services/uninstaller'
 import { exportBackup, importBackup } from './services/backup'
 import { loginOpenAICodex } from './services/oauth'
+import { readWslOpenClawConfig, writeWslOpenClawConfig } from './services/wsl-utils'
 
 interface WizardPersistedState {
   step: string
@@ -1164,15 +1165,18 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
         writeFileSync(path, JSON.stringify(info, null, 2))
 
         // Also write clawlite provider config to ~/.openclaw/openclaw.json
+        // On Windows, openclaw runs inside WSL Ubuntu, so write to WSL filesystem
         try {
-          const homeDir = platform() === 'win32'
-            ? homedir().replace(/\\+$/, '')
-            : app.getPath('home').replace(/\\+$/, '')
-          const openClawDir = join(homeDir, '.openclaw')
-          const openClawConfigPath = join(openClawDir, 'openclaw.json')
-          let ocConfig: Record<string, any> = {}
-          if (existsSync(openClawConfigPath)) {
-            ocConfig = JSON.parse(readFileSync(openClawConfigPath, 'utf-8'))
+          const ocConfig: Record<string, any> = {}
+          if (platform() === 'win32') {
+            const existing = await readWslOpenClawConfig()
+            Object.assign(ocConfig, existing)
+          } else {
+            const openClawDir = join(app.getPath('home'), '.openclaw')
+            const openClawConfigPath = join(openClawDir, 'openclaw.json')
+            if (existsSync(openClawConfigPath)) {
+              Object.assign(ocConfig, JSON.parse(readFileSync(openClawConfigPath, 'utf-8')))
+            }
           }
           ocConfig.models = ocConfig.models || {}
           ocConfig.models.providers = ocConfig.models.providers || {}
@@ -1200,10 +1204,14 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
           if (!ocConfig.gateway.auth.token) {
             ocConfig.gateway.auth.token = randomBytes(32).toString('hex')
           }
-          if (!existsSync(openClawDir)) {
-            mkdirSync(openClawDir, { recursive: true })
+          if (platform() === 'win32') {
+            await writeWslOpenClawConfig(ocConfig)
+          } else {
+            const openClawDir = join(app.getPath('home'), '.openclaw')
+            if (!existsSync(openClawDir)) mkdirSync(openClawDir, { recursive: true })
+            const openClawConfigPath = join(openClawDir, 'openclaw.json')
+            writeFileSync(openClawConfigPath, JSON.stringify(ocConfig, null, 2), { mode: 0o600 })
           }
-          writeFileSync(openClawConfigPath, JSON.stringify(ocConfig, null, 2), { mode: 0o600 })
         } catch (writeErr) {
           console.error('[activation:save] failed to write openclaw config:', writeErr)
         }
@@ -1350,18 +1358,23 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
           a.defaults.model = `clawlite/${fullModelId}`
         }
 
-        // Windows Native or macOS/Linux: write openclaw config to local filesystem
-        const homeDir = platform() === 'win32'
-          ? homedir().replace(/\\+$/, '')
-          : app.getPath('home').replace(/\\+$/, '')
-        const openClawDir = join(homeDir, '.openclaw')
-        if (!existsSync(openClawDir)) mkdirSync(openClawDir, { recursive: true })
-        const openClawConfigPath = join(openClawDir, 'openclaw.json')
-        const ocConfig: Record<string, unknown> = existsSync(openClawConfigPath)
-          ? JSON.parse(readFileSync(openClawConfigPath, 'utf-8'))
-          : {}
-        patchConfig(ocConfig)
-        writeFileSync(openClawConfigPath, JSON.stringify(ocConfig, null, 2), { mode: 0o600 })
+        // Windows: openclaw runs inside WSL Ubuntu — write to WSL filesystem
+        // macOS/Linux: write to local filesystem
+        if (platform() === 'win32') {
+          const ocConfig = await readWslOpenClawConfig()
+          patchConfig(ocConfig)
+          await writeWslOpenClawConfig(ocConfig)
+        } else {
+          const homeDir = app.getPath('home').replace(/\\+$/, '')
+          const openClawDir = join(homeDir, '.openclaw')
+          if (!existsSync(openClawDir)) mkdirSync(openClawDir, { recursive: true })
+          const openClawConfigPath = join(openClawDir, 'openclaw.json')
+          const ocConfig: Record<string, unknown> = existsSync(openClawConfigPath)
+            ? JSON.parse(readFileSync(openClawConfigPath, 'utf-8'))
+            : {}
+          patchConfig(ocConfig)
+          writeFileSync(openClawConfigPath, JSON.stringify(ocConfig, null, 2), { mode: 0o600 })
+        }
         return { success: true }
       } catch (e) {
         console.error('[model:switch] failed:', e)
