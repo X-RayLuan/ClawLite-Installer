@@ -51,22 +51,12 @@ export const checkPort = async (port = 18789): Promise<{ inUse: boolean; pid?: s
 }
 
 export const runDoctorFix = async (win: BrowserWindow): Promise<{ success: boolean }> => {
-  const isWin = platform() === 'win32'
-  let cmd: string
-  let args: string[]
-
-  if (isWin) {
-    cmd = 'wsl'
-    args = ['-d', 'Ubuntu', '-u', 'root', '--', 'bash', '-lc', 'openclaw doctor --fix']
-  } else {
-    cmd = findBin('npm')
-    args = ['exec', '--', 'openclaw', 'doctor', '--fix']
-  }
+  const cmd = findBin('npm')
+  const args = ['exec', '--', 'openclaw', 'doctor', '--fix']
 
   return new Promise((resolve) => {
     const child = spawn(cmd, args, {
-      env: isWin ? process.env : getPathEnv(),
-      shell: isWin
+      env: getPathEnv()
     })
 
     child.stdout.on('data', (d) => {

@@ -3,8 +3,7 @@ import { randomBytes, createHash } from 'crypto'
 import { createServer, type Server } from 'http'
 import { join } from 'path'
 import { readFileSync, writeFileSync, mkdirSync } from 'fs'
-import { platform, homedir } from 'os'
-import { readWslFile, writeWslFile, resolveWslOpenClawStateDir } from './wsl-utils'
+import { homedir } from 'os'
 
 // OpenAI OAuth constants (from OpenClaw's pi-ai)
 const CLIENT_ID = 'app_EMoamEEZ73f0CkXaXp7hrann'
@@ -158,7 +157,6 @@ const saveCredentials = async (creds: {
   expires: number
   accountId: string
 }): Promise<void> => {
-  const isWindows = platform() === 'win32'
   const credential = {
     type: 'oauth',
     provider: 'openai-codex',
@@ -167,36 +165,20 @@ const saveCredentials = async (creds: {
     expires: creds.expires,
     accountId: creds.accountId
   }
-  if (isWindows) {
-    // WSL: read/write via wsl-utils
-    const wslPath = `${await resolveWslOpenClawStateDir()}/agents/main/agent/${AUTH_PROFILE_FILENAME}`
-    let store: Record<string, unknown>
-    try {
-      const raw = await readWslFile(wslPath)
-      store = JSON.parse(raw)
-    } catch {
-      store = { version: 1, profiles: {} }
-    }
-    const profiles = (store.profiles ?? {}) as Record<string, unknown>
-    profiles[OAUTH_PROFILE_ID] = credential
-    store.profiles = profiles
-    await writeWslFile(wslPath, JSON.stringify(store, null, 2))
-  } else {
-    // macOS/Linux: direct file access
-    const agentDir = join(homedir(), '.openclaw', 'agents', 'main', 'agent')
-    const filePath = join(agentDir, AUTH_PROFILE_FILENAME)
-    mkdirSync(agentDir, { recursive: true })
-    let store: Record<string, unknown>
-    try {
-      store = JSON.parse(readFileSync(filePath, 'utf-8'))
-    } catch {
-      store = { version: 1, profiles: {} }
-    }
-    const profiles = (store.profiles ?? {}) as Record<string, unknown>
-    profiles[OAUTH_PROFILE_ID] = credential
-    store.profiles = profiles
-    writeFileSync(filePath, JSON.stringify(store, null, 2))
+  // Direct file access for all platforms (Windows Native)
+  const agentDir = join(homedir(), '.openclaw', 'agents', 'main', 'agent')
+  const filePath = join(agentDir, AUTH_PROFILE_FILENAME)
+  mkdirSync(agentDir, { recursive: true })
+  let store: Record<string, unknown>
+  try {
+    store = JSON.parse(readFileSync(filePath, 'utf-8'))
+  } catch {
+    store = { version: 1, profiles: {} }
   }
+  const profiles = (store.profiles ?? {}) as Record<string, unknown>
+  profiles[OAUTH_PROFILE_ID] = credential
+  store.profiles = profiles
+  writeFileSync(filePath, JSON.stringify(store, null, 2))
 }
 
 export const loginOpenAICodex = async (win: BrowserWindow): Promise<void> => {

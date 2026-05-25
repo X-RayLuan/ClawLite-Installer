@@ -266,49 +266,19 @@ const applyFeishuOpenClawConfig = async (result: FeishuRegistrationResult): Prom
     }
   }
 
-  // Windows: write to the correct location based on installType.
-  // WSL mode → WSL Ubuntu filesystem (via writeWslOpenClawConfig)
-  // Native mode → Windows filesystem (direct write, same as macOS/Linux)
-  if (platform() === 'win32') {
-    const settings = getSettings()
-    const installType = settings.installType as 'wsl' | 'native' | undefined
-    // Default to 'native' for Windows if installType is not persisted yet
-    const effectiveInstallType = installType ?? 'native'
-    if (effectiveInstallType === 'native') {
-      // Native Windows: openclaw config lives at %USERPROFILE%\.openclaw\openclaw.json
-      const homeDir = homedir().replace(/\\+$/, '')
-      const openClawDir = join(homeDir, '.openclaw')
-      if (!existsSync(openClawDir)) mkdirSync(openClawDir, { recursive: true })
-      const configPath = join(openClawDir, 'openclaw.json')
-      const existing: Record<string, unknown> = existsSync(configPath)
-        ? JSON.parse(readFileSync(configPath, 'utf-8'))
-        : {}
-      const merged = deepMerge(existing, patch)
-      writeFileSync(configPath, JSON.stringify(merged, null, 2), { mode: 0o600 })
-    } else {
-      // WSL mode: openclaw config inside WSL Ubuntu
-      const existing = await readWslOpenClawConfig()
-      const merged = deepMerge(existing, patch)
-      await writeWslOpenClawConfig(merged)
-    }
-    return
-  }
-  // macOS / Linux
-  await new Promise<void>((resolve, reject) => {
-    const child = spawn(findBin('openclaw'), ['config', 'patch', '--stdin'], {
-      env: getPathEnv(),
-      stdio: ['pipe', 'pipe', 'pipe']
-    })
-    let stderr = ''
-    child.stderr.on('data', (d) => (stderr += d.toString()))
-    child.on('error', reject)
-    child.on('close', (code) => {
-      if (code === 0) resolve()
-      else reject(new Error(stderr.trim() || `openclaw config patch exited with ${code}`))
-    })
-    child.stdin.write(JSON.stringify(patch))
-    child.stdin.end()
-  })
+  // Windows Native or macOS/Linux: write openclaw config to local filesystem
+  const homeDir = platform() === 'win32'
+    ? homedir().replace(/\\+$/, '')
+    : app.getPath('home').replace(/\\+$/, '')
+  const openClawDir = join(homeDir, '.openclaw')
+  if (!existsSync(openClawDir)) mkdirSync(openClawDir, { recursive: true })
+  const configPath = join(openClawDir, 'openclaw.json')
+  const existing: Record<string, unknown> = existsSync(configPath)
+    ? JSON.parse(readFileSync(configPath, 'utf-8'))
+    : {}
+  const merged = deepMerge(existing, patch)
+  writeFileSync(configPath, JSON.stringify(merged, null, 2), { mode: 0o600 })
+  return
 }
 import i18nMain, { initI18nMain } from '../shared/i18n/main'
 import { rebuildTrayMenu } from './services/tray-manager'
@@ -317,9 +287,6 @@ import { checkPort, runDoctorFix } from './services/troubleshooter'
 import {
   installNodeMac,
   installOpenClaw,
-  installWsl,
-  installNodeWsl,
-  installOpenClawWsl,
   installNodeWin,
   installOpenClawWin
 } from './services/installer'
@@ -331,7 +298,7 @@ import {
   getGatewayStatus,
   setGatewayLogCallback
 } from './services/gateway'
-import { checkWslState, spawnInWsl, runInWsl, readWslOpenClawConfig, writeWslOpenClawConfig } from './services/wsl-utils'
+
 import { checkForUpdates, downloadUpdate, installUpdate } from './services/updater'
 import { uninstallOpenClaw } from './services/uninstaller'
 import { exportBackup, importBackup } from './services/backup'
@@ -363,8 +330,6 @@ const writeSettings = (patch: Record<string, unknown>): void => {
   writeFileSync(getSettingsPath(), JSON.stringify(settings, null, 2))
 }
 
-const getSettings = (): Record<string, unknown> => readSettings()
-
 export const getSavedLocale = (): string => {
   const settings = readSettings()
   if (typeof settings.language === 'string') return settings.language
@@ -387,24 +352,6 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
 
   ipcMain.handle('env:check', () => checkEnvironment())
   ipcMain.handle('openclaw:check-update', () => checkOpenclawUpdate())
-
-  // WSL-related IPC
-  ipcMain.handle('wsl:check', () => checkWslState())
-
-  ipcMain.handle('wsl:install', async () => {
-    try {
-      const result = await installWsl(win())
-      return { success: true, needsReboot: result.needsReboot }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e)
-      try {
-        win().webContents.send('install:error', msg)
-      } catch {
-        /* window destroyed */
-      }
-      return { success: false, error: msg }
-    }
-  })
 
   // Wizard state persistence IPC
   ipcMain.handle('wizard:save-state', (_e, state: WizardPersistedState) => {
@@ -442,20 +389,13 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
     }
   })
 
-  ipcMain.handle('install:node', async (_e, installType?: 'wsl' | 'native') => {
+  ipcMain.handle('install:node', async (_e, _installType?: 'wsl' | 'native') => {
     try {
       if (platform() === 'win32') {
-        if (installType === 'native') {
-          await installNodeWin(win())
-        } else {
-          await installNodeWsl(win())
-        }
+        await installNodeWin(win())
       } else {
         await installNodeMac(win())
       }
-      // Persist installType so that later IPC calls (model:switch, feishu config)
-      // know which path layout to use on Windows.
-      if (installType) writeSettings({ installType })
       return { success: true }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
@@ -468,21 +408,13 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
     }
   })
 
-  ipcMain.handle('install:openclaw', async (_e, installType?: 'wsl' | 'native') => {
+  ipcMain.handle('install:openclaw', async (_e, _installType?: 'wsl' | 'native') => {
     try {
       if (platform() === 'win32') {
-        if (installType === 'native') {
-          await installOpenClawWin(win())
-        } else {
-          // Default to WSL for Windows
-          await installOpenClawWsl(win())
-        }
+        await installOpenClawWin(win())
       } else {
         await installOpenClaw(win())
       }
-      // Persist installType so that later IPC calls (model:switch, feishu config)
-      // know which path layout to use on Windows.
-      if (installType) writeSettings({ installType })
       return { success: true }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
@@ -582,14 +514,7 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
     'channel:configure-telegram',
     async (_e, params: { botToken: string }) => {
       const stepLogs: string[] = []
-      const isWindows = platform() === 'win32'
-
       const runCommand = (cmdStr: string): Promise<{ success: boolean; stdout: string; stderr: string; error?: string }> => {
-        if (isWindows) {
-          return runInWsl(cmdStr)
-            .then((stdout) => ({ success: true, stdout, stderr: '', error: undefined }))
-            .catch((err) => ({ success: false, stdout: '', stderr: err.message, error: err.message }))
-        }
         return new Promise((resolve) => {
           let stdout = ''
           let stderr = ''
@@ -614,27 +539,21 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
             }
           }
         }
-
-        if (isWindows) {
-          const json = JSON.stringify(patch)
-          await runInWsl(`cat << 'PATCHEOF' | openclaw config patch --stdin\n${json}\nPATCHEOF`)
-        } else {
-          await new Promise<void>((resolve, reject) => {
-            const child = spawn(findBin('openclaw'), ['config', 'patch', '--stdin'], {
-              env: getPathEnv(),
-              stdio: ['pipe', 'pipe', 'pipe']
-            })
-            let stderr = ''
-            child.stderr.on('data', (d) => { stderr += d.toString() })
-            child.on('error', reject)
-            child.on('close', (code) => {
-              if (code === 0) resolve()
-              else reject(new Error(stderr.trim() || 'config patch exited ' + code))
-            })
-            child.stdin.write(JSON.stringify(patch))
-            child.stdin.end()
+        await new Promise<void>((resolve, reject) => {
+          const child = spawn(findBin('openclaw'), ['config', 'patch', '--stdin'], {
+            env: getPathEnv(),
+            stdio: ['pipe', 'pipe', 'pipe']
           })
-        }
+          let stderr = ''
+          child.stderr.on('data', (d) => { stderr += d.toString() })
+          child.on('error', reject)
+          child.on('close', (code) => {
+            if (code === 0) resolve()
+            else reject(new Error(stderr.trim() || 'config patch exited ' + code))
+          })
+          child.stdin.write(JSON.stringify(patch))
+          child.stdin.end()
+        })
         stepLogs.push('[telegram] Config patch: OK')
 
         // Step 2: Enable telegram plugin
@@ -692,20 +611,10 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
       let settled = false
       let oauthUrl: string | null = null
 
-      // Windows: openclaw runs inside WSL; macOS/Linux: spawn directly
-      const isWindows = platform() === 'win32'
-      let proc: ReturnType<typeof spawn>
-      if (isWindows) {
-        const { proc: wslProc, clean } = spawnInWsl(`openclaw channels login --channel ${selectedDomain}`)
-        proc = wslProc
-        // Store clean function for later use
-        ;(proc as any)._wslClean = clean
-      } else {
-        proc = spawn(findBin('openclaw'), ['channels', 'login', '--channel', selectedDomain], {
-          env: getPathEnv(),
-          stdio: ['pipe', 'pipe', 'pipe']
-        })
-      }
+      const proc = spawn(findBin('openclaw'), ['channels', 'login', '--channel', selectedDomain], {
+        env: getPathEnv(),
+        stdio: ['pipe', 'pipe', 'pipe']
+      })
 
       // Accept default "Download from npm" plugin install prompt
       proc.stdin!.write('\n')
@@ -725,8 +634,7 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
       const timer = setTimeout(() => {
         if (settled) return
         settled = true
-        if (isWindows) (proc as any)._wslClean()
-        else proc.kill()
+        proc.kill()
         const rawOut = stripAnsi(stdout)
         const rawErr = stripAnsi(stderr)
         if (oauthUrl) {
@@ -788,19 +696,10 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
       let settled = false
 
       // Run a fresh login command — it will exit fast if already authenticated
-      // Windows: openclaw runs inside WSL; macOS/Linux: spawn directly
-      const isWindows = platform() === 'win32'
-      let proc: ReturnType<typeof spawn>
-      if (isWindows) {
-        const { proc: wslProc, clean } = spawnInWsl(`openclaw channels login --channel ${selectedDomain}`)
-        proc = wslProc
-        ;(proc as any)._wslClean = clean
-      } else {
-        proc = spawn(findBin('openclaw'), ['channels', 'login', '--channel', selectedDomain], {
-          env: getPathEnv(),
-          stdio: ['pipe', 'pipe', 'pipe']
-        })
-      }
+      const proc = spawn(findBin('openclaw'), ['channels', 'login', '--channel', selectedDomain], {
+        env: getPathEnv(),
+        stdio: ['pipe', 'pipe', 'pipe']
+      })
 
       proc.stdin!.write('\n')
       proc.stdin!.end()
@@ -822,16 +721,14 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
         ) {
           clearInterval(checkInterval)
           settled = true
-          if (isWindows) (proc as any)._wslClean()
-          else proc.kill()
+          proc.kill()
           resolve({ success: true, status: 'success', output: rawOut })
           return
         }
         if (Date.now() > deadline) {
           clearInterval(checkInterval)
           settled = true
-          if (isWindows) (proc as any)._wslClean()
-          else proc.kill()
+          proc.kill()
           resolve({ success: false, status: 'timeout', output: rawOut, stderr: stripAnsi(stderr) })
         }
       }, 2000)
@@ -873,15 +770,8 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
 
   ipcMain.handle('channel:lark-install-plugin', async (_e, _domain?: 'feishu' | 'lark') => {
     const stepLogs: string[] = []
-    const isWindows = platform() === 'win32'
 
-    // Windows: run commands inside WSL; macOS/Linux: spawn directly
     const runCommand = (cmdStr: string): Promise<{ success: boolean; stdout: string; stderr: string; error?: string }> => {
-      if (isWindows) {
-        return runInWsl(cmdStr)
-          .then((stdout) => ({ success: true, stdout, stderr: '', error: undefined }))
-          .catch((err) => ({ success: false, stdout: '', stderr: err.message, error: err.message }))
-      }
       return new Promise((resolve) => {
         let stdout = ''
         let stderr = ''
@@ -1273,76 +1163,47 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
         const path = getActivationPath()
         writeFileSync(path, JSON.stringify(info, null, 2))
 
-        // Also write clawlite provider config to WSL ~/.openclaw/openclaw.json
+        // Also write clawlite provider config to ~/.openclaw/openclaw.json
         try {
-          const isWindows = platform() === 'win32'
-          if (isWindows) {
-            const ocConfig = await readWslOpenClawConfig()
-            ocConfig.models = ocConfig.models || {}
-            ocConfig.models.providers = ocConfig.models.providers || {}
-            ocConfig.models.providers.clawlite = {
-              baseUrl: info.baseUrl,
-              apiKey: info.apiKey,
-              api: 'openai-completions',
-              models: [
-                {
-                  id: 'gpt-5.4',
-                  name: 'GPT-5.4',
-                  input: ['text', 'image'],
-                  cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-                  contextWindow: 200000,
-                  maxTokens: 32000,
-                  reasoning: true
-                }
-              ]
-            }
-            ocConfig.agents = ocConfig.agents || {}
-            ocConfig.agents.defaults = ocConfig.agents.defaults || {}
-            ocConfig.agents.defaults.model = 'clawlite/gpt-5.4'
-            if (!ocConfig.gateway) ocConfig.gateway = {}
-            if (!ocConfig.gateway.auth) ocConfig.gateway.auth = {}
-            if (!ocConfig.gateway.auth.token) {
-              ocConfig.gateway.auth.token = randomBytes(32).toString('hex')
-            }
-            await writeWslOpenClawConfig(ocConfig)
-          } else {
-            const openClawDir = join(app.getPath('home'), '.openclaw')
-            const openClawConfigPath = join(openClawDir, 'openclaw.json')
-            let ocConfig: Record<string, any> = {}
-            if (existsSync(openClawConfigPath)) {
-              ocConfig = JSON.parse(readFileSync(openClawConfigPath, 'utf-8'))
-            }
-            ocConfig.models = ocConfig.models || {}
-            ocConfig.models.providers = ocConfig.models.providers || {}
-            ocConfig.models.providers.clawlite = {
-              baseUrl: info.baseUrl,
-              apiKey: info.apiKey,
-              api: 'openai-completions',
-              models: [
-                {
-                  id: 'gpt-5.4',
-                  name: 'GPT-5.4',
-                  input: ['text', 'image'],
-                  cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-                  contextWindow: 200000,
-                  maxTokens: 32000,
-                  reasoning: true
-                }
-              ]
-            }
-            ocConfig.agents = ocConfig.agents || {}
-            ocConfig.agents.defaults = ocConfig.agents.defaults || {}
-            ocConfig.agents.defaults.model = 'clawlite/gpt-5.4'
-            if (!ocConfig.gateway) ocConfig.gateway = {}
-            if (!ocConfig.gateway.auth) ocConfig.gateway.auth = {}
-            if (!ocConfig.gateway.auth.token) {
-              ocConfig.gateway.auth.token = randomBytes(32).toString('hex')
-            }
-            if (!existsSync(openClawDir)) {
-              mkdirSync(openClawDir, { recursive: true })
-            }
-            writeFileSync(openClawConfigPath, JSON.stringify(ocConfig, null, 2), { mode: 0o600 })
+          const homeDir = platform() === 'win32'
+            ? homedir().replace(/\\+$/, '')
+            : app.getPath('home').replace(/\\+$/, '')
+          const openClawDir = join(homeDir, '.openclaw')
+          const openClawConfigPath = join(openClawDir, 'openclaw.json')
+          let ocConfig: Record<string, any> = {}
+          if (existsSync(openClawConfigPath)) {
+            ocConfig = JSON.parse(readFileSync(openClawConfigPath, 'utf-8'))
           }
+          ocConfig.models = ocConfig.models || {}
+          ocConfig.models.providers = ocConfig.models.providers || {}
+          ocConfig.models.providers.clawlite = {
+            baseUrl: info.baseUrl,
+            apiKey: info.apiKey,
+            api: 'openai-completions',
+            models: [
+              {
+                id: 'gpt-5.4',
+                name: 'GPT-5.4',
+                input: ['text', 'image'],
+                cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+                contextWindow: 200000,
+                maxTokens: 32000,
+                reasoning: true
+              }
+            ]
+          }
+          ocConfig.agents = ocConfig.agents || {}
+          ocConfig.agents.defaults = ocConfig.agents.defaults || {}
+          ocConfig.agents.defaults.model = 'clawlite/gpt-5.4'
+          if (!ocConfig.gateway) ocConfig.gateway = {}
+          if (!ocConfig.gateway.auth) ocConfig.gateway.auth = {}
+          if (!ocConfig.gateway.auth.token) {
+            ocConfig.gateway.auth.token = randomBytes(32).toString('hex')
+          }
+          if (!existsSync(openClawDir)) {
+            mkdirSync(openClawDir, { recursive: true })
+          }
+          writeFileSync(openClawConfigPath, JSON.stringify(ocConfig, null, 2), { mode: 0o600 })
         } catch (writeErr) {
           console.error('[activation:save] failed to write openclaw config:', writeErr)
         }
@@ -1385,38 +1246,7 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
 
         // Also write clawlite config to ~/.openclaw/openclaw.json
         try {
-          const isWindows = platform() === 'win32'
-          if (isWindows) {
-            const ocConfig = await readWslOpenClawConfig()
-            ocConfig.models = ocConfig.models || {}
-            ocConfig.models.providers = ocConfig.models.providers || {}
-            ocConfig.models.providers.clawlite = {
-              baseUrl: data.baseUrl,
-              apiKey: data.apiKey,
-              api: 'openai-completions',
-              models: [
-                {
-                  id: 'gpt-5.4',
-                  name: 'GPT-5.4',
-                  input: ['text', 'image'],
-                  cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-                  contextWindow: 200000,
-                  maxTokens: 32000,
-                  reasoning: true
-                }
-              ]
-            }
-            ocConfig.agents = ocConfig.agents || {}
-            ocConfig.agents.defaults = ocConfig.agents.defaults || {}
-            ocConfig.agents.defaults.model = 'clawlite/gpt-5.4'
-            if (!ocConfig.gateway) ocConfig.gateway = {}
-            if (!ocConfig.gateway.auth) ocConfig.gateway.auth = {}
-            if (!ocConfig.gateway.auth.token) {
-              ocConfig.gateway.auth.token = randomBytes(32).toString('hex')
-            }
-            await writeWslOpenClawConfig(ocConfig)
-          } else {
-            const openClawDir = join(app.getPath('home'), '.openclaw')
+          const openClawDir = join(app.getPath('home'), '.openclaw')
             const openClawConfigPath = join(openClawDir, 'openclaw.json')
             let ocConfig: Record<string, any> = {}
             if (existsSync(openClawConfigPath)) {
@@ -1452,7 +1282,6 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
               mkdirSync(openClawDir, { recursive: true })
             }
             writeFileSync(openClawConfigPath, JSON.stringify(ocConfig, null, 2), { mode: 0o600 })
-          }
         } catch (writeErr) {
           console.error('[installer:save-activate] failed to write openclaw config:', writeErr)
         }
@@ -1488,7 +1317,6 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
     async (_e, params: { provider: string; modelId: string }) => {
       const { provider, modelId } = params
       try {
-        const isWindows = platform() === 'win32'
         const apiBaseUrl = 'https://clawlite.ai/api/v1'
         const fullModelId = `${provider}/${modelId}`
 
@@ -1522,42 +1350,18 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
           a.defaults.model = `clawlite/${fullModelId}`
         }
 
-        if (isWindows) {
-          const settings = getSettings()
-          const installType = settings.installType as 'wsl' | 'native' | undefined
-          // Default to 'native' for Windows if installType is not persisted yet
-          // (e.g. fresh install, or upgraded installer without prior settings).
-          // WSL mode must be explicitly selected, so absent installType = native on Windows.
-          const effectiveInstallType = installType ?? 'native'
-          if (effectiveInstallType === 'native') {
-            // Native Windows: openclaw config at %USERPROFILE%\.openclaw\openclaw.json
-            const homeDir = homedir().replace(/\\+$/, '')
-            const openClawDir = join(homeDir, '.openclaw')
-            if (!existsSync(openClawDir)) mkdirSync(openClawDir, { recursive: true })
-            const configPath = join(openClawDir, 'openclaw.json')
-            const ocConfig: Record<string, unknown> = existsSync(configPath)
-              ? JSON.parse(readFileSync(configPath, 'utf-8'))
-              : {}
-            patchConfig(ocConfig)
-            writeFileSync(configPath, JSON.stringify(ocConfig, null, 2), { mode: 0o600 })
-          } else {
-            // WSL mode: openclaw config inside WSL Ubuntu
-            const ocConfig = await readWslOpenClawConfig()
-            patchConfig(ocConfig)
-            await writeWslOpenClawConfig(ocConfig)
-          }
-        } else {
-          // macOS/Linux
-          const homeDir = app.getPath('home').replace(/\\+$/, '')
-          const openClawDir = join(homeDir, '.openclaw')
-          mkdirSync(openClawDir, { recursive: true })
-          const openClawConfigPath = join(openClawDir, 'openclaw.json')
-          const ocConfig: Record<string, unknown> = existsSync(openClawConfigPath)
-            ? JSON.parse(readFileSync(openClawConfigPath, 'utf-8'))
-            : {}
-          patchConfig(ocConfig)
-          writeFileSync(openClawConfigPath, JSON.stringify(ocConfig, null, 2), { mode: 0o600 })
-        }
+        // Windows Native or macOS/Linux: write openclaw config to local filesystem
+        const homeDir = platform() === 'win32'
+          ? homedir().replace(/\\+$/, '')
+          : app.getPath('home').replace(/\\+$/, '')
+        const openClawDir = join(homeDir, '.openclaw')
+        if (!existsSync(openClawDir)) mkdirSync(openClawDir, { recursive: true })
+        const openClawConfigPath = join(openClawDir, 'openclaw.json')
+        const ocConfig: Record<string, unknown> = existsSync(openClawConfigPath)
+          ? JSON.parse(readFileSync(openClawConfigPath, 'utf-8'))
+          : {}
+        patchConfig(ocConfig)
+        writeFileSync(openClawConfigPath, JSON.stringify(ocConfig, null, 2), { mode: 0o600 })
         return { success: true }
       } catch (e) {
         console.error('[model:switch] failed:', e)
@@ -1569,19 +1373,12 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
   // Auto-approve any pending device pairing requests on the local gateway.
   // This ensures the installer machine's web UI can connect without manual CLI approval.
   ipcMain.handle('devices:auto-approve', async () => {
-    const isWindows = platform() === 'win32'
     const { execSync } = require('child_process')
 
     const runCmd = (cmd: string): { stdout: string; stderr: string; code: number } => {
       try {
-        if (isWindows) {
-          // Use runInWsl for Windows
-          const stdout = runInWsl(cmd) as unknown as string
-          return { stdout, stderr: '', code: 0 }
-        } else {
-          const stdout = execSync(cmd, { timeout: 15000, encoding: 'utf8' }) as string
-          return { stdout: stdout || '', stderr: '', code: 0 }
-        }
+        const stdout = execSync(cmd, { timeout: 15000, encoding: 'utf8' }) as string
+        return { stdout: stdout || '', stderr: '', code: 0 }
       } catch (err: unknown) {
         const e = err as { stdout?: string; stderr?: string; status?: number }
         return {
@@ -1636,18 +1433,12 @@ export const registerIpcHandlers = (getWin: () => BrowserWindow | null): void =>
   // Users send a message to the bot, get a pairing code, and the installer
   // auto-approves it in the background so no CLI interaction is needed.
   ipcMain.handle('pairing:auto-approve', async (_event, channel = 'telegram') => {
-    const isWindows = platform() === 'win32'
     const { execSync } = require('child_process')
 
     const runCmd = (cmd: string): { stdout: string; stderr: string; code: number } => {
       try {
-        if (isWindows) {
-          const stdout = runInWsl(cmd) as unknown as string
-          return { stdout, stderr: '', code: 0 }
-        } else {
-          const stdout = execSync(cmd, { timeout: 15000, encoding: 'utf8' }) as string
-          return { stdout: stdout || '', stderr: '', code: 0 }
-        }
+        const stdout = execSync(cmd, { timeout: 15000, encoding: 'utf8' }) as string
+        return { stdout: stdout || '', stderr: '', code: 0 }
       } catch (err: unknown) {
         const e = err as { stdout?: string; stderr?: string; status?: number }
         return {

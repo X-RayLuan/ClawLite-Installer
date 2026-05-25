@@ -3,8 +3,6 @@ import { useState, useCallback, useRef } from 'react'
 export type StepName =
   | 'welcome'
   | 'envCheck'
-  | 'installType'
-  | 'wslSetup'
   | 'install'
   | 'activate'
   | 'modelConfig'
@@ -15,8 +13,6 @@ export type StepName =
 const STEPS: StepName[] = [
   'welcome',
   'envCheck',
-  'installType',
-  'wslSetup',
   'install',
   'activate',
   'modelConfig',

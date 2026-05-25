@@ -1,12 +1,10 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import StepIndicator from './components/StepIndicator'
 import UpdateBanner from './components/UpdateBanner'
 import { useWizard } from './hooks/useWizard'
 import WelcomeStep from './steps/WelcomeStep'
 import EnvCheckStep from './steps/EnvCheckStep'
-import InstallTypeStep from './steps/InstallTypeStep'
-import WslSetupStep from './steps/WslSetupStep'
 import InstallStep from './steps/InstallStep'
 import ActivateStep from './steps/ActivateStep'
 import ModelConfigStep from './steps/ModelConfigStep'
@@ -15,13 +13,7 @@ import DoneStep from './steps/DoneStep'
 import ConfigModal from './components/ConfigModal'
 import TroubleshootStep from './steps/TroubleshootStep'
 
-type WslState =
-  | 'not_available'
-  | 'not_installed'
-  | 'needs_reboot'
-  | 'no_distro'
-  | 'not_initialized'
-  | 'ready'
+
 
 interface InstallNeeds {
   needNode: boolean
@@ -66,67 +58,34 @@ function App(): React.JSX.Element {
     needNode: false,
     needOpenclaw: false
   })
-  const [isWindows, setIsWindows] = useState(false)
-  const [wslState, setWslState] = useState<WslState>('ready')
-  const [installType, setInstallType] = useState<'wsl' | 'native'>('native')
+  const [installType] = useState<'native'>('native')
   const [version, setVersion] = useState('')
   const [showConfigModal, setShowConfigModal] = useState(false)
 
   // Load version + OS check on app start
   useEffect(() => {
     window.electronAPI.version().then(setVersion)
-    window.electronAPI.env.check().then(async (env) => {
-      setIsWindows(env.os === 'windows')
-      if (env.wslState) setWslState(env.wslState)
-    })
+    window.electronAPI.env.check().then(() => {})
   }, [])
 
   const handleEnvCheckDone = (env: {
     os: string
     nodeVersionOk: boolean
     openclawInstalled: boolean
-    wslState?: WslState
   }): void => {
     setInstallNeeds({
       needNode: !env.nodeVersionOk,
       needOpenclaw: !env.openclawInstalled
     })
 
-    // Windows + WSL not ready → navigate to wslSetup
-    if (env.os === 'windows' && env.wslState && env.wslState !== 'ready') {
-      setWslState(env.wslState)
-      goTo('wslSetup')
-      return
-    }
-
-    // Windows needs install → let user choose install type
+    // Windows needs install → go directly to install (only native mode now)
     if (env.os === 'windows' && (!env.nodeVersionOk || !env.openclawInstalled)) {
-      goTo('installType')
+      goTo('install')
       return
     }
 
     goTo('install')
   }
-
-  const handleWslReady = useCallback((): void => {
-    // WSL ready → clear state file and re-run envCheck
-    window.electronAPI.wizard.clearState()
-    goTo('envCheck')
-  }, [goTo])
-
-  const handleInstallTypeSelect = useCallback((type: 'wsl' | 'native'): void => {
-    setInstallType(type)
-    if (type === 'wsl') {
-      // If WSL is not ready, go to WSL setup first
-      if (wslState !== 'ready') {
-        goTo('wslSetup')
-      } else {
-        goTo('install')
-      }
-    } else {
-      goTo('install')
-    }
-  }, [goTo, wslState])
 
   // ─── Render ───────────────────────────────────────────────────────────────────
 
@@ -140,7 +99,6 @@ function App(): React.JSX.Element {
         {currentStep !== 'welcome' && currentStep !== 'troubleshoot' && (
           <StepIndicator
             currentStep={currentStep}
-            isWindows={isWindows}
           />
         )}
 
@@ -150,12 +108,7 @@ function App(): React.JSX.Element {
             {currentStep === 'envCheck' && (
               <EnvCheckStep onNext={() => goTo('install')} onNeedInstall={handleEnvCheckDone} />
             )}
-            {currentStep === 'installType' && (
-              <InstallTypeStep onSelect={handleInstallTypeSelect} />
-            )}
-            {currentStep === 'wslSetup' && (
-              <WslSetupStep wslState={wslState} onReady={handleWslReady} />
-            )}
+
             {currentStep === 'install' && (
               <InstallStep
                 needs={installNeeds}
@@ -192,7 +145,7 @@ function App(): React.JSX.Element {
               />
             )}
             {currentStep === 'troubleshoot' && (
-              <TroubleshootStep isWindows={isWindows} onBack={prev} />
+              <TroubleshootStep isWindows={true} onBack={prev} />
             )}
           </div>
         </div>

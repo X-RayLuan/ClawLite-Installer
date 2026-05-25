@@ -3,14 +3,6 @@ import { useTranslation } from 'react-i18next'
 import LobsterLogo from '../components/LobsterLogo'
 import Button from '../components/Button'
 
-type WslState =
-  | 'not_available'
-  | 'not_installed'
-  | 'needs_reboot'
-  | 'no_distro'
-  | 'not_initialized'
-  | 'ready'
-
 interface EnvResult {
   os: 'macos' | 'windows' | 'linux'
   nodeInstalled: boolean
@@ -19,7 +11,6 @@ interface EnvResult {
   openclawInstalled: boolean
   openclawVersion: string | null
   openclawLatestVersion: string | null
-  wslState?: WslState
 }
 
 const CheckRow = ({
@@ -54,25 +45,6 @@ export default function EnvCheckStep({
   const [checking, setChecking] = useState(true)
   const [env, setEnv] = useState<EnvResult | null>(null)
 
-
-  const wslStateLabel = (state?: WslState): string => {
-    switch (state) {
-      case 'ready':
-        return t('envCheck.wslState.ready')
-      case 'no_distro':
-        return t('envCheck.wslState.noDistro')
-      case 'needs_reboot':
-        return t('envCheck.wslState.needsReboot')
-      case 'not_installed':
-        return t('envCheck.wslState.notInstalled')
-      case 'not_initialized':
-        return t('envCheck.wslState.notInitialized')
-      case 'not_available':
-        return t('envCheck.wslState.notAvailable')
-      default:
-        return t('envCheck.wslState.checking')
-    }
-  }
 
   const runCheck = (): void => {
     setChecking(true)
@@ -113,13 +85,6 @@ export default function EnvCheckStep({
             ok={true}
             detail={env.os === 'macos' ? 'macOS' : env.os === 'windows' ? 'Windows' : 'Linux'}
           />
-          {env.os === 'windows' && (
-            <CheckRow
-              label={t('envCheck.wsl')}
-              ok={env.wslState === 'ready'}
-              detail={wslStateLabel(env.wslState)}
-            />
-          )}
           <CheckRow
             label={t('envCheck.nodejs')}
             ok={env.nodeVersionOk}

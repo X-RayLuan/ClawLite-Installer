@@ -1,19 +1,8 @@
 import { useTranslation } from 'react-i18next'
 
-const defaultSteps = [
+const STEPS = [
   'welcome',
   'envCheck',
-  'install',
-  'activate',
-  'modelConfig',
-  'channelConfig',
-  'done'
-]
-
-const windowsSteps = [
-  'welcome',
-  'envCheck',
-  'wslSetup',
   'install',
   'activate',
   'modelConfig',
@@ -23,21 +12,15 @@ const windowsSteps = [
 
 export default function StepIndicator({
   currentStep,
-  isWindows = false,
   wizardSteps
 }: {
   currentStep: string
-  isWindows?: boolean
   /** Override the default step sequence (e.g. to skip the API Key step). */
   wizardSteps?: string[]
 }): React.JSX.Element {
   const { t } = useTranslation('steps')
-  const steps = wizardSteps ?? (isWindows ? windowsSteps : defaultSteps)
-  const labels = (
-    isWindows
-      ? t('indicator.windows', { returnObjects: true })
-      : t('indicator.default', { returnObjects: true })
-  ) as string[]
+  const steps = wizardSteps ?? STEPS
+  const labels = t('indicator.default', { returnObjects: true }) as string[]
   const total = labels.length
   const current = Math.max(0, steps.indexOf(currentStep))
 
